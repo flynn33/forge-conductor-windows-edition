@@ -1,8 +1,8 @@
 # Roadmap
 
-## Current release: 1.3.13
+## Current release: 1.3.14
 
-Version 1.3.13 repairs local-model reviewer deadlines and opening inputs, recovered evidence-root bindings, consistent process cwd authorization, nested filesystem writes, and 65,536-byte PowerShell script delivery. Primary/Fallback retain all 80 tools and ten specialist playbooks; CLU retains five tools. Existing deployment, native tool delivery, package/policy browsing, telemetry, persistence, and continuity features remain. See [release notes](releases/1.3.13.md).
+Version 1.3.14 expands Primary/Fallback to 103 tools while preserving all original tools, ten specialist playbooks and five CLU tools. Dedicated web, native Office documents, desktop/browser, PNG/image previews, independent managed workers and persistent schedules join owner-selected host/workspace filesystem access. Existing shell/process jobs, reviews, memory, policy, deployment and continuity remain. See the [capability guide](HOST-CAPABILITIES.md) and [release notes](releases/1.3.14.md) for implementation bounds and executed verification.
 
 Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 

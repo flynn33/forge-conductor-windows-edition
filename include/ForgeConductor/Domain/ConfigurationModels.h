@@ -29,6 +29,11 @@ enum class McpRole {
     Clu
 };
 
+enum class FileSystemAccessMode {
+    Workspace,
+    Host
+};
+
 struct ShellConfig final {
     bool enabled{};
     std::chrono::seconds defaultTimeout{30};
@@ -89,6 +94,7 @@ struct AppConfig final {
     SessionConfig sessions;
     CoordinatorConfig coordinator;
     LocalModelConfig localModel;
+    FileSystemAccessMode fileSystemAccess{FileSystemAccessMode::Workspace};
 
     bool operator==(const AppConfig&) const = default;
 };
@@ -117,6 +123,7 @@ struct AppConfigPatch final {
     std::optional<std::uint32_t> nextResponseReserve;
     std::optional<std::uint32_t> handoffReserve;
     std::optional<std::uint32_t> estimationSafetyMargin;
+    std::optional<FileSystemAccessMode> fileSystemAccess;
 };
 
 [[nodiscard]] AppConfig defaultAppConfig();
@@ -127,5 +134,6 @@ struct AppConfigPatch final {
 
 [[nodiscard]] std::string_view wireName(LogLevel level) noexcept;
 [[nodiscard]] std::string_view wireName(McpRole role) noexcept;
+[[nodiscard]] std::string_view wireName(FileSystemAccessMode mode) noexcept;
 
 } // namespace ForgeConductor::Domain

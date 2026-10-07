@@ -1,6 +1,8 @@
 # Product status
 
-Version 1.3.13 retains Primary/Fallback's 80 tools and ten specialist playbooks plus CLU's five tools. It repairs reviewer deadlines/opening inputs, recovery of activated evidence roots, process cwd authority, nested file creation, and 64 KiB PowerShell script delivery. Release scope and current verification are in [1.3.13 release notes](releases/1.3.13.md) and the [local-model repair checks](validation/LM-STUDIO-ISSUE-REPAIRS-1.3.13.md). Earlier records below retain their original artifact provenance and limits.
+Version 1.3.14 expands Primary/Fallback to 103 tools while retaining all 80 existing tools, ten specialist playbooks and CLU's five tools. Dedicated web, Office, desktop/browser, image, independent-worker and schedule workflows join owner-selected host/workspace filesystem modes. See [capabilities](HOST-CAPABILITIES.md), [release notes](releases/1.3.14.md) and [verification](validation/HOST-CAPABILITIES-1.3.14.md). Native exported Office samples passed Microsoft SDK schema validation; full release, package and live-model qualification are recorded only after execution. Earlier records below retain their original artifact provenance and limits.
+
+The fresh x64 Release source test command passed **162/162 CTest entries in 58.10 seconds**, with all three static gates and package-persistence contract passing. The complete disposable-profile direct MCP probe passed ten groups and 63 requests with an owned loopback provider, including native host/continuity, Office/images, workers, persistent schedules and exact reconnect evidence. Current focused checks include thirteen scheduler groups, four normal desktop/image groups, nine filesystem/search groups and all 67 persistence internal tests. These source/native-fixture results do not qualify the clean shipping App, signed package installation or current Qwen acceptance, which remain pending.
 
 ## Historical 1.3.12 qualification
 

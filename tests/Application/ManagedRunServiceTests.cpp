@@ -1,11 +1,13 @@
 #include "ForgeConductor/Application/AgentRepositoryManagedRunStore.h"
 #include "ForgeConductor/Application/ManagedRunService.h"
+#include "ForgeConductor/Application/ManagedRunWorkerPolicy.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 
 #ifdef NDEBUG
 #undef NDEBUG
 #endif
 #include <cassert>
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <functional>
@@ -242,7 +244,7 @@ private:
 
 class Transport final : public Contracts::IManagedResponsesTransport {
 public:
-    enum class Mode { Success, Offline, Block, ToolLoop, ExtendedToolLoop, ReadOnlyAttack };
+    enum class Mode { Success, Offline, Block, ToolLoop, ExtendedToolLoop, ReadOnlyAttack, WorkerAttack };
 
     [[nodiscard]] Domain::Result<Domain::ManagedProviderTurnResult> complete(
         const Domain::ManagedProviderTurnRequest& request,
@@ -289,6 +291,37 @@ public:
             return Domain::Result<Domain::ManagedProviderTurnResult>::success({
                 parsed(Domain::ProviderSessionId::parse("reviewer-response-2")),
                 "Read-only review finished; attempted write was denied.", 23U, 4U, 27U, {}});
+        }
+        if (mode == Mode::WorkerAttack) {
+            if (calls == 1U) {
+                sawFreshContext = !request.previousResponseId && request.toolOutputs.empty();
+                sawToolDescriptor = request.tools.size() == 2U &&
+                    std::none_of(request.tools.begin(), request.tools.end(), [](const auto& descriptor) {
+                        return descriptor.tool.name == "agent_spawn" || descriptor.tool.name == "session_checkpoint" ||
+                            descriptor.tool.name == "session_handoff";
+                    });
+                {
+                    std::unique_lock lock{mutex_};
+                    firstToolResponseEntered_ = true;
+                    cv_.notify_all();
+                    cv_.wait(lock, context.cancellation, [this] { return !holdFirstToolResponse_; });
+                    if (context.cancellation.stop_requested()) return Domain::Result<Domain::ManagedProviderTurnResult>::failure(
+                        Domain::makeError(Domain::ErrorCodes::Cancelled, "The controlled worker response was cancelled."));
+                }
+                return Domain::Result<Domain::ManagedProviderTurnResult>::success({
+                    parsed(Domain::ProviderSessionId::parse("worker-response-1")), {}, 10U, 3U, 13U,
+                    {{"worker-write", "fixture_write", "{}"}, {"worker-recursive", "agent_spawn", "{}"}, {"worker-forged", "host_permission_grant", "{}"},
+                        {"worker-checkpoint", "session_checkpoint", "{}"}, {"worker-handoff", "session_handoff", "{}"}}});
+            }
+            sawDeniedWrite = request.toolOutputs.size() == 5U &&
+                request.toolOutputs[1].canonicalOutput.find("unauthorized") != std::string::npos &&
+                request.toolOutputs[2].canonicalOutput.find("unauthorized") != std::string::npos &&
+                request.toolOutputs[3].callId == "worker-checkpoint" &&
+                request.toolOutputs[3].canonicalOutput.find("unauthorized") != std::string::npos &&
+                request.toolOutputs[4].callId == "worker-handoff" &&
+                request.toolOutputs[4].canonicalOutput.find("unauthorized") != std::string::npos;
+            return Domain::Result<Domain::ManagedProviderTurnResult>::success({
+                parsed(Domain::ProviderSessionId::parse("worker-response-2")), "Mutable worker finished.", 12U, 4U, 16U, {}});
         }
         if (mode == Mode::ToolLoop) {
             if (calls == 1U) {
@@ -449,6 +482,12 @@ public:
             write.tool.name = "fixture_write";
             write.tool.effect = Domain::ToolEffect::Write;
             tools_.push_back(std::move(write));
+            for (const auto name : {"session_checkpoint", "session_handoff"}) {
+                auto continuity = tools_.front();
+                continuity.tool.name = name;
+                continuity.tool.effect = Domain::ToolEffect::Write;
+                tools_.push_back(std::move(continuity));
+            }
         }
     }
 
@@ -464,46 +503,65 @@ private:
 
 class WorkspaceAuthority final : public Contracts::IWorkspaceAuthority {
 public:
-    std::size_t calls{};
-    WorkspaceAuthority(Domain::ProjectId projectId, Domain::ClientId clientId)
-        : projectId_{std::move(projectId)}, clientId_{std::move(clientId)}
+    std::atomic_size_t calls{};
+    bool waitForCancellation{};
+    std::atomic_int revokedPolicy{};
+    WorkspaceAuthority(Domain::ProjectId projectId, Domain::ClientId clientId, bool writable = false, bool shellEnabled = false)
+        : projectId_{std::move(projectId)}, clientId_{std::move(clientId)}, writable_{writable}, shellEnabled_{shellEnabled}
     {
     }
 
     [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> authorityFor(
         const Domain::ProjectId& projectId,
-        const Domain::OperationContext&) noexcept override
+        const Domain::OperationContext& operation) noexcept override
     {
         ++calls;
+        if (waitForCancellation) {
+            std::unique_lock lock{resolutionMutex_};
+            resolving_ = true;
+            resolutionChanged_.notify_all();
+            resolutionChanged_.wait(lock, operation.cancellation, [] { return false; });
+            return Domain::Result<Contracts::WorkspaceAuthority>::failure(
+                Domain::makeError(Domain::ErrorCodes::Cancelled, "Fixture authority resolution was cancelled."));
+        }
         if (projectId != projectId_) {
             return Domain::Result<Contracts::WorkspaceAuthority>::failure(
                 Domain::makeError(Domain::ErrorCodes::ProjectScopeMismatch,
                                   "unexpected test project"));
         }
+        auto grants = writable_ ? std::vector<Domain::FileAccess>{Domain::FileAccess::Read, Domain::FileAccess::Write}
+                                : std::vector<Domain::FileAccess>{Domain::FileAccess::Read};
+        const auto revoked = revokedPolicy.load();
+        const bool shell = shellEnabled_ && revoked != 2;
+        if (shell) grants.push_back(Domain::FileAccess::Execute);
         return issueAuthority(
             parsed(Domain::AuthorityId::parse(
                 "22222222-2222-4222-8222-222222222222")),
             projectId_,
             clientId_,
-            {parsed(Domain::PathText::create("C:\\managed-test"))},
+            {parsed(Domain::PathText::create(revoked == 1 ? "C:\\other-project" : "C:\\managed-test"))},
             Domain::FileAccess::Read,
-            {Domain::FileAccess::Read},
+            std::move(grants),
             {},
-            false,
+            shell,
             7U);
     }
 
+    void waitUntilResolving()
+    {
+        std::unique_lock lock{resolutionMutex_};
+        assert(resolutionChanged_.wait_for(lock, 2s, [&] { return resolving_; }));
+    }
+
     [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> narrow(
-        const Contracts::WorkspaceAuthority&,
-        const std::vector<Domain::PathText>&,
-        const std::vector<Domain::FileAccess>&,
-        bool,
-        std::uint64_t,
+        const Contracts::WorkspaceAuthority& authority,
+        const std::vector<Domain::PathText>& roots,
+        const std::vector<Domain::FileAccess>& grants,
+        bool shell,
+        std::uint64_t generation,
         const Domain::OperationContext&) noexcept override
     {
-        return Domain::Result<Contracts::WorkspaceAuthority>::failure(
-            Domain::makeError(Domain::ErrorCodes::HostCapabilityUnavailable,
-                              "unused test narrow"));
+        return narrowAuthority(authority, roots, grants, shell, generation);
     }
 
     [[nodiscard]] Domain::Result<Contracts::AuthorizedPath> authorize(
@@ -519,6 +577,11 @@ public:
 private:
     Domain::ProjectId projectId_;
     Domain::ClientId clientId_;
+    bool writable_{};
+    bool shellEnabled_{};
+    std::mutex resolutionMutex_;
+    std::condition_variable_any resolutionChanged_;
+    bool resolving_{};
 };
 class ToolRouter final : public Contracts::IToolRouter {
 public:
@@ -528,6 +591,10 @@ public:
         const Domain::OperationContext&) noexcept override
     {
         ++calls;
+        lastName = request.toolName;
+        lastRoots = authority.trustedRoots();
+        lastGrants = authority.grants();
+        lastShell = authority.shellEnabled();
         sawBinding = request.toolName == "fixture_read" &&
             request.canonicalArguments == "{\"path\":\"README.md\"}" &&
             request.metadata.projectId ==
@@ -553,6 +620,10 @@ public:
     std::size_t calls{};
     std::size_t cancels{};
     bool sawBinding{};
+    std::string lastName;
+    std::vector<Domain::PathText> lastRoots;
+    std::vector<Domain::FileAccess> lastGrants;
+    bool lastShell{};
 };
 
 class ContinuityCodec final : public Contracts::IContinuityDocumentCodec {
@@ -1199,5 +1270,126 @@ int main()
     assert(restoredReview.value()->readOnlyTools);
     assert(restoredReview.value()->providerReceiveTimeoutSeconds == 1800U);
     assert(restoredReview.value()->evidenceIntegrity == Domain::ManagedRunEvidenceIntegrity::Verified);
+    Store workerStore;
+    Transport workerTransport; workerTransport.mode = Transport::Mode::WorkerAttack;
+    ToolCatalog workerCatalog{true}; ToolRouter workerRouter;
+    auto worker = request("11112222-3333-4444-8555-666677778888", "22223333-4444-4555-8666-777788889999", "Perform a bounded mutable task.");
+    WorkspaceAuthority workerAuthority{worker.projectId, worker.clientId, true};
+    const auto workerToken = parsed(workerAuthority.authorityFor(worker.projectId, context("22223333-4444-4555-8666-777788889999", "worker-scope")));
+    worker.workerScope = Domain::ManagedRunWorkerScope{workerToken.trustedRoots(), workerToken.grants(), workerToken.denials(), false,
+        Application::managedWorkerToolNames(workerCatalog), 600U};
+    worker.automaticContinuity = false;
+    Application::ManagedRunService workerService{workerTransport, workerStore, clock, {&workerCatalog, &workerRouter, &workerAuthority}};
+    assert(workerService.start(worker, context("22223333-4444-4555-8666-777788889999", "worker-start")));
+    const auto worked = waitForTerminal(workerService, worker.runId);
+    assert(worked.record.state == Domain::ManagedRunState::Completed && worked.record.workerScope == worker.workerScope && !worked.record.readOnlyTools);
+    assert(workerTransport.sawFreshContext && workerTransport.sawToolDescriptor && workerTransport.sawDeniedWrite);
+    assert(workerRouter.calls == 1U && workerRouter.lastName == "fixture_write" && workerRouter.lastRoots == workerToken.trustedRoots()
+        && workerRouter.lastGrants == workerToken.grants() && !workerRouter.lastShell);
+    assert(worked.record.inputTokens == 22U && worked.record.outputTokens == 7U);
+    auto forbiddenWorker = worker; forbiddenWorker.runId = parsed(Domain::SessionId::parse("33334444-5555-4666-8777-888899990000"));
+    for (const auto forbidden : {"agent_spawn", "session_checkpoint", "session_handoff"}) {
+        forbiddenWorker.workerScope = worker.workerScope;
+        forbiddenWorker.workerScope->allowedTools.push_back(forbidden);
+        auto refused = workerService.start(forbiddenWorker, context("44445555-6666-4777-8888-999900001111", "worker-denied"));
+        assert(!refused && refused.error().code == Domain::ErrorCodes::InvalidRequest);
+    }
+    const auto wrongStore = reviewerDurableStore.save(worked.record, context("55556666-7777-4888-8999-000011112222", "worker-wrong-store"));
+    assert(!wrongStore && wrongStore.error().code == Domain::ErrorCodes::Unauthorized);
+    workerService.shutdown();
+    // Cancellation must remain cancellation even before the native issuer has
+    // returned a token; shutdown must seal the same outcome without inference.
+    for (const bool viaShutdown : {false, true}) {
+        Store cancelledStore;
+        Transport cancelledTransport;
+        ToolRouter cancelledRouter;
+        WorkspaceAuthority resolvingAuthority{worker.projectId, worker.clientId, true};
+        resolvingAuthority.waitForCancellation = true;
+        Application::ManagedRunService cancelledService{cancelledTransport, cancelledStore, clock,
+            {&workerCatalog, &cancelledRouter, &resolvingAuthority}};
+        assert(cancelledService.start(worker, context("22223333-4444-4555-8666-777788889999", "worker-resolution-cancel")));
+        resolvingAuthority.waitUntilResolving();
+        if (viaShutdown) cancelledService.shutdown();
+        else assert(cancelledService.cancel(worker.runId,
+            context("55556666-7777-4888-8999-000011112222", "worker-resolution-cancel")));
+        const auto stopped = waitForTerminal(cancelledService, worker.runId);
+        assert(stopped.record.state == Domain::ManagedRunState::Cancelled && stopped.record.lastError &&
+            stopped.record.lastError->code == Domain::ErrorCodes::Cancelled);
+        assert(cancelledTransport.calls == 0U && cancelledRouter.calls == 0U && resolvingAuthority.calls == 1U);
+        cancelledService.shutdown();
+    }
+    // The provider can return a tool after owner policy changes. Mutable
+    // desktop/network handlers must never receive that stale capability.
+    for (const int revoke : {1, 2}) {
+        Store revokedStore;
+        Transport revokedTransport;
+        revokedTransport.mode = Transport::Mode::WorkerAttack;
+        revokedTransport.holdFirstToolResponse();
+        WorkspaceAuthority revokedAuthority{worker.projectId, worker.clientId, true, true};
+        ToolRouter revokedRouter;
+        auto admitted = worker;
+        const auto originalScope = parsed(revokedAuthority.authorityFor(worker.projectId,
+            context("22223333-4444-4555-8666-777788889999", "worker-original-policy")));
+        admitted.workerScope = Domain::ManagedRunWorkerScope{originalScope.trustedRoots(), originalScope.grants(),
+            originalScope.denials(), originalScope.shellEnabled(), Application::managedWorkerToolNames(workerCatalog), 600U};
+        Application::ManagedRunService revokedService{revokedTransport, revokedStore, clock,
+            {&workerCatalog, &revokedRouter, &revokedAuthority}};
+        assert(revokedService.start(admitted,
+            context("22223333-4444-4555-8666-777788889999", "worker-revoked-policy")));
+        revokedTransport.waitForFirstToolResponse();
+        revokedAuthority.revokedPolicy.store(revoke);
+        revokedTransport.releaseFirstToolResponse();
+        const auto rejected = waitForTerminal(revokedService, admitted.runId);
+        assert(rejected.record.state == Domain::ManagedRunState::Failed && rejected.record.lastError &&
+            rejected.record.lastError->code == Domain::ErrorCodes::Unauthorized && revokedRouter.calls == 0U &&
+            revokedTransport.calls == 1U && rejected.record.workerScope == admitted.workerScope &&
+            !rejected.record.pendingFunctionCalls.empty());
+        revokedService.shutdown();
+    }
+    // Completed workers retain durable results, while their finished threads
+    // no longer consume admission slots or receive shutdown cancellation.
+    Store retainedStore;
+    Transport boundedTransport;
+    WorkspaceAuthority boundedAuthority{worker.projectId, worker.clientId, true};
+    Application::ManagedRunService boundedService{boundedTransport, retainedStore, clock,
+        {&workerCatalog, &workerRouter, &boundedAuthority}};
+    const auto boundedWorker = [&](const unsigned index) {
+        const auto suffix = std::to_string(index);
+        const auto digits = std::string(12U - suffix.size(), '0') + suffix;
+        auto admitted = worker;
+        admitted.runId = parsed(Domain::SessionId::parse("50000000-0000-4000-8000-" + digits));
+        admitted.operationId = parsed(Domain::OperationId::parse("60000000-0000-4000-8000-" + digits));
+        admitted.task = "Bounded independent worker resource fixture.";
+        return admitted;
+    };
+    for (unsigned index = 1U; index <= 40U; ++index) {
+        const auto next = boundedWorker(index);
+        assert(boundedService.start(next, context("22223333-4444-4555-8666-777788889999", "worker-retirement")));
+        assert(waitForTerminal(boundedService, next.runId).record.state == Domain::ManagedRunState::Completed);
+    }
+    assert(boundedTransport.cancels == 0U);
+    boundedTransport.mode = Transport::Mode::Block;
+    static_assert(Application::ManagedRunService::MaximumConcurrentWorkers == 16U);
+    for (unsigned index = 100U; index < 116U; ++index)
+        assert(boundedService.start(boundedWorker(index),
+            context("22223333-4444-4555-8666-777788889999", "worker-active-bound")));
+    const auto excessive = boundedWorker(116U);
+    const auto rejected = boundedService.start(excessive,
+        context("22223333-4444-4555-8666-777788889999", "worker-active-bound"));
+    assert(!rejected && rejected.error().code == Domain::ErrorCodes::LimitExceeded);
+    assert(!parsed(retainedStore.load(excessive.runId,
+        context("22223333-4444-4555-8666-777788889999", "worker-no-orphan"))));
+    const auto firstActive = boundedWorker(100U);
+    assert(boundedService.cancel(firstActive.runId,
+        context("22223333-4444-4555-8666-777788889999", "worker-release-slot")));
+    assert(waitForTerminal(boundedService, firstActive.runId).record.state == Domain::ManagedRunState::Cancelled);
+    assert(boundedService.start(excessive,
+        context("22223333-4444-4555-8666-777788889999", "worker-reused-slot")));
+    boundedService.shutdown();
+    assert(boundedTransport.cancels == 17U);
+    assert(parsed(boundedService.status(boundedWorker(1U).runId,
+        context("22223333-4444-4555-8666-777788889999", "worker-retained-result"))).record.state ==
+        Domain::ManagedRunState::Completed);
+    assert(waitForTerminal(boundedService, excessive.runId).record.state == Domain::ManagedRunState::Cancelled);
     return 0;
 }

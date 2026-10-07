@@ -5,6 +5,7 @@
 #include "ForgeConductor/Dashboard/IDashboardConnectionApplicationFactory.h"
 
 #include <memory>
+#include <functional>
 
 namespace ForgeConductor::Hosts::Manager {
 
@@ -14,12 +15,16 @@ namespace ForgeConductor::Hosts::Manager {
 // transport before a successor may bind the exclusive loopback endpoint.
 class WindowsManagerRuntime final : public Contracts::IManagerRuntime {
 public:
+    using OwnerPolicyApplier = std::function<Domain::Result<void>(
+        const Domain::AppConfig&, const Domain::OperationContext&)>;
+
     [[nodiscard]] static Domain::Result<std::unique_ptr<WindowsManagerRuntime>>
     create(
         std::shared_ptr<Contracts::IClock> clock,
         std::shared_ptr<Contracts::IUuidGenerator> uuidGenerator,
         std::shared_ptr<Dashboard::IDashboardConnectionApplicationFactory>
-            applicationFactory) noexcept;
+            applicationFactory,
+        OwnerPolicyApplier ownerPolicyApplier = {}) noexcept;
 
     ~WindowsManagerRuntime() noexcept override;
 

@@ -967,6 +967,52 @@ void lmStudioResponsesCorrelatesManagedFunctionOutput()
     server.requireHealthy();
 }
 
+void lmStudioResponsesEmitsBoundedManagedImageContent()
+{
+    const std::string png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jT9kAAAAASUVORK5CYII=";
+    ResponseScript models{"GET", "/v1/models", 200U,
+        R"({"object":"list","data":[{"id":"fixture-model"}]})"};
+    ResponseScript terminal{"POST", "/v1/responses", 200U,
+        R"({"id":"resp_image_done","status":"completed","output_text":"image result accepted","usage":{"input_tokens":28,"output_tokens":6}})"};
+    LoopbackHttpServer server{{models, terminal}};
+    InfrastructureWindows::LMStudioResponsesTransport transport{responsesConfiguration(server.port())};
+    Domain::ManagedProviderTurnRequest request{
+        parse<Domain::ProjectId>(ProjectIdText), parse<Domain::SessionId>(SuccessorSessionIdText), 9U, {},
+        parse<Domain::ProviderSessionId>("resp_image_origin"), {},
+        {{"call_image_1", R"({"image_mime_type":"image/png","preview_width":1,"preview_height":1})",
+            Domain::ManagedImagePreview{"image/png", png}}, {"call_text_2", "unchanged text output"}}};
+    const auto result = take(transport.complete(request,
+        operationContext("64646464-6464-4464-8464-646464646461", 5s)));
+    REQUIRE(result.responseId.value() == "resp_image_done");
+    REQUIRE(server.waitUntilHandled(2U, 5s));
+    const auto body = Json::parse(server.requests()[1].body);
+    REQUIRE(body.at("previous_response_id") == "resp_image_origin");
+    REQUIRE(body.at("input").size() == 2U);
+    const auto& imageOutput = body.at("input").at(0);
+    REQUIRE(imageOutput.at("type") == "function_call_output");
+    REQUIRE(imageOutput.at("call_id") == "call_image_1");
+    REQUIRE(imageOutput.at("output").size() == 2U);
+    REQUIRE(imageOutput.at("output").at(0) == Json({{"type", "input_text"}, {"text", request.toolOutputs[0].canonicalOutput}}));
+    REQUIRE(imageOutput.at("output").at(1) == Json({{"type", "input_image"}, {"detail", "auto"}, {"image_url", "data:image/png;base64," + png}}));
+    REQUIRE(body.at("input").at(1) == Json({{"type", "function_call_output"}, {"call_id", "call_text_2"}, {"output", "unchanged text output"}}));
+
+    std::string oversized(Domain::MaximumManagedImagePreviewBase64Bytes + 4U, 'A');
+    oversized.replace(0U, 11U, "iVBORw0KGgo");
+    auto embeddedPadding = png; embeddedPadding[16] = '=';
+    auto invalidPaddingBits = png; invalidPaddingBits[invalidPaddingBits.size() - 2U] = 'J';
+    auto nullByte = png; nullByte[16] = '\0';
+    for (const auto& invalid : std::vector<Domain::ManagedImagePreview>{
+             {"image/jpeg", png}, {"", png}, {"image/png", ""}, {"image/png", "AAAA"},
+             {"image/png", embeddedPadding}, {"image/png", invalidPaddingBits}, {"image/png", nullByte},
+             {"image/png", "iVBORw0KGgo====="}, {"image/png", oversized}}) {
+        request.toolOutputs[0].image = invalid;
+        requireError(transport.complete(request,
+            operationContext("64646464-6464-4464-8464-646464646462", 5s)), Domain::ErrorCodes::InvalidRequest);
+    }
+    REQUIRE(server.requests().size() == 2U);
+    server.requireHealthy();
+}
+
 void malformedAndOversizedResponsesFailClosed()
 {
     ResponseScript malformed{
@@ -1800,6 +1846,8 @@ int main()
         std::cout << "PASS lmstudio_responses.managed_receive_timeout\n";
         lmStudioResponsesCorrelatesManagedFunctionOutput();
         std::cout << "PASS lmstudio_responses.managed_function_output\n";
+        lmStudioResponsesEmitsBoundedManagedImageContent();
+        std::cout << "PASS lmstudio_responses.managed_image_content\n";
         malformedAndOversizedResponsesFailClosed();
         std::cout << "PASS winhttp_transport.response_validation_bounds\n";
         rateLimitUsageAndProviderCancellationAreExact();
@@ -1808,7 +1856,7 @@ int main()
         std::cout << "PASS winhttp_transport.deadline_cancellation\n";
         shutdownClosesActiveAndFutureRequests();
         std::cout << "PASS winhttp_transport.shutdown\n";
-        std::cout << "SUMMARY passed=17 failed=0 assertions="
+        std::cout << "SUMMARY passed=18 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

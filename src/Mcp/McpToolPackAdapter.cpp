@@ -1,5 +1,7 @@
 #include "ForgeConductor/Mcp/McpToolPackAdapter.h"
 
+#include "McpAgentWorkerTools.h"
+
 #include "ForgeConductor/Application/LegacyInstructionPackageMigration.h"
 #include "ForgeConductor/Domain/Utf8.h"
 #include "ForgeConductor/Mcp/McpJsonCodec.h"
@@ -815,18 +817,26 @@ enum class ContinuityPathRole { Path, WorkingDirectory };
 
 class ToolContinuityObservationBuilder final {
 public:
-    void seedWorkspace(const Contracts::WorkspaceAuthority& authority)
+    void seedWorkspace(const Contracts::WorkspaceAuthority& authority,
+        const std::optional<Domain::PathText>& defaultPath = std::nullopt)
     {
-        if (!authority.trustedRoots().empty()) {
+        if (defaultPath) {
+            observation_.baseDirectory = *defaultPath;
+            pinnedBase_ = true;
+        } else if (!authority.trustedRoots().empty()) {
             observation_.baseDirectory = authority.trustedRoots().front();
         }
+        defaultDirectory_ = observation_.baseDirectory ? observation_.baseDirectory->value() : std::string{};
     }
+
+    [[nodiscard]] std::string defaultDirectory() const
+    { return defaultDirectory_; }
 
     void observe(
         const Contracts::AuthorizedPath& authorized,
         const ContinuityPathRole role)
     {
-        if (!observation_.path && !observation_.workingDirectory) {
+        if (!pinnedBase_ && !observation_.path && !observation_.workingDirectory) {
             observation_.baseDirectory = authorized.authorityRoot();
         }
         if (role == ContinuityPathRole::WorkingDirectory) {
@@ -850,6 +860,8 @@ public:
 
 private:
     Domain::ToolContinuityObservation observation_;
+    bool pinnedBase_{};
+    std::string defaultDirectory_;
 };
 
 [[nodiscard]] Domain::Result<Contracts::AuthorizedPath> authorizePath(
@@ -860,14 +872,21 @@ private:
     const bool protectAuthorityRoot,
     const Domain::OperationContext& context,
     ToolContinuityObservationBuilder* const observation = nullptr,
-    const ContinuityPathRole role = ContinuityPathRole::Path)
+    const ContinuityPathRole role = ContinuityPathRole::Path,
+    std::optional<Domain::PathText> excludedSubtree = std::nullopt)
 {
     std::optional<Domain::PathText> base;
+    std::string anchored{encoded};
     if (!isAbsoluteToolPath(encoded) && !authority.trustedRoots().empty()) {
-        base = authority.trustedRoots().front();
+        if (resolver.fileSystemAccessMode() == Domain::FileSystemAccessMode::Host) {
+            auto root = resolver.defaultWorkspacePath(authority, context);
+            if (!root) return propagate<Contracts::AuthorizedPath>(std::move(root));
+            anchored = anchoredToolPath(encoded, root.value().value());
+        } else {
+            base = authority.trustedRoots().front();
+            anchored = anchoredToolPath(encoded, base->value());
+        }
     }
-    const auto anchored = anchoredToolPath(
-        encoded, base ? base->value() : std::string_view{});
     auto requested = pathText(anchored, "path");
     if (!requested) {
         return propagate<Contracts::AuthorizedPath>(std::move(requested));
@@ -878,20 +897,13 @@ private:
             std::move(requested).value(),
             std::move(base),
             access,
-            protectAuthorityRoot},
+            protectAuthorityRoot,
+            std::move(excludedSubtree)},
         context);
     if (authorized && observation != nullptr) {
         observation->observe(authorized.value(), role);
     }
     return authorized;
-}
-
-[[nodiscard]] std::string defaultRoot(
-    const Contracts::WorkspaceAuthority& authority)
-{
-    return authority.trustedRoots().empty()
-        ? std::string{}
-        : authority.trustedRoots().front().value();
 }
 
 [[nodiscard]] std::string fileNameWithoutExtension(
@@ -1985,6 +1997,15 @@ public:
         return dependencies_.catalog.tools();
     }
 
+    [[nodiscard]] Json durableManagerStatus() const
+    {
+        const bool available = static_cast<bool>(dependencies_.durableToolBroker) ||
+            (dependencies_.workerRuns && dependencies_.workerRuns() != nullptr) ||
+            (dependencies_.reviewerRuns && dependencies_.reviewerRuns() != nullptr);
+        return Json{{"available", available}, {"startup_error",
+            dependencies_.managerStartupError.empty() ? Json(nullptr) : Json(dependencies_.managerStartupError)}};
+    }
+
     [[nodiscard]] Domain::Result<Json> workspaceContext(
         const Domain::ProjectId& projectId,
         const std::optional<Domain::PathText>& preferredRoot,
@@ -2291,6 +2312,17 @@ public:
                 "\nCall forge_status for this complete structured context. The Forge home "
                 "path is application data only, not the project folder.";
             instructions +=
+                "\nCall host_capabilities before claiming that a tool category is missing. "
+                "Native tools include web_search/web_fetch/http_request; document_write (.docx), "
+                "spreadsheet_write (.xlsx), presentation_write (.pptx), PDF, image_read/image_write, "
+                "desktop_list/read/capture/click/type/key and browser_open. Image writing creates shapes and text; "
+                "generative artwork and cloud accounts require connected providers. "
+                "agent_spawn/poll/cancel run independent scoped tasks, and schedule_create/list/run_now/cancel persist scheduled work. "
+                "The connector starts or attaches to its matching Manager; inspect durable_manager availability and startup_error. "
+                "Filesystem mode is selected by the owner; host mode grants available local volumes under ordinary Windows permissions "
+                "while relative paths and project memory keep the selected project directory. "
+                "Use actual tool results to establish availability and failures.";
+            instructions +=
                 "\nShell execution: shell_exec runs foreground PowerShell for at most 120 seconds; "
                 "its descendants are terminated when the shell exits or times out. "
                 "Normal Windows user/profile variables are included when available; Python defaults to UTF-8. "
@@ -2394,7 +2426,13 @@ public:
                     std::move(operationContext));
             }
             ToolContinuityObservationBuilder continuityObservation;
-            continuityObservation.seedWorkspace(authority);
+            std::optional<Domain::PathText> defaultWorkspace;
+            if (dependencies_.workspaceAuthority.fileSystemAccessMode() == Domain::FileSystemAccessMode::Host) {
+                auto root = dependencies_.workspaceAuthority.defaultWorkspacePath(authority, operationContext.value());
+                if (!root) return propagate<Domain::ToolCallOutcome>(std::move(root));
+                defaultWorkspace = std::move(root).value();
+            }
+            continuityObservation.seedWorkspace(authority, defaultWorkspace);
             std::optional<Domain::ContextRecoveryReceipt> contextRecovery;
             std::optional<std::size_t> fileReadByteStart;
             auto payload = dispatch(
@@ -2454,7 +2492,9 @@ public:
             }
             if (dependencies_.projectPolicy &&
                 !authorizedCall.toolName().starts_with("clu.")) {
-                auto resultEvidence = payload.value().dump();
+                auto evidencePayload = payload.value();
+                evidencePayload.erase("image_base64");
+                auto resultEvidence = evidencePayload.dump();
                 if (resultEvidence.size() > 32U * 1024U) {
                     resultEvidence.resize(boundedUtf8End(resultEvidence, 0U, 32U * 1024U));
                 }
@@ -2521,6 +2561,8 @@ public:
                     if (workspace && workspace.value()) {
                         dependencies_.visibleChatWorkspaceBinding(
                             workspace.value()->projectId, workspace.value()->authorityRoot);
+                    } else if (defaultWorkspace) {
+                        dependencies_.visibleChatWorkspaceBinding(authority.projectId(), *defaultWorkspace);
                     } else if (!authority.trustedRoots().empty()) {
                         dependencies_.visibleChatWorkspaceBinding(
                             authority.projectId(), authority.trustedRoots().front());
@@ -2627,6 +2669,89 @@ private:
     {
         const auto& name = call.toolName();
 
+        if (name == "agent_spawn" || name == "agent_poll" || name == "agent_cancel" || name.starts_with("schedule_")) {
+            if (dependencies_.durableToolBroker) {
+                auto brokerArguments = arguments;
+                const auto accessName = [](const Domain::FileAccess access) {
+                    switch (access) {
+                    case Domain::FileAccess::Read: return "read";
+                    case Domain::FileAccess::Write: return "write";
+                    case Domain::FileAccess::Create: return "create";
+                    case Domain::FileAccess::Delete: return "delete";
+                    case Domain::FileAccess::Execute: return "execute";
+                    }
+                    return "unknown";
+                };
+                Json roots = Json::array(), grants = Json::array(), denials = Json::array();
+                for (const auto& root : authority.trustedRoots()) roots.push_back(root.value());
+                for (const auto access : authority.grants()) grants.push_back(accessName(access));
+                for (const auto access : authority.denials()) denials.push_back(accessName(access));
+                brokerArguments["_forge_worker_scope"] = Json{{"trusted_roots", std::move(roots)},
+                    {"grants", std::move(grants)}, {"denials", std::move(denials)}, {"shell_enabled", authority.shellEnabled()}};
+                auto result = dependencies_.durableToolBroker(name, brokerArguments.dump(), authority.projectId(), context);
+                if (!result) return propagate<Json>(std::move(result));
+                return Domain::Result<Json>::success(Json::parse(result.value()));
+            }
+            auto* scheduler = dependencies_.scheduledTasks ? dependencies_.scheduledTasks() : nullptr;
+            auto result = name.starts_with("schedule_")
+                ? scheduler
+                    ? scheduler->execute(name, arguments.dump(), authority, context)
+                    : failure<std::string>(Domain::ErrorCodes::HostCapabilityUnavailable, "Persistent model schedules require the Manager.")
+                : executeAgentWorkerTool(name, arguments.dump(), authority, context,
+                    {dependencies_.workerRuns, dependencies_.agentCatalog, dependencies_.catalog, dependencies_.uuidGenerator});
+            if (!result) return propagate<Json>(std::move(result));
+            return Domain::Result<Json>::success(Json::parse(result.value()));
+        }
+        if (name == "host_capabilities") {
+            Json names = Json::array();
+            for (const auto& item : dependencies_.catalog.tools()) names.push_back(item.tool.name);
+            Json roots = Json::array();
+            for (const auto& root : authority.trustedRoots()) roots.push_back(root.value());
+            const bool hostAccess = dependencies_.workspaceAuthority.fileSystemAccessMode() ==
+                Domain::FileSystemAccessMode::Host;
+            return Domain::Result<Json>::success(Json{{"ok", true}, {"version", dependencies_.productVersion},
+                {"tool_count", names.size()}, {"tools", std::move(names)},
+                {"durable_manager", durableManagerStatus()},
+                {"filesystem_access", hostAccess ? "host" : "workspace"}, {"active_roots", std::move(roots)},
+                {"dedicated", {{"web_fetch_search_http", dependencies_.webAccess != nullptr},
+                    {"word_excel_powerpoint_creation", dependencies_.artifactDocuments != nullptr},
+                    {"desktop_accessibility_capture_input", dependencies_.desktopArtifacts != nullptr},
+                    {"native_image_drawing_and_vision_preview", dependencies_.desktopArtifacts != nullptr},
+                    {"pdf_creation", true}, {"shell_and_process_execution", authority.shellEnabled()},
+                    {"independent_read_only_review", static_cast<bool>(dependencies_.reviewerRuns || dependencies_.durableToolBroker)}}},
+                {"execution_permissions", "ordinary_windows_account_permissions_without_elevation"},
+                {"shell_absolute_paths_and_network", "not_sandboxed_by_filesystem_tool_roots"},
+                {"external_connections_required", {"generative_image_model", "cloud_email_calendar_chat_accounts"}},
+                {"agent_playbooks", "agent_run_start_is_a_current_model_specialist_session_not_parallel_inference"},
+                {"reviewer_gate_approval", false},
+                {"independent_mutable_workers", static_cast<bool>(dependencies_.workerRuns || dependencies_.durableToolBroker)},
+                {"independent_worker_limits", {{"maximum_active", 16}, {"timeout_sec_max", 3600},
+                    {"output_bytes_max", Domain::MaximumManagedRunOutputBytes},
+                    {"receipt_history", "sealed_receipts_retained_by_run_id_subject_to_available_disk_space"}}},
+                {"scheduled_task_notifications", "Manager submits local Windows toasts; last_notification reports actual acceptance or error, with display_confirmed=false"},
+                {"persistent_model_schedules", static_cast<bool>(dependencies_.scheduledTasks || dependencies_.durableToolBroker)}});
+        }
+        if (name == "web_fetch" || name == "web_search" || name == "http_request") {
+            if (!dependencies_.webAccess) return failure<Json>(Domain::ErrorCodes::HostCapabilityUnavailable,
+                "Native web access is unavailable in this composition.");
+            auto result = dependencies_.webAccess->execute(name, arguments.dump(), context);
+            if (!result) return propagate<Json>(std::move(result));
+            return Domain::Result<Json>::success(Json::parse(result.value()));
+        }
+        if (name == "document_write" || name == "spreadsheet_write" || name == "presentation_write") {
+            if (!dependencies_.artifactDocuments) return failure<Json>(Domain::ErrorCodes::HostCapabilityUnavailable,
+                "Native Office document creation is unavailable in this composition.");
+            auto result = dependencies_.artifactDocuments->execute(name, arguments.dump(), authority, context);
+            if (!result) return propagate<Json>(std::move(result));
+            return Domain::Result<Json>::success(Json::parse(result.value()));
+        }
+        if (name.starts_with("desktop_") || name == "browser_open" || name == "image_read" || name == "image_write") {
+            if (!dependencies_.desktopArtifacts) return failure<Json>(Domain::ErrorCodes::HostCapabilityUnavailable,
+                "Native desktop/image access is unavailable in this composition.");
+            auto result = dependencies_.desktopArtifacts->execute(name, arguments.dump(), authority, context);
+            if (!result) return propagate<Json>(std::move(result));
+            return Domain::Result<Json>::success(Json::parse(result.value()));
+        }
         if (name == "provider_status" || name == "process_status") {
             const auto& inspect = name == "provider_status"
                 ? dependencies_.providerInspection : dependencies_.systemInspection;
@@ -2705,7 +2830,7 @@ private:
                 auto brokerArguments = arguments;
                 if (name == "process_launch" || name == "shell_job_start") {
                     auto cwd = authorizePath(dependencies_.workspaceAuthority, authority,
-                        arguments.value("cwd", defaultRoot(authority)), Domain::FileAccess::Execute,
+                        arguments.value("cwd", observation.defaultDirectory()), Domain::FileAccess::Execute,
                         false, context, &observation, ContinuityPathRole::WorkingDirectory);
                     if (!cwd) return propagate<Json>(std::move(cwd));
                     brokerArguments["cwd"] = cwd.value().canonicalPath().value();
@@ -2916,10 +3041,12 @@ private:
         ToolContinuityObservationBuilder& observation)
     {
         if (name == "get_forge_status" || name == "forge_status") {
-            const auto roots = authority.trustedRoots();
-            const std::optional<Domain::PathText> preferredRoot = roots.empty()
-                ? std::nullopt
-                : std::optional<Domain::PathText>{roots.front()};
+            std::optional<Domain::PathText> preferredRoot;
+            if (dependencies_.workspaceAuthority.fileSystemAccessMode() == Domain::FileSystemAccessMode::Host) {
+                auto root = dependencies_.workspaceAuthority.defaultWorkspacePath(authority, context);
+                if (!root) return propagate<Json>(std::move(root));
+                preferredRoot = std::move(root).value();
+            } else if (!authority.trustedRoots().empty()) preferredRoot = authority.trustedRoots().front();
             auto projectContext = workspaceContext(
                 authority.projectId(), preferredRoot, context);
             if (!projectContext) {
@@ -3045,6 +3172,7 @@ private:
                 {"home", home.value().value()},
                 {"home_kind", "application_data"},
                 {"home_is_project", false},
+                {"durable_manager", durableManagerStatus()},
                 {"client_id", call.clientId().value()},
                 {"agent_count", agents.size()},
                 {"tool_count", tools.size()},
@@ -3087,8 +3215,12 @@ private:
                 {"workspace_authority", Json{{"configured_additional_roots", std::move(configuredRoots)},
                     {"active_roots", std::move(activeRoots)}, {"bind_tool", "workspace_authority_bind"},
                     {"cwd_policy", "shell_exec_shell_job_start_and_process_launch_require_locally_active_execute_authority"},
-                    {"recovered_workspace_policy", "selected_project_alias_plus_explicitly_bound_owner_configured_roots"},
+                    {"filesystem_access", dependencies_.workspaceAuthority.fileSystemAccessMode() == Domain::FileSystemAccessMode::Host ? "host" : "workspace"},
+                    {"recovered_workspace_policy", dependencies_.workspaceAuthority.fileSystemAccessMode() == Domain::FileSystemAccessMode::Host
+                        ? "current_owner_issued_local_volumes_with_project_identity_preserved"
+                        : "selected_project_alias_plus_explicitly_bound_owner_configured_roots"},
                     {"configured_roots_active_by_default", false},
+                    {"local_volume_roots_active_by_default", dependencies_.workspaceAuthority.fileSystemAccessMode() == Domain::FileSystemAccessMode::Host},
                     {"file_write_limit_bytes", 2U * 1024U * 1024U}}},
                 {"workspace", std::move(projectContext.value().at("workspace"))},
                 {"instruction_packages",
@@ -3376,7 +3508,7 @@ private:
                 "missing_path",
                 "path required");
         }
-        const auto encodedPath = suppliedPath.value_or(defaultRoot(authority));
+        const auto encodedPath = suppliedPath.value_or(observation.defaultDirectory());
         if (encodedPath.empty()) {
             return failure<Json>(
                 Domain::ErrorCodes::InvalidRequest,
@@ -3854,7 +3986,7 @@ private:
         ToolContinuityObservationBuilder& observation)
     {
         const auto repository = legacyString(arguments, "cwd").value_or(
-            defaultRoot(authority));
+            observation.defaultDirectory());
         const auto access = name == "git_add" || name == "git_commit"
             ? Domain::FileAccess::Write
             : Domain::FileAccess::Read;
@@ -4040,7 +4172,7 @@ private:
                 "pattern required");
         }
         const auto rootText = legacyString(arguments, "path").value_or(
-            defaultRoot(authority));
+            observation.defaultDirectory());
         auto root = authorizePath(
             dependencies_.workspaceAuthority,
             authority,
@@ -4078,7 +4210,7 @@ private:
             auto executable = Domain::PathText::create(arguments.at("command").get<std::string>());
             if (!executable) return propagate<Json>(std::move(executable));
             auto cwd = authorizePath(dependencies_.workspaceAuthority, authority,
-                arguments.value("cwd", defaultRoot(authority)), Domain::FileAccess::Execute,
+                arguments.value("cwd", observation.defaultDirectory()), Domain::FileAccess::Execute,
                 false, context, &observation, ContinuityPathRole::WorkingDirectory);
             if (!cwd) return propagate<Json>(std::move(cwd));
             auto timeout = arguments.value("timeout_sec", 1800.0);
@@ -4267,12 +4399,19 @@ private:
             return Domain::Result<Json>::success(Json{{"ok", true}, {"path", path}, {"manifest", std::move(manifest)},
                 {"manifest_path", readable.value().canonicalPath().value()}, {"provenance", "durable_creation_manifest"}});
         }
+        const bool hostAccess = dependencies_.workspaceAuthority.fileSystemAccessMode() == Domain::FileSystemAccessMode::Host;
+        std::optional<Domain::PathText> excludedSubtree;
+        if (hostAccess) {
+            auto source = dependencies_.workspaceAuthority.defaultWorkspacePath(authority, context);
+            if (!source) return propagate<Json>(std::move(source));
+            excludedSubtree = std::move(source).value();
+        }
         auto destination = authorizePath(dependencies_.workspaceAuthority, authority, path,
-            Domain::FileAccess::Create, false, context, &observation, ContinuityPathRole::Path);
+            Domain::FileAccess::Create, false, context, &observation, ContinuityPathRole::Path, std::move(excludedSubtree));
         if (!destination) return propagate<Json>(std::move(destination));
         // Dependency writes belong to an explicitly bound evidence root, away
         // from the main source tree. The venv itself remains a normal user venv.
-        if (destination.value().authorityRoot().value() == defaultRoot(authority))
+        if (!hostAccess && destination.value().authorityRoot().value() == observation.defaultDirectory())
             return failure<Json>(Domain::ErrorCodes::Unauthorized,
                 "Create verification dependencies below an owner-configured additional root, outside the source tree.");
         auto executable = Domain::PathText::create(arguments.at("python_path").get<std::string>());
@@ -4342,7 +4481,7 @@ print(json.dumps(facts))
                 "command required");
         }
         const auto cwdText = legacyString(arguments, "cwd").value_or(
-            defaultRoot(authority));
+            observation.defaultDirectory());
         auto cwd = authorizePath(
             dependencies_.workspaceAuthority,
             authority,
@@ -5914,7 +6053,11 @@ print(json.dumps(facts))
                 handoffId.emplace(std::move(parsed).value());
             }
             if (!patch.value().workingDirectory && !authority.trustedRoots().empty()) {
-                patch.value().workingDirectory = authority.trustedRoots().front().value();
+                if (dependencies_.workspaceAuthority.fileSystemAccessMode() == Domain::FileSystemAccessMode::Host) {
+                    auto root = dependencies_.workspaceAuthority.defaultWorkspacePath(authority, context);
+                    if (!root) return propagate<Json>(std::move(root));
+                    patch.value().workingDirectory = root.value().value();
+                } else patch.value().workingDirectory = authority.trustedRoots().front().value();
             }
             Domain::LegacyContinuityWriteRequest request{
                 std::move(handoffId), std::move(patch).value()};

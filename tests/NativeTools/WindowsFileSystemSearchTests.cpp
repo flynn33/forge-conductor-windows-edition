@@ -2,6 +2,7 @@
 
 #include "ForgeConductor/Contracts/IFileSystemServices.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsAtomicFileStore.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsWorkspaceAuthority.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsFileSystem.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsPathGlobService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsTextSearchService.h"
@@ -739,6 +740,134 @@ void nestedWritesRequireCreationWithoutDirectoryDeleteChild() {
           "a sibling write disturbed the retained reader");
 }
 
+void volumeAuthorityPreservesNativeFileOperations() {
+  ScopedDirectory temporary;
+  const auto root = pathText(temporary.path().root_path());
+  const auto project = parse<Domain::ProjectId>("bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb");
+  Infrastructure::Windows::WindowsWorkspaceAuthority issuer{{
+      {parse<Domain::AuthorityId>("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"), project,
+       parse<Domain::ClientId>("volume-filesystem-client"), {root},
+       Domain::FileAccess::Write,
+       {Domain::FileAccess::Read, Domain::FileAccess::Write,
+        Domain::FileAccess::Create, Domain::FileAccess::Delete}, {}, false, 1U}}};
+  const auto context = activeContext();
+  const auto capability = take(issuer.authorityFor(project, context));
+  const auto authorize = [&](const std::filesystem::path& path, const Domain::FileAccess access) {
+    return take(issuer.authorize(capability,
+        Domain::PathAuthorizationRequest{pathText(path), root, access, false}, context));
+  };
+  WindowsFileSystem fileSystem{
+      std::make_shared<Infrastructure::Windows::WindowsAtomicFileStore>()};
+  const auto volumeListing = take(fileSystem.list(
+      authorize(temporary.path().root_path(), Domain::FileAccess::Read), 1U, context));
+  require(volumeListing.entries.size() <= 1U,
+          "a volume authority root could not be listed within its bound");
+  for (const auto& entry : volumeListing.entries) {
+    require(entry.value().size() > 3U && entry.value().substr(0U, 3U) == root.value() &&
+                entry.value()[3] != '\\',
+            "volume-root listing produced an extra root separator");
+  }
+  requireError(fileSystem.remove(
+      authorize(temporary.path().root_path(), Domain::FileAccess::Delete), false, context),
+      Domain::ErrorCodes::Unauthorized,
+      "a volume authority permitted mutation of its root");
+  const auto plain = temporary.path() / L"plain.txt";
+  take(fileSystem.writeFile(authorize(plain, Domain::FileAccess::Create),
+                           bytes("plain\n"), context));
+  const auto nested = temporary.path() / L"\u03a9\u20ac" / L"parents" / L"document.txt";
+  take(fileSystem.writeFile(authorize(nested, Domain::FileAccess::Create),
+                           bytes("Unicode \xce\xa9\xe2\x82\xac\n"), context));
+  take(fileSystem.writeFile(authorize(nested, Domain::FileAccess::Write),
+                           bytes("updated Unicode \xce\xa9\xe2\x82\xac\n"), context));
+  require(text(take(fileSystem.readFile(authorize(nested, Domain::FileAccess::Read),
+      1'024U, context))) == "updated Unicode \xce\xa9\xe2\x82\xac\n",
+      "volume-authorized nested file writes did not round-trip Unicode");
+  const auto directory = temporary.path() / L"directory-\u03a9" / L"deeper";
+  take(fileSystem.createDirectory(authorize(directory, Domain::FileAccess::Create), context));
+  require(std::filesystem::is_directory(directory),
+          "volume-authorized directory creation skipped or duplicated a root separator");
+  const auto moved = temporary.path() / L"moved-\u20ac" / L"deeper" / L"renamed.txt";
+  take(fileSystem.move(authorize(nested, Domain::FileAccess::Delete),
+                       authorize(moved, Domain::FileAccess::Create), context));
+  require(!std::filesystem::exists(nested) && text(take(fileSystem.readFile(
+      authorize(moved, Domain::FileAccess::Read), 1'024U, context))) ==
+      "updated Unicode \xce\xa9\xe2\x82\xac\n",
+      "volume-authorized cross-directory move failed");
+  take(fileSystem.remove(authorize(moved, Domain::FileAccess::Delete), false, context));
+  take(fileSystem.remove(authorize(directory.parent_path(), Domain::FileAccess::Delete), true, context));
+  require(!std::filesystem::exists(moved) && !std::filesystem::exists(directory.parent_path()),
+          "volume-authorized file/directory removal failed");
+}
+
+void directoryTraversalDoesNotRequestAncestorCreationRights() {
+  ScopedDirectory temporary;
+  const auto root = temporary.path() / L"restricted-ancestor";
+  const auto writable = root / L"existing-writable-child";
+  require(std::filesystem::create_directories(writable),
+          "the traversal ACL fixture could not be created");
+  auto native = root.native();
+  PSECURITY_DESCRIPTOR originalDescriptor{};
+  PACL originalDacl{};
+  require(::GetNamedSecurityInfoW(native.data(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
+      nullptr, nullptr, &originalDacl, nullptr, &originalDescriptor) == ERROR_SUCCESS,
+      "the traversal ACL fixture original DACL could not be captured");
+  InfrastructureDetail::UniqueLocalAllocation<void> originalOwner{originalDescriptor};
+  SECURITY_DESCRIPTOR_CONTROL control{};
+  DWORD revision{};
+  require(::GetSecurityDescriptorControl(originalDescriptor, &control, &revision) != FALSE,
+      "the traversal ACL fixture DACL control could not be captured");
+  struct DaclRestorer final {
+    std::wstring path; PACL acl; SECURITY_INFORMATION flags;
+    DWORD restore() noexcept {
+      return ::SetNamedSecurityInfoW(path.data(), SE_FILE_OBJECT, flags,
+          nullptr, nullptr, acl, nullptr);
+    }
+    ~DaclRestorer() noexcept { static_cast<void>(restore()); }
+  } restore{native, originalDacl, DACL_SECURITY_INFORMATION |
+      ((control & SE_DACL_PROTECTED) != 0U ? PROTECTED_DACL_SECURITY_INFORMATION : UNPROTECTED_DACL_SECURITY_INFORMATION)};
+  PSECURITY_DESCRIPTOR descriptor{};
+  require(::ConvertStringSecurityDescriptorToSecurityDescriptorW(
+      L"D:(D;;0x4;;;WD)(A;OICI;FA;;;WD)", SDDL_REVISION_1, &descriptor, nullptr) != FALSE,
+      "the traversal ACL fixture DACL could not be created");
+  InfrastructureDetail::UniqueLocalAllocation<void> owner{descriptor};
+  PACL dacl{}; BOOL present{}, defaulted{};
+  require(::GetSecurityDescriptorDacl(descriptor, &present, &dacl, &defaulted) != FALSE && present,
+      "the traversal ACL fixture DACL could not be read");
+  require(::SetNamedSecurityInfoW(native.data(), SE_FILE_OBJECT,
+      DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+      nullptr, nullptr, dacl, nullptr) == ERROR_SUCCESS,
+      "the traversal ACL fixture DACL could not be applied");
+  {
+    InfrastructureDetail::UniqueHandle readable{::CreateFileW(writable.c_str(),
+        FILE_READ_ATTRIBUTES, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr)};
+    require(static_cast<bool>(readable),
+        "the traversal ACL fixture removed its existing child's read access");
+    InfrastructureDetail::UniqueHandle deniedCreation{::CreateFileW(root.c_str(),
+        FILE_ADD_SUBDIRECTORY, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+        nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr)};
+    require(!deniedCreation && ::GetLastError() == ERROR_ACCESS_DENIED,
+        "the traversal ACL fixture did not deny its ancestor's directory creation right");
+  }
+  TestAuthority authority{pathText(root)};
+  WindowsFileSystem fileSystem{
+      std::make_shared<Infrastructure::Windows::WindowsAtomicFileStore>()};
+  const auto nested = writable / L"created" / L"deeper" / L"document.txt";
+  take(fileSystem.writeFile(authority.path(nested, Domain::FileAccess::Create),
+                           bytes("allowed descendant\n"), activeContext()));
+  take(fileSystem.createDirectory(authority.path(writable / L"manual" / L"child",
+      Domain::FileAccess::Create), activeContext()));
+  const auto blocked = root / L"blocked-child";
+  const auto denied = fileSystem.createDirectory(
+      authority.path(blocked, Domain::FileAccess::Create), activeContext());
+  require(restore.restore() == ERROR_SUCCESS, "the traversal ACL fixture DACL could not be restored");
+  requireError(denied, Domain::ErrorCodes::FilesystemAccessDenied,
+      "handle-relative directory creation bypassed the actual parent's ACL");
+  require(!std::filesystem::exists(blocked) && text(take(fileSystem.readFile(
+      authority.path(nested, Domain::FileAccess::Read), 1'024U, activeContext()))) == "allowed descendant\n",
+      "traversal requested unnecessary creation rights or a denied creation changed the filesystem");
+}
+
 void atomicWriteAccessDenialReportsFilesystemOperationAndPath() {
   ScopedDirectory temporary;
   const auto root = temporary.path() / L"workspace";
@@ -833,6 +962,10 @@ int main() {
           nestedWritesRequireCreationWithoutDirectoryDeleteChild);
   addTest(tests, "native-tools.atomic-write-os-denial-diagnostics",
           atomicWriteAccessDenialReportsFilesystemOperationAndPath);
+  addTest(tests, "native-tools.volume-authority-file-operations",
+          volumeAuthorityPreservesNativeFileOperations);
+  addTest(tests, "native-tools.traverse-ancestor-creation-acl",
+          directoryTraversalDoesNotRequestAncestorCreationRights);
 
   std::size_t passed{};
   for (const auto &[name, run] : tests) {

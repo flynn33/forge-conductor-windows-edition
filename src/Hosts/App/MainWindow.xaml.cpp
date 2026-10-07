@@ -1800,6 +1800,11 @@ MainWindow::ReadSettingsForm(std::string& error)
         settings.shellTimeout = std::chrono::seconds{
             numberValue(SettingsShellTimeout(), "Shell timeout")};
         settings.shellEnabled = SettingsShellEnabled().IsOn();
+        const auto accessIndex = SettingsFileSystemAccess().SelectedIndex();
+        if (accessIndex < 0 || accessIndex > 1) throw std::invalid_argument{"Select a filesystem access mode."};
+        settings.fileSystemAccess = accessIndex == 1
+            ? ::ForgeConductor::Domain::FileSystemAccessMode::Host
+            : ::ForgeConductor::Domain::FileSystemAccessMode::Workspace;
         const auto logIndex = SettingsLogLevel().SelectedIndex();
         if (logIndex < 0 || logIndex > 5) {
             throw std::invalid_argument{"Select a log detail level."};
@@ -1840,6 +1845,8 @@ void MainWindow::ApplySettingsForm(
     SettingsSessionTtl().Value(static_cast<double>(settings.sessionIdleTtl.count()));
     SettingsShellTimeout().Value(static_cast<double>(settings.shellTimeout.count()));
     SettingsShellEnabled().IsOn(settings.shellEnabled);
+    SettingsFileSystemAccess().SelectedIndex(
+        settings.fileSystemAccess == ::ForgeConductor::Domain::FileSystemAccessMode::Host ? 1 : 0);
     SettingsLogLevel().SelectedIndex(static_cast<std::int32_t>(settings.logLevel));
     SettingsProviderHost().Text(winrt::to_hstring(settings.localModelHost));
     SettingsProviderPort().Value(settings.localModelPort);
@@ -4073,6 +4080,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             patch.sessionIdleTtl = submitted->sessionIdleTtl;
             patch.shellTimeout = submitted->shellTimeout;
             patch.shellEnabled = submitted->shellEnabled;
+            patch.fileSystemAccess = submitted->fileSystemAccess;
             patch.logLevel = submitted->logLevel;
             patch.localModelHost = submitted->localModelHost;
             patch.localModelPort = submitted->localModelPort;

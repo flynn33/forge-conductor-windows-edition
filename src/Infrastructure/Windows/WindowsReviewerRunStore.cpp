@@ -1,5 +1,6 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsReviewerRunStore.h"
 #include "ForgeConductor/Domain/Utf8.h"
+#include "ForgeConductor/Application/ManagedRunWorkerPolicy.h"
 #include "Detail/OperationContextGuard.h"
 #include "Detail/UniqueHandle.h"
 #include "Detail/UtfConversion.h"
@@ -7,6 +8,7 @@
 #include <Windows.h>
 #include <nlohmann/json.hpp>
 #include <array>
+#include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <limits>
@@ -47,8 +49,59 @@ Domain::UtcTimePoint time(const Json& value) {
 bool terminal(Domain::ManagedRunState state) {
     return state == Domain::ManagedRunState::Completed || state == Domain::ManagedRunState::Failed || state == Domain::ManagedRunState::Cancelled;
 }
-Json encodeRecord(const Domain::ManagedRunRecord& record) {
-    if (!record.readOnlyTools) reject(Domain::ErrorCodes::Unauthorized, "Only independently started read-only reviewer records may use this store.");
+Json encodeScope(const Domain::ManagedRunWorkerScope& scope) {
+    if (scope.trustedRoots.empty() || scope.trustedRoots.size() > 64U || scope.grants.empty() || scope.grants.size() > 5U ||
+        scope.denials.size() > 5U || scope.allowedTools.size() > 256U || !scope.timeoutSeconds || scope.timeoutSeconds > 3600U)
+        reject(Domain::ErrorCodes::IntegrityFailure, "Worker capability fields exceed their bounds.");
+    Json result{{"roots", Json::array()}, {"grants", Json::array()}, {"denials", Json::array()},
+        {"shell_enabled", scope.shellEnabled}, {"allowed_tools", scope.allowedTools}, {"timeout_sec", scope.timeoutSeconds}};
+    for (const auto& root : scope.trustedRoots) result["roots"].push_back(root.value());
+    for (auto grant : scope.grants) {
+        if (static_cast<unsigned>(grant) > static_cast<unsigned>(Domain::FileAccess::Execute) ||
+            std::find(scope.denials.begin(), scope.denials.end(), grant) != scope.denials.end())
+            reject(Domain::ErrorCodes::IntegrityFailure, "Worker scope grants an invalid or denied mode.");
+        result["grants"].push_back(static_cast<unsigned>(grant));
+    }
+    for (auto denial : scope.denials) {
+        if (static_cast<unsigned>(denial) > static_cast<unsigned>(Domain::FileAccess::Execute))
+            reject(Domain::ErrorCodes::IntegrityFailure, "Worker scope denial is invalid.");
+        result["denials"].push_back(static_cast<unsigned>(denial));
+    }
+    for (const auto& name : scope.allowedTools)
+        if (name.empty() || name.size() > 128U || !Domain::isValidUtf8(name) || !Application::isManagedWorkerToolPermitted(name))
+            reject(Domain::ErrorCodes::IntegrityFailure, "Worker tool grant is invalid or administrative.");
+    return result;
+}
+Domain::ManagedRunWorkerScope decodeScope(const Json& value) {
+    Domain::ManagedRunWorkerScope scope;
+    if (!value.is_object() || !value.at("roots").is_array() || value.at("roots").size() > 64U ||
+        !value.at("grants").is_array() || value.at("grants").size() > 5U || !value.at("denials").is_array() ||
+        value.at("denials").size() > 5U || !value.at("allowed_tools").is_array() || value.at("allowed_tools").size() > 256U)
+        reject(Domain::ErrorCodes::IntegrityFailure, "Worker scope is malformed.");
+    for (const auto& root : value.at("roots")) scope.trustedRoots.push_back(take(Domain::PathText::create(string(root, 32768U))));
+    for (const auto& grant : value.at("grants")) {
+        const auto mode = unsignedValue(grant);
+        if (mode > static_cast<unsigned>(Domain::FileAccess::Execute)) reject(Domain::ErrorCodes::IntegrityFailure, "Worker grant is invalid.");
+        scope.grants.push_back(static_cast<Domain::FileAccess>(mode));
+    }
+    for (const auto& denial : value.at("denials")) {
+        const auto mode = unsignedValue(denial);
+        if (mode > static_cast<unsigned>(Domain::FileAccess::Execute)) reject(Domain::ErrorCodes::IntegrityFailure, "Worker denial is invalid.");
+        scope.denials.push_back(static_cast<Domain::FileAccess>(mode));
+    }
+    scope.shellEnabled = value.at("shell_enabled").get<bool>();
+    const auto timeout = unsignedValue(value.at("timeout_sec"));
+    if (!timeout || timeout > 3600U) reject(Domain::ErrorCodes::IntegrityFailure, "Worker budget is invalid.");
+    scope.timeoutSeconds = static_cast<std::uint32_t>(timeout);
+    for (const auto& name : value.at("allowed_tools")) scope.allowedTools.push_back(string(name, 128U));
+    static_cast<void>(encodeScope(scope));
+    return scope;
+}
+Json encodeRecord(const Domain::ManagedRunRecord& record, ManagedReceiptPurpose purpose) {
+    if (purpose == ManagedReceiptPurpose::ReadOnlyReviewer && (!record.readOnlyTools || record.workerScope))
+        reject(Domain::ErrorCodes::Unauthorized, "Only independently started read-only reviewer records may use this store.");
+    if (purpose == ManagedReceiptPurpose::IndependentWorker && !record.workerScope)
+        reject(Domain::ErrorCodes::Unauthorized, "Independent workers require their inherited capability scope.");
     if (record.task.empty() || record.task.size() > Domain::MaximumManagedRunTaskBytes || record.authorityGeneration == 0U ||
         (record.providerReceiveTimeoutSeconds && (*record.providerReceiveTimeoutSeconds == 0U ||
             *record.providerReceiveTimeoutSeconds > Domain::MaximumManagedProviderReceiveTimeoutSeconds)) ||
@@ -66,6 +119,7 @@ Json encodeRecord(const Domain::ManagedRunRecord& record) {
         {"created_at_utc_ns", nanoseconds(record.createdAt)}, {"updated_at_utc_ns", nanoseconds(record.updatedAt)},
         {"allow_tools", record.allowTools}, {"read_only_tools", record.readOnlyTools}};
     if (record.providerReceiveTimeoutSeconds) value["provider_receive_timeout_sec"] = *record.providerReceiveTimeoutSeconds;
+    if (record.workerScope) { value["worker_scope"] = encodeScope(*record.workerScope); value["worker_interrupted"] = record.workerInterrupted; }
     if (record.lastError) value["last_error"] = Json{{"code", record.lastError->code}, {"message", record.lastError->message},
         {"retryable", record.lastError->retryable}, {"evidence_id", record.lastError->evidenceId ? Json(*record.lastError->evidenceId) : Json(nullptr)}};
     for (const auto& call : record.pendingFunctionCalls)
@@ -77,8 +131,9 @@ Json encodeRecord(const Domain::ManagedRunRecord& record) {
             {"elapsed_ms", result.elapsedMilliseconds}, {"checked_at_utc_ns", nanoseconds(result.checkedAt)}});
     return value;
 }
-Domain::ManagedRunRecord decodeRecord(const Json& value) {
-    if (!value.is_object() || !value.at("read_only_tools").is_boolean() || !value.at("read_only_tools").get<bool>())
+Domain::ManagedRunRecord decodeRecord(const Json& value, ManagedReceiptPurpose purpose) {
+    if (!value.is_object() || !value.at("read_only_tools").is_boolean() ||
+        (purpose == ManagedReceiptPurpose::ReadOnlyReviewer && !value.at("read_only_tools").get<bool>()))
         reject(Domain::ErrorCodes::IntegrityFailure, "The stored receipt is not a read-only reviewer.");
     Domain::ManagedRunRecord record{take(Domain::SessionId::parse(string(value.at("run_id"), 36U))),
         take(Domain::ProjectId::parse(string(value.at("project_id"), 36U))),
@@ -109,14 +164,16 @@ Domain::ManagedRunRecord decodeRecord(const Json& value) {
         result.at("exit_code").get<int>(), result.at("passed").get<bool>(), result.at("timed_out").get<bool>(),
         result.at("cancelled").get<bool>(), result.at("termination_confirmed").get<bool>(), unsignedValue(result.at("elapsed_ms")), time(result.at("checked_at_utc_ns"))});
     record.createdAt = time(value.at("created_at_utc_ns")); record.updatedAt = time(value.at("updated_at_utc_ns"));
-    record.allowTools = value.at("allow_tools").get<bool>(); record.readOnlyTools = true;
+    record.allowTools = value.at("allow_tools").get<bool>(); record.readOnlyTools = value.at("read_only_tools").get<bool>();
+    if (value.contains("worker_scope")) record.workerScope = decodeScope(value.at("worker_scope"));
+    if (value.contains("worker_interrupted")) record.workerInterrupted = value.at("worker_interrupted").get<bool>();
     if (value.contains("provider_receive_timeout_sec")) {
         const auto timeout = unsignedValue(value.at("provider_receive_timeout_sec"));
         if (timeout == 0U || timeout > Domain::MaximumManagedProviderReceiveTimeoutSeconds)
             reject(Domain::ErrorCodes::IntegrityFailure, "Reviewer receive timeout is invalid.");
         record.providerReceiveTimeoutSeconds = static_cast<std::uint32_t>(timeout);
     }
-    static_cast<void>(encodeRecord(record));
+    static_cast<void>(encodeRecord(record, purpose));
     return record;
 }
 class StoreLock final {
@@ -191,10 +248,13 @@ std::size_t countRecords(const Contracts::AuthorizedPath& directory, const Domai
 class WindowsReviewerRunStore::Impl final {
 public:
     Impl(Contracts::IAtomicFileStore& files, Contracts::IHasher& hasher, Contracts::IClock& clock,
-        Contracts::AuthorizedPath directory, ReviewerRunStorageResolver resolver)
-        : files_{files}, hasher_{hasher}, clock_{clock}, directory_{std::move(directory)}, resolver_{std::move(resolver)} {
+        Contracts::AuthorizedPath directory, ReviewerRunStorageResolver resolver, ManagedReceiptPurpose purpose)
+        : files_{files}, hasher_{hasher}, clock_{clock}, directory_{std::move(directory)}, resolver_{std::move(resolver)}, purpose_{purpose} {
         if (!resolver_) throw std::invalid_argument{"Reviewer storage resolver is required."};
+        if (purpose != ManagedReceiptPurpose::ReadOnlyReviewer && purpose != ManagedReceiptPurpose::IndependentWorker)
+            throw std::invalid_argument{"Managed receipt purpose is unsupported."};
     }
+    std::string_view kind() const noexcept { return purpose_ == ManagedReceiptPurpose::IndependentWorker ? "forge_independent_worker" : "forge_readonly_reviewer"; }
     std::string lockName() { return "Local\\ForgeConductor.Reviewer." + take(hasher_.sha256(bytes(directory_.canonicalPath().value()))).value(); }
     ReviewerRunStoragePaths paths(const Domain::SessionId& id, const Domain::OperationContext& context) {
         auto result = take(resolver_(id, context));
@@ -218,11 +278,11 @@ public:
             const auto envelope = Json::parse(reinterpret_cast<const char*>(stored.value().data()),
                 reinterpret_cast<const char*>(stored.value().data()) + stored.value().size());
             if (!envelope.is_object() || envelope.size() != 4U || envelope.at("schema_version") != 1U ||
-                envelope.at("kind") != "forge_readonly_reviewer") reject(Domain::ErrorCodes::IntegrityFailure, "The receipt kind or schema is not a supported reviewer.");
+                envelope.at("kind") != std::string{kind()}) reject(Domain::ErrorCodes::IntegrityFailure, "The receipt kind or schema does not match this store purpose.");
             const auto encoded = envelope.at("record").dump();
             const auto seal = take(Domain::Sha256Digest::parse(string(envelope.at("sha256"), 64U)));
             if (take(hasher_.sha256(bytes(encoded))) != seal) reject(Domain::ErrorCodes::IntegrityFailure, "The reviewer receipt was altered; it was preserved.");
-            auto record = decodeRecord(envelope.at("record"));
+            auto record = decodeRecord(envelope.at("record"), purpose_);
             if (record.runId != id) reject(Domain::ErrorCodes::IntegrityFailure, "The reviewer receipt run identity does not match its filename.");
             record.evidenceSeal = seal;
             record.evidenceIntegrity = Domain::ManagedRunEvidenceIntegrity::Verified;
@@ -234,11 +294,11 @@ public:
     }
     void write(const Domain::ManagedRunRecord& record, const ReviewerRunStoragePaths& paths, bool exists,
         const Domain::OperationContext& context) {
-        const auto value = encodeRecord(record);
+        const auto value = encodeRecord(record, purpose_);
         // Decode validation prevents invalid UTF-8/NULs and typed-field drift
         // from ever becoming a readable persisted reviewer receipt.
-        static_cast<void>(decodeRecord(value));
-        Json envelope{{"schema_version", 1U}, {"kind", "forge_readonly_reviewer"}, {"record", value},
+        static_cast<void>(decodeRecord(value, purpose_));
+        Json envelope{{"schema_version", 1U}, {"kind", kind()}, {"record", value},
             {"sha256", take(hasher_.sha256(bytes(value.dump()))).value()}};
         const auto encoded = envelope.dump();
         if (encoded.size() > MaximumRecordBytes) reject(Domain::ErrorCodes::PayloadTooLarge, "Reviewer receipt exceeds its 4 MiB encoded bound.");
@@ -250,10 +310,11 @@ public:
     Contracts::IClock& clock_;
     Contracts::AuthorizedPath directory_;
     ReviewerRunStorageResolver resolver_;
+    ManagedReceiptPurpose purpose_;
 };
 WindowsReviewerRunStore::WindowsReviewerRunStore(Contracts::IAtomicFileStore& files, Contracts::IHasher& hasher,
-    Contracts::IClock& clock, Contracts::AuthorizedPath directory, ReviewerRunStorageResolver resolver)
-    : implementation_{std::make_unique<Impl>(files, hasher, clock, std::move(directory), std::move(resolver))} {}
+    Contracts::IClock& clock, Contracts::AuthorizedPath directory, ReviewerRunStorageResolver resolver, ManagedReceiptPurpose purpose)
+    : implementation_{std::make_unique<Impl>(files, hasher, clock, std::move(directory), std::move(resolver), purpose)} {}
 WindowsReviewerRunStore::~WindowsReviewerRunStore() = default;
 Domain::Result<std::optional<Domain::ManagedRunRecord>> WindowsReviewerRunStore::load(
     const Domain::SessionId& id, const Domain::OperationContext& context) noexcept {
@@ -262,9 +323,12 @@ Domain::Result<std::optional<Domain::ManagedRunRecord>> WindowsReviewerRunStore:
         auto paths = impl.paths(id, context); auto record = impl.read(id, paths, context);
         if (record && (!terminal(record->state) || (record->state == Domain::ManagedRunState::Completed && !record->pendingFunctionCalls.empty()))) {
             const auto previousError = record->lastError;
+            if (impl.purpose_ == ManagedReceiptPurpose::IndependentWorker) record->workerInterrupted = true;
             record->state = Domain::ManagedRunState::Failed;
             record->lastError = Domain::makeError(Domain::ErrorCodes::Conflict,
-                "Reviewer owner stopped before a final verified result. Outcome is unknown; pending calls are retained as evidence and will not be replayed." +
+                std::string{impl.purpose_ == ManagedReceiptPurpose::IndependentWorker
+                    ? "Worker has no final persisted outcome. Effects are unknown; interrupted work will not be replayed automatically."
+                    : "Reviewer owner stopped before a final verified result. Outcome is unknown; pending calls are retained as evidence and will not be replayed."} +
                 (previousError ? " Previous diagnostic: " + previousError->code + ": " + previousError->message : std::string{}), false, previousError ? previousError->evidenceId : std::nullopt);
             record->updatedAt = impl.clock_.utcNow();
             impl.write(*record, paths, true, context);
@@ -277,15 +341,21 @@ Domain::Result<std::optional<Domain::ManagedRunRecord>> WindowsReviewerRunStore:
 Domain::Result<void> WindowsReviewerRunStore::save(const Domain::ManagedRunRecord& record,
     const Domain::OperationContext& context) noexcept {
     try {
-        check(context); static_cast<void>(encodeRecord(record)); auto& impl = *implementation_; StoreLock lock{impl.lockName(), context};
+        check(context); auto& impl = *implementation_; static_cast<void>(encodeRecord(record, impl.purpose_)); StoreLock lock{impl.lockName(), context};
         const auto paths = impl.paths(record.runId, context); const auto existing = impl.read(record.runId, paths, context);
         if (existing && (existing->projectId != record.projectId || existing->clientId != record.clientId || existing->task != record.task ||
                 existing->authorityGeneration != record.authorityGeneration || existing->allowTools != record.allowTools ||
+                existing->readOnlyTools != record.readOnlyTools || existing->workerScope != record.workerScope ||
                 existing->providerReceiveTimeoutSeconds != record.providerReceiveTimeoutSeconds))
             reject(Domain::ErrorCodes::OwnershipConflict, "Reviewer run identity is already bound to another request.");
         if (existing && terminal(existing->state) && !terminal(record.state))
             reject(Domain::ErrorCodes::Conflict, "A terminal reviewer receipt cannot be reopened or replayed.");
-        if (!existing && countRecords(impl.directory_, context) >= MaximumRetainedRecords)
+        // Reviews retain their explicit sixteen-receipt owner retention rule.
+        // Independent worker receipts are addressed directly by their unique
+        // run ID and remain sealed/bounded per file; recurring schedules must
+        // not exhaust a lifetime admission count or delete earlier results.
+        if (!existing && impl.purpose_ == ManagedReceiptPurpose::ReadOnlyReviewer &&
+            countRecords(impl.directory_, context) >= MaximumRetainedRecords)
             reject(Domain::ErrorCodes::LimitExceeded, "Reviewer receipt capacity is sixteen records. The owner must archive/delete retained receipts before starting another reviewer.");
         impl.write(record, paths, existing.has_value(), context);
         return Domain::Result<void>::success();

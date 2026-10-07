@@ -60,7 +60,8 @@ namespace {
         config.localModel.nextResponseReserve,
         config.localModel.handoffReserve,
         config.localModel.estimationSafetyMargin,
-        config.shell.enabled};
+        config.shell.enabled,
+        config.fileSystemAccess};
 }
 
 [[nodiscard]] Domain::AppConfigPatch configPatchFromManagerPatch(
@@ -85,6 +86,7 @@ namespace {
     mapped.handoffReserve = patch.handoffReserve;
     mapped.estimationSafetyMargin = patch.estimationSafetyMargin;
     mapped.shellEnabled = patch.shellEnabled;
+    mapped.fileSystemAccess = patch.fileSystemAccess;
     return mapped;
 }
 

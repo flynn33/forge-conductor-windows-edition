@@ -48,6 +48,12 @@ AppConfig defaultAppConfig()
 
 Result<void> validateAppConfig(const AppConfig& config)
 {
+    if (config.fileSystemAccess != FileSystemAccessMode::Workspace &&
+        config.fileSystemAccess != FileSystemAccessMode::Host) {
+        return Result<void>::failure(makeError(
+            ErrorCodes::InvalidRequest,
+            "Filesystem access must be workspace or host."));
+    }
     if (config.allowedRoots.size() > MaximumAppConfigAllowedRootCount) {
         return Result<void>::failure(makeError(
             ErrorCodes::LimitExceeded,
@@ -116,6 +122,7 @@ Result<AppConfig> applyConfigPatch(const AppConfig& config, const AppConfigPatch
     AppConfig updated = config;
     if (patch.logLevel) updated.logLevel = *patch.logLevel;
     if (patch.allowedRoots) updated.allowedRoots = *patch.allowedRoots;
+    if (patch.fileSystemAccess) updated.fileSystemAccess = *patch.fileSystemAccess;
     if (patch.shellEnabled) updated.shell.enabled = *patch.shellEnabled;
     if (patch.shellTimeout) updated.shell.defaultTimeout = *patch.shellTimeout;
     if (patch.dashboardHost) updated.dashboard.host = *patch.dashboardHost;
@@ -190,6 +197,15 @@ std::string_view wireName(const McpRole role) noexcept
     case McpRole::Clu: return "clu";
     }
     return "primary";
+}
+
+std::string_view wireName(const FileSystemAccessMode mode) noexcept
+{
+    switch (mode) {
+    case FileSystemAccessMode::Workspace: return "workspace";
+    case FileSystemAccessMode::Host: return "host";
+    }
+    return "";
 }
 
 } // namespace ForgeConductor::Domain

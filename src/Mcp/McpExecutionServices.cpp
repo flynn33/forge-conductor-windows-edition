@@ -180,11 +180,22 @@ McpExecutionContextResolver::resolve(
                 std::move(current).error());
         }
         auto authority = std::move(issued).value();
+        if (authority.projectId() != projectId) return failure<Contracts::WorkspaceAuthority>(
+            Domain::ErrorCodes::ProjectScopeMismatch,
+            "The issued MCP authority belongs to another project.");
         if (adoptedWorkspace) {
             if (adoptedWorkspace->projectId != projectId) {
                 return failure<Contracts::WorkspaceAuthority>(
                     Domain::ErrorCodes::ProjectScopeMismatch,
                     "The recovered MCP workspace belongs to another project.");
+            }
+            if (workspaceAuthority_.fileSystemAccessMode() == Domain::FileSystemAccessMode::Host) {
+                auto root = workspaceAuthority_.authorize(authority,
+                    {adoptedWorkspace->authorityRoot, std::nullopt, requiredAccess(effect), false}, context);
+                if (!root) return Domain::Result<Contracts::WorkspaceAuthority>::failure(root.error());
+                auto binding = validateAuthority(request, effect, authority);
+                if (!binding) return Domain::Result<Contracts::WorkspaceAuthority>::failure(binding.error());
+                return Domain::Result<Contracts::WorkspaceAuthority>::success(std::move(authority));
             }
             if (std::find(
                     authority.trustedRoots().begin(),

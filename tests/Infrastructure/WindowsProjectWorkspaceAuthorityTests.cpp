@@ -488,6 +488,68 @@ void publishesOneStableIdDuringConcurrentFirstIssuance()
             "the concurrent test did not exercise double-checked publication");
 }
 
+void ownerPolicyReloadRevokesOldTokensWithoutBroadeningFrozenScope()
+{
+    ScopedTestTree tree;
+    RegistryFake registry;
+    CountingUuidGenerator uuids;
+    const auto first = pathText(tree.first());
+    const auto outside = pathText(tree.outside());
+    registry.seed(projectId(), {first});
+    WindowsProjectWorkspaceAuthority authority{registry, uuids, serveClient(), true, {outside}};
+    const auto context = activeContext();
+    const auto original = take(authority.authorityFor(projectId(), context));
+    const auto bound = take(authority.bindConfiguredRoot(original, outside, context));
+    const auto frozen = take(authority.narrow(bound, {first}, {Domain::FileAccess::Read}, false, 2U, context));
+    take(authority.updateOwnerPolicy(true, {outside}, Domain::FileSystemAccessMode::Workspace, context));
+    require(take(authority.authorityFor(projectId(), context)).authorityId() == bound.authorityId() &&
+        take(authority.boundConfiguredRoots(projectId(), context)) == std::vector<Domain::PathText>{outside},
+        "A no-op owner policy update revoked valid tokens or explicit roots.");
+
+    take(authority.updateOwnerPolicy(false, {}, Domain::FileSystemAccessMode::Host, context));
+    const auto host = take(authority.authorityFor(projectId(), context));
+    require(authority.fileSystemAccessMode() == Domain::FileSystemAccessMode::Host &&
+        host.authorityId() != original.authorityId() && !host.shellEnabled(),
+        "The saved owner policy did not take effect on the existing issuer.");
+    requireError(authority.authorize(bound, {first, std::nullopt, Domain::FileAccess::Read, false}, context),
+        Domain::ErrorCodes::Unauthorized, "A token retained authority after owner policy replacement.");
+    static_cast<void>(take(authority.authorize(host,
+        {outside, std::nullopt, Domain::FileAccess::Read, false}, context)));
+    requireError(authority.authorize(host, {first, std::nullopt, Domain::FileAccess::Execute, false}, context),
+        Domain::ErrorCodes::Unauthorized, "Disabling shell did not remove execution authority.");
+    requireError(authority.narrow(host, frozen.trustedRoots(), frozen.grants(), false,
+        host.generation() + 1U, context), Domain::ErrorCodes::Unauthorized,
+        "A host volume token reconstructed a frozen workspace root outside its exact root set.");
+
+    take(authority.updateOwnerPolicy(false, {}, Domain::FileSystemAccessMode::Workspace, context));
+    const auto workspace = take(authority.authorityFor(projectId(), context));
+    require(workspace.trustedRoots() == std::vector<Domain::PathText>{first} &&
+        workspace.authorityId() != host.authorityId() &&
+        take(authority.boundConfiguredRoots(projectId(), context)).empty(),
+        "Returning to workspace mode retained host roots or old explicit bindings.");
+    requireError(authority.authorize(host, {outside, std::nullopt, Domain::FileAccess::Read, false}, context),
+        Domain::ErrorCodes::Unauthorized, "An old host token survived policy narrowing.");
+    requireError(authority.authorize(workspace, {outside, std::nullopt, Domain::FileAccess::Read, false}, context),
+        Domain::ErrorCodes::PathOutsideAuthority, "Workspace mode retained access outside the registered project.");
+    const auto restricted = take(authority.narrow(workspace, frozen.trustedRoots(), frozen.grants(), false,
+        workspace.generation() + 1U, context));
+    require(restricted.trustedRoots() == frozen.trustedRoots() && restricted.grants() == frozen.grants(),
+        "Fresh workspace authority broadened a previously frozen root or grant set.");
+    requireError(authority.authorize(restricted, {outside, std::nullopt, Domain::FileAccess::Read, false}, context),
+        Domain::ErrorCodes::PathOutsideAuthority, "A frozen workspace scope gained access to another host folder.");
+    std::stop_source cancelled;
+    cancelled.request_stop();
+    requireError(authority.updateOwnerPolicy(true, {outside}, Domain::FileSystemAccessMode::Host,
+        activeContext(cancelled.get_token())), Domain::ErrorCodes::Cancelled, "Cancelled owner policy was applied.");
+    requireError(authority.updateOwnerPolicy(true, {}, static_cast<Domain::FileSystemAccessMode>(255), context),
+        Domain::ErrorCodes::InvalidRequest, "Invalid owner policy mode was applied.");
+    requireError(authority.updateOwnerPolicy(true, std::vector<Domain::PathText>(33U, outside),
+        Domain::FileSystemAccessMode::Host, context), Domain::ErrorCodes::LimitExceeded,
+        "Unbounded owner configured roots were applied.");
+    require(take(authority.authorityFor(projectId(), context)).authorityId() == workspace.authorityId(),
+        "Rejected owner policy updates revoked the valid workspace binding.");
+}
+
 void rejectsForeignStaleAndNoLongerRegisteredCapabilities()
 {
     ScopedTestTree tree;
@@ -765,6 +827,63 @@ void bindsOnlyExactConfiguredExistingRoots()
         "A fresh connector could not activate the saved owner allowlist root.");
 }
 
+void hostModeActivatesLocalVolumesAndRetainsPermissions()
+{
+    ScopedTestTree tree;
+    CountingUuidGenerator uuids;
+    RegistryFake registry;
+    const auto project = pathText(tree.first());
+    const auto outside = pathText(tree.outside());
+    registry.seed(projectId(), {project});
+    WindowsProjectWorkspaceAuthority workspace{registry, uuids, serveClient(), true, {outside}};
+    const auto scoped = take(workspace.authorityFor(projectId(), activeContext()));
+    require(workspace.fileSystemAccessMode() == Domain::FileSystemAccessMode::Workspace,
+        "Default project authority changed its filesystem mode.");
+    requireError(workspace.authorize(scoped, {outside, std::nullopt, Domain::FileAccess::Read, false}, activeContext()),
+        Domain::ErrorCodes::PathOutsideAuthority, "A default workspace gained automatic external filesystem access.");
+
+    WindowsProjectWorkspaceAuthority host{registry, uuids, serveClient(), true, {outside}, Domain::FileSystemAccessMode::Host};
+    const auto full = take(host.authorityFor(projectId(), activeContext()));
+    require(host.fileSystemAccessMode() == Domain::FileSystemAccessMode::Host &&
+        !full.trustedRoots().empty() && std::find(full.trustedRoots().begin(), full.trustedRoots().end(), project) == full.trustedRoots().end(),
+        "Host authority did not activate canonical volume roots separately from project metadata.");
+    require(take(host.boundConfiguredRoots(projectId(), activeContext())) == full.trustedRoots(),
+        "Host roots were not automatically available for recovered calls.");
+    require(take(host.defaultWorkspacePath(full, activeContext())) == project,
+        "Host grant roots replaced the default registered project path.");
+    require(static_cast<bool>(host.authorize(full, {outside, std::nullopt, Domain::FileAccess::Read, false}, activeContext())) &&
+        static_cast<bool>(host.authorize(full, {outside, std::nullopt, Domain::FileAccess::Execute, false}, activeContext())) &&
+        static_cast<bool>(host.authorize(full, {pathText(tree.outside() / L"deliverable.txt"), std::nullopt, Domain::FileAccess::Create, true}, activeContext())),
+        "Host access failed authorized read/create/cwd paths outside the registered project.");
+    const auto bound = take(host.bindConfiguredRoot(full, outside, activeContext()));
+    require(bound.trustedRoots() == full.trustedRoots(),
+        "Binding a host-covered owner directory inserted an overlapping child authority root.");
+    const auto limited = take(host.narrow(full, full.trustedRoots(), {Domain::FileAccess::Write}, false,
+        full.generation() + 1U, activeContext()));
+    requireError(host.authorize(limited, {outside, std::nullopt, Domain::FileAccess::Read, false}, activeContext()),
+        Domain::ErrorCodes::Unauthorized, "Host mode restored a deliberately removed Read grant.");
+    requireError(host.bindConfiguredRoot(limited, outside, activeContext()), Domain::ErrorCodes::Unauthorized,
+        "A restricted host capability regained grants through configured-root activation.");
+    WindowsProjectWorkspaceAuthority noShell{registry, uuids, serveClient(), false, {}, Domain::FileSystemAccessMode::Host};
+    const auto withoutExecute = take(noShell.authorityFor(projectId(), activeContext()));
+    requireError(noShell.authorize(withoutExecute, {outside, std::nullopt, Domain::FileAccess::Execute, false}, activeContext()),
+        Domain::ErrorCodes::Unauthorized, "Host filesystem mode bypassed the owner's Execute denial.");
+
+    WindowsProjectWorkspaceAuthority reconnect{registry, uuids, serveClient(), true, {}, Domain::FileSystemAccessMode::Host};
+    const auto fresh = take(reconnect.authorityFor(projectId(), activeContext()));
+    require(fresh.trustedRoots() == full.trustedRoots() &&
+        static_cast<bool>(reconnect.authorize(fresh, {outside, std::nullopt, Domain::FileAccess::Read, false}, activeContext())),
+        "A fresh host-mode connection required explicit activation of every volume.");
+    WindowsProjectWorkspaceAuthority removed{registry, uuids, serveClient(), true};
+    requireError(removed.authorize(full, {outside, std::nullopt, Domain::FileAccess::Read, false}, activeContext()),
+        Domain::ErrorCodes::Unauthorized, "A prior host token survived a new workspace-only issuer.");
+    requireError(removed.authorize(take(removed.authorityFor(projectId(), activeContext())),
+        {outside, std::nullopt, Domain::FileAccess::Read, false}, activeContext()),
+        Domain::ErrorCodes::PathOutsideAuthority, "Removing host mode did not restore workspace-only access.");
+    require(take(registry.descriptor(projectId(), activeContext())).aliases == std::vector<Domain::PathText>{project},
+        "Host policy altered the project's registered metadata aliases.");
+}
+
 void recoveredMcpCallsRetainBoundRootsWithoutRestoringOtherAliases()
 {
     ScopedTestTree tree;
@@ -820,6 +939,19 @@ void recoveredMcpCallsRetainBoundRootsWithoutRestoringOtherAliases()
     const auto repeatedScope = take(resolver.resolve(call, Domain::ToolEffect::Write, context));
     require(static_cast<bool>(authority.bindConfiguredRoot(repeatedScope, evidence, context)),
         "An idempotent bind failed after the issuer baseline gained the evidence root.");
+
+    WindowsProjectWorkspaceAuthority host{registry, uuids, serveClient(), true, {}, Domain::FileSystemAccessMode::Host};
+    const auto hostScope = take(host.authorityFor(projectId(), context));
+    Mcp::McpExecutionContextResolver hostResolver{host, projectId(), clock, &recovery};
+    for (const auto name : {"fs_read", "fs_write", "get_forge_status", "shell_exec", "shell_job_start", "process_launch"}) {
+        call.toolName = name;
+        const auto retained = take(hostResolver.resolve(call, Domain::ToolEffect::Read, context));
+        require(retained.trustedRoots() == hostScope.trustedRoots(),
+            "Continuity recovery discarded automatically active owner host roots.");
+        require(static_cast<bool>(host.authorize(retained, {evidence, std::nullopt, Domain::FileAccess::Read, false}, context)) &&
+            static_cast<bool>(host.authorize(retained, {evidence, std::nullopt, Domain::FileAccess::Execute, false}, context)),
+            "Recovered host-mode filesystem and execution cwd authority diverged.");
+    }
 }
 
 } // namespace
@@ -830,10 +962,12 @@ int main()
     using namespace ForgeConductor::Tests;
     TestRegistry tests;
     addTest(tests, "dynamic_authority.configured_roots", bindsOnlyExactConfiguredExistingRoots);
+    addTest(tests, "dynamic_authority.host_filesystem", hostModeActivatesLocalVolumesAndRetainsPermissions);
     addTest(tests, "dynamic_authority.recovered_mcp_bindings", recoveredMcpCallsRetainBoundRootsWithoutRestoringOtherAliases);
     addTest(tests, "dynamic_authority.stored_project_unavailable_folder", readsStoredProjectWithUnavailableFolder);
     addTest(tests, "dynamic_authority.registry_refresh", discoversProjectsAndRefreshesAliases);
     addTest(tests, "dynamic_authority.concurrent_first_issue", publishesOneStableIdDuringConcurrentFirstIssuance);
+    addTest(tests, "dynamic_authority.owner_policy_reload", ownerPolicyReloadRevokesOldTokensWithoutBroadeningFrozenScope);
     addTest(tests, "dynamic_authority.foreign_stale_removed", rejectsForeignStaleAndNoLongerRegisteredCapabilities);
     addTest(tests, "dynamic_authority.overlap_case_reparse", rejectsOverlapCaseDuplicatesAndReparseRootsWithoutPublishing);
     addTest(tests, "dynamic_authority.context_and_bound", enforcesContextAndProjectBound);

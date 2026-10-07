@@ -30,6 +30,7 @@ Result<void> validateManagerSettings(const ManagerSettings& settings)
             "timeout within 1 through 120 seconds."));
     }
     auto provider = defaultAppConfig();
+    provider.fileSystemAccess = settings.fileSystemAccess;
     provider.localModel.host = settings.localModelHost;
     provider.localModel.port = settings.localModelPort;
     provider.localModel.secure = settings.localModelSecure;
@@ -82,6 +83,7 @@ Result<ManagerSettings> applyManagerSettingsPatch(
         settings.estimationSafetyMargin = *patch.estimationSafetyMargin;
     }
     if (patch.shellEnabled) settings.shellEnabled = *patch.shellEnabled;
+    if (patch.fileSystemAccess) settings.fileSystemAccess = *patch.fileSystemAccess;
     auto validated = validateManagerSettings(settings);
     if (!validated) {
         return Result<ManagerSettings>::failure(std::move(validated).error());

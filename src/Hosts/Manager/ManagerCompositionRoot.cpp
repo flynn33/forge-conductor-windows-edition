@@ -41,6 +41,7 @@
 #include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
 #include "ForgeConductor/Infrastructure/Windows/SettingsBoundResponsesTransport.h"
 #include "ForgeConductor/Application/ProjectPolicyService.h"
+#include "ForgeConductor/Application/ScheduledTaskService.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsPolicySourceReader.h"
 #include "ForgeConductor/Infrastructure/Windows/SecretRedactor.h"
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
@@ -66,6 +67,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsProcessSupervisor.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsRuntimeDiagnostics.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsScheduledTaskNotifier.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsReviewerRunStore.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUnicodeCanonicalizer.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
@@ -81,6 +83,9 @@
 #include "ForgeConductor/NativeTools/Windows/WindowsGitService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsPathGlobService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsPdfService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsArtifactDocumentService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsDesktopArtifactService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsWebAccessService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsShellService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsEvidenceService.h"
 #include <nlohmann/json.hpp>
@@ -662,6 +667,9 @@ private:
     std::unique_ptr<NativeToolsWindows::WindowsPathGlobService> pathGlob_;
     std::unique_ptr<NativeToolsWindows::WindowsTextSearchService> textSearch_;
     std::unique_ptr<NativeToolsWindows::WindowsPdfService> pdf_;
+    std::unique_ptr<NativeToolsWindows::WindowsArtifactDocumentService> artifactDocuments_;
+    std::unique_ptr<NativeToolsWindows::WindowsDesktopArtifactService> desktopArtifacts_;
+    std::unique_ptr<NativeToolsWindows::WindowsWebAccessService> webAccess_;
     std::unique_ptr<NativeToolsWindows::WindowsGitService> git_;
     std::unique_ptr<NativeToolsWindows::WindowsShellService> shell_;
     std::unique_ptr<NativeToolsWindows::WindowsEvidenceService> evidence_;
@@ -696,6 +704,9 @@ private:
     std::shared_ptr<Application::ManagedRunService> managedRuns_;
     std::unique_ptr<InfrastructureWindows::WindowsReviewerRunStore> reviewerRunStore_;
     std::shared_ptr<Application::ManagedRunService> reviewerRuns_;
+    std::unique_ptr<InfrastructureWindows::WindowsReviewerRunStore> workerRunStore_;
+    std::shared_ptr<Application::ManagedRunService> workerRuns_;
+    std::unique_ptr<Application::ScheduledTaskService> scheduledTasks_;
     std::unique_ptr<NativeSessionHost::ForgeNativeSessionHostAdapter>
         nativeSessionAdapter_;
     std::unique_ptr<Application::ContinuityCoordinator> continuity_;
@@ -921,6 +932,8 @@ void ManagerCompositionRoot::Impl::initializeFoundation(
     // diagnostics and persistence retain their directory anchors.
     requireSuccess(processEnvironmentProbe_.ensureRegularDirectory(
         childPath(process.memoryRoot(), "reviewer-runs"), context));
+    requireSuccess(processEnvironmentProbe_.ensureRegularDirectory(
+        childPath(process.memoryRoot(), "worker-runs"), context));
 
     diagnosticSink_ = std::make_shared<
         InfrastructureWindows::WindowsDiagnosticSink>(
@@ -1034,7 +1047,7 @@ void ManagerCompositionRoot::Impl::initializePersistence(
     projectWorkspaceAuthority_ = std::make_unique<
         InfrastructureWindows::WindowsProjectWorkspaceAuthority>(
         *projectRegistry_, *uuidGenerator_, *managerClientId_,
-        initialConfiguration_->shell.enabled, initialConfiguration_->allowedRoots);
+        initialConfiguration_->shell.enabled, initialConfiguration_->allowedRoots, initialConfiguration_->fileSystemAccess);
 
     fileSystem_ =
         std::make_shared<NativeToolsWindows::WindowsFileSystem>(
@@ -1045,6 +1058,11 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         NativeToolsWindows::WindowsTextSearchService>();
     pdf_ = std::make_unique<NativeToolsWindows::WindowsPdfService>(
         *atomicFileStore_);
+    artifactDocuments_ = std::make_unique<NativeToolsWindows::WindowsArtifactDocumentService>(
+        *projectWorkspaceAuthority_, *atomicFileStore_);
+    desktopArtifacts_ = std::make_unique<NativeToolsWindows::WindowsDesktopArtifactService>(
+        *projectWorkspaceAuthority_, *atomicFileStore_);
+    webAccess_ = std::make_unique<NativeToolsWindows::WindowsWebAccessService>();
     git_ = std::make_unique<NativeToolsWindows::WindowsGitService>(
         discoverGitExecutable(), processSupervisor_);
     shell_ = std::make_unique<NativeToolsWindows::WindowsShellService>(
@@ -1208,6 +1226,17 @@ void ManagerCompositionRoot::Impl::initializePersistence(
                 authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Write, operation),
                 authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Create, operation)});
         });
+    const auto workerDirectory = childPath(process.memoryRoot(), "worker-runs");
+    workerRunStore_ = std::make_unique<InfrastructureWindows::WindowsReviewerRunStore>(
+        *atomicFileStore_, *hasher_, *clock_,
+        authorizePath(*dataAuthority_, *dataScope_, workerDirectory, process.dataRoot(), Domain::FileAccess::Read, context),
+        [this, root = process.dataRoot(), workerDirectory](const Domain::SessionId& run, const Domain::OperationContext& operation) {
+            const auto path = childPath(workerDirectory, run.value() + ".json");
+            return Domain::Result<InfrastructureWindows::ReviewerRunStoragePaths>::success({
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Read, operation),
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Write, operation),
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Create, operation)});
+        }, InfrastructureWindows::ManagedReceiptPurpose::IndependentWorker);
     nativeSessionAdapter_ = std::make_unique<
         NativeSessionHost::ForgeNativeSessionHostAdapter>(
         take(Domain::AdapterId::parse(
@@ -1272,7 +1301,12 @@ void ManagerCompositionRoot::Impl::initializePersistence(
             std::string{RuntimeName},
             static_cast<std::uint32_t>(::GetCurrentProcessId()), projectPolicy_.get()};
     toolDependencies.evidence = evidence_.get();
+    toolDependencies.webAccess = webAccess_.get();
+    toolDependencies.artifactDocuments = artifactDocuments_.get();
+    toolDependencies.desktopArtifacts = desktopArtifacts_.get();
     toolDependencies.reviewerRuns = [this]() -> Contracts::IManagedRunService* { return reviewerRuns_.get(); };
+    toolDependencies.workerRuns = [this]() -> Contracts::IManagedRunService* { return workerRuns_.get(); };
+    toolDependencies.scheduledTasks = [this]() -> Contracts::IScheduledTaskService* { return scheduledTasks_.get(); };
     toolDependencies.providerInspection = [this](const Domain::OperationContext& operation) {
         auto current = configurationStore_->reload(operation);
         if (!current) return Domain::Result<std::string>::failure(current.error());
@@ -1330,6 +1364,35 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         *nativeSessionTransport_, *reviewerRunStore_, *clock_,
         Application::ManagedRunToolDependencies{
             toolCatalog_.get(), toolRouter_.get(), projectWorkspaceAuthority_.get()});
+    workerRuns_ = std::make_shared<Application::ManagedRunService>(
+        *nativeSessionTransport_, *workerRunStore_, *clock_,
+        Application::ManagedRunToolDependencies{toolCatalog_.get(), toolRouter_.get(), projectWorkspaceAuthority_.get()});
+    scheduledTasks_ = std::make_unique<Application::ScheduledTaskService>(
+        *workerRuns_, *projectWorkspaceAuthority_, *atomicFileStore_, *clock_, *uuidGenerator_, *toolCatalog_,
+        [this, root = process.dataRoot(), path = childPath(process.memoryRoot(), "scheduled-tasks.json")](const Domain::OperationContext& operation) {
+            return Domain::Result<Application::ScheduleStoragePaths>::success({
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Read, operation),
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Write, operation),
+                authorizePath(*dataAuthority_, *dataScope_, path, root, Domain::FileAccess::Create, operation)});
+        }, [this](const std::string_view event, const Domain::OperationContext& operation) {
+            const InfrastructureWindows::WindowsScheduledTaskNotifier notifier;
+            auto submitted = notifier.submit(event, operation);
+            const auto details = nlohmann::json::parse(event.begin(), event.end(), nullptr, false);
+            Domain::DiagnosticEnvelope diagnostic{clock_->utcNow(), "scheduled_task_notification",
+                submitted ? Domain::DiagnosticSeverity::Info : Domain::DiagnosticSeverity::Warn,
+                "manager", static_cast<std::uint32_t>(::GetCurrentProcessId()), Domain::DiagnosticCategory::Manager,
+                {{"transition", details.is_object() ? details.value("event", std::string{"unknown"}) : "unknown"},
+                 {"schedule_id", details.is_object() ? details.value("schedule_id", std::string{}) : std::string{}},
+                 {"submission", submitted ? submitted.value() : submitted.error().message}}};
+            const auto recorded = diagnosticSink_->record(diagnostic, operation);
+            if (submitted) {
+                auto receipt = nlohmann::json::parse(submitted.value());
+                receipt["diagnostic_recorded"] = recorded.hasValue();
+                return Domain::Result<std::string>::success(receipt.dump());
+            }
+            return submitted;
+        });
+    requireSuccess(scheduledTasks_->initialize(context));
 }
 
 void ManagerCompositionRoot::Impl::initializeUnavailableLmStudio(
@@ -1638,7 +1701,11 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
         *dashboardBearer_, *dashboardAssets_, *telemetrySource_,
         *dashboardOperationalService_, *managerControllerClient_);
     auto managerRuntime = take(WindowsManagerRuntime::create(
-        clock_, uuidGenerator_, dashboardApplicationFactory_));
+        clock_, uuidGenerator_, dashboardApplicationFactory_,
+        [this](const Domain::AppConfig& configuration, const Domain::OperationContext& operation) {
+            return projectWorkspaceAuthority_->updateOwnerPolicy(configuration.shell.enabled,
+                configuration.allowedRoots, configuration.fileSystemAccess, operation);
+        }));
     managerRuntime_ = std::shared_ptr<WindowsManagerRuntime>{
         std::move(managerRuntime)};
     managerController_ = std::make_shared<Application::ManagerController>(
@@ -1755,6 +1822,7 @@ Domain::Result<void> ManagerCompositionRoot::Impl::run() noexcept
         const auto startupContext = makeContext(
             *uuidGenerator_, *clock_, StartupTimeout,
             "manager-process-startup");
+        if (scheduledTasks_) requireSuccess(scheduledTasks_->start());
         const Domain::OperationContext ingressContext{
             Domain::OperationId{nextUuid(*uuidGenerator_)},
             Domain::MonotonicTimePoint::max(),
@@ -1872,6 +1940,8 @@ void ManagerCompositionRoot::Impl::shutdownServices(
         if (reviewerRuns_) {
             reviewerRuns_->shutdown();
         }
+        if (scheduledTasks_) scheduledTasks_->shutdown();
+        if (workerRuns_) workerRuns_->shutdown();
         if (managedRuns_) {
             managedRuns_->shutdown();
         }

@@ -1,6 +1,6 @@
 # Install Forge Conductor
 
-Forge Conductor 1.3.13 (Windows package 1.3.13.0) targets Windows 11 x64. A distribution contains:
+Forge Conductor 1.3.14 (Windows package 1.3.14.0) targets Windows 11 x64. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
 - `distribution.json` and payload hashes;
@@ -18,7 +18,7 @@ Open PowerShell in the extracted distribution:
 ./Install.ps1
 ```
 
-Preflight verifies the package hash, certificate hash, signer, package identity, trust, and update version without installing. Production certificates can validate through the normal Windows trust chain. Development-signed validation builds require an authorized administrator to trust the included public certificate in Local Machine Trusted People; the private key is never distributed.
+Preflight checks the distribution's package and certificate hashes, signer, trust, and declared package identity/version against the currently installed version without installing. It rejects downgrades; it does not unpack the MSIX to independently inspect its manifest. Installation then verifies that Windows registered the declared package identity, version and publisher. Production certificates can validate through the normal Windows trust chain. Development-signed validation builds require an authorized administrator to trust the included public certificate in Local Machine Trusted People; the private key is never distributed.
 
 Launch **Forge Conductor** from Start after installation. Ordinary use stores durable configuration, projects, memory, continuity, and view state under `%LOCALAPPDATA%\Forge Conductor`. Package removal does not purge that profile. Data deletion occurs only through explicitly confirmed maintenance actions.
 
@@ -30,9 +30,9 @@ Before upgrading or restarting the owning Manager, wait for tracked work to fini
 
 For upgrades, install a higher package version with the same stable identity and publisher. The optional `.appinstaller` file checks for updates on launch and in the background.
 
-## Current 1.3.13 distribution
+## Current 1.3.14 distribution
 
-Download the complete ZIP from [v1.3.13](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.13), extract it, and run the preflight above. The distribution includes the signed 1.3.13.0 MSIX, public publisher certificate, installer, metadata, and checksums. The local engineering release uses the existing development publisher. Inspect the release verification and provenance for its exact committed source, executable hashes, signature, and qualification scope. See [release notes](releases/1.3.13.md).
+Download the complete ZIP from [v1.3.14](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.14), extract it, and run the preflight above. The distribution includes the signed 1.3.14.0 MSIX, public publisher certificate, installer, metadata, and checksums. The local engineering release uses the existing development publisher. Inspect the release verification and provenance for its exact committed source, executable hashes, signature, and qualification scope. See [release notes](releases/1.3.14.md).
 
 ## Historical 1.3.11 publication and installed qualification
 

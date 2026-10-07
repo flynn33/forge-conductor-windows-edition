@@ -104,6 +104,7 @@ void requireError(
     settings.sessionIdleTtl = 23'456s;
     settings.shellTimeout = 119s;
     settings.logLevel = Domain::LogLevel::Critical;
+    settings.fileSystemAccess = Domain::FileSystemAccessMode::Host;
     return settings;
 }
 
@@ -414,7 +415,7 @@ void encodesExactManagerSettingsSchema()
         Dashboard::DashboardManagerJsonCodec::encodeSettings(sampleSettings()));
     requireExactKeys(
         value,
-        {"ok", "dashboard", "manager", "sessions", "shell", "log_level"});
+        {"ok", "dashboard", "manager", "sessions", "shell", "log_level", "filesystem_access"});
     requireExactKeys(
         value.at("dashboard"),
         {"host", "port", "refresh_interval_sec"});
@@ -434,6 +435,10 @@ void encodesExactManagerSettingsSchema()
     REQUIRE(value.at("sessions").at("idle_ttl_sec") == 23'456);
     REQUIRE(value.at("shell").at("default_timeout_sec") == 119);
     REQUIRE(value.at("log_level") == "critical");
+    REQUIRE(value.at("filesystem_access") == "host");
+    auto workspace = sampleSettings();
+    workspace.fileSystemAccess = Domain::FileSystemAccessMode::Workspace;
+    REQUIRE(document(Dashboard::DashboardManagerJsonCodec::encodeSettings(workspace)).at("filesystem_access") == "workspace");
 
     const std::vector<std::pair<Domain::LogLevel, std::string>> levels{
         {Domain::LogLevel::Trace, "trace"},
@@ -477,6 +482,7 @@ void flattensAtomicUpdateOutcomeAndPreservesNewUrl()
                  "sessions",
                  "shell",
                  "log_level",
+                 "filesystem_access",
                  "applied",
                  "bind_changed",
                  "status"});
@@ -539,7 +545,8 @@ void decodesNestedAndTopLevelPatches()
             "manager":{"auto_restart":false,"watchdog_interval_sec":4,"open_browser_on_start":true},
             "sessions":{"idle_ttl_sec":8888},
             "shell":{"default_timeout_sec":77},
-            "log_level":"debug"
+            "log_level":"debug",
+            "filesystem_access":"host"
         }
     })json");
     REQUIRE(!nested.apply());
@@ -552,6 +559,7 @@ void decodesNestedAndTopLevelPatches()
     REQUIRE(nested.patch().sessionIdleTtl == 8'888s);
     REQUIRE(nested.patch().shellTimeout == 77s);
     REQUIRE(nested.patch().logLevel == Domain::LogLevel::Debug);
+    REQUIRE(nested.patch().fileSystemAccess == Domain::FileSystemAccessMode::Host);
 
     const auto topLevel = mutation(R"json({
         "dashboard":{"host":"127.0.0.1","port":9000},
@@ -570,6 +578,13 @@ void decodesNestedAndTopLevelPatches()
     REQUIRE(!topLevel.patch().sessionIdleTtl);
     REQUIRE(!topLevel.patch().shellTimeout);
     REQUIRE(topLevel.patch().logLevel == Domain::LogLevel::Warning);
+    REQUIRE(!topLevel.patch().fileSystemAccess);
+    REQUIRE(mutation(R"({"filesystem_access":"workspace"})").patch().fileSystemAccess == Domain::FileSystemAccessMode::Workspace);
+    REQUIRE(mutation(R"({"filesystem_access":"host"})").patch().fileSystemAccess == Domain::FileSystemAccessMode::Host);
+    rejectMutation(R"({"filesystem_access":"HOST"})");
+    rejectMutation(R"({"filesystem_access":"full"})");
+    rejectMutation(R"({"filesystem_access":true})");
+    rejectMutation(R"({"filesystem_access":null})");
 
     const auto nestedDefault = mutation(R"json({"settings":{}})json");
     REQUIRE(nestedDefault.apply());

@@ -836,6 +836,8 @@ void measureSettingsMembers(
     budget.endObject();
     budget.member("log_level", first);
     budget.string(logLevelName(settings.logLevel));
+    budget.member("filesystem_access", first);
+    budget.string(Domain::wireName(settings.fileSystemAccess));
 }
 
 void preflightStatusResponse(
@@ -932,6 +934,7 @@ void preflightSettingsUpdateResponse(
     Json value = Json::object();
     value["dashboard"] = std::move(dashboard);
     value["log_level"] = logLevelName(settings.logLevel);
+    value["filesystem_access"] = Domain::wireName(settings.fileSystemAccess);
     value["manager"] = std::move(manager);
     value["ok"] = true;
     value["sessions"] = std::move(sessions);
@@ -961,7 +964,7 @@ void validateOutcome(const Domain::ManagerSettingsUpdateOutcome& outcome)
 {
     requireAllowedFields(
         value,
-        {"dashboard", "manager", "sessions", "shell", "log_level"},
+        {"dashboard", "manager", "sessions", "shell", "log_level", "filesystem_access"},
         "Manager settings patch");
 
     Domain::ManagerSettingsPatch patch;
@@ -1017,6 +1020,12 @@ void validateOutcome(const Domain::ManagerSettingsUpdateOutcome& outcome)
     if (value.contains("log_level")) {
         patch.logLevel = parseLogLevel(stringValue(value, "log_level"));
     }
+    if (value.contains("filesystem_access")) {
+        const auto mode = stringValue(value, "filesystem_access");
+        if (mode == "workspace") patch.fileSystemAccess = Domain::FileSystemAccessMode::Workspace;
+        else if (mode == "host") patch.fileSystemAccess = Domain::FileSystemAccessMode::Host;
+        else reject(Domain::ErrorCodes::InvalidRequest, "filesystem_access must be workspace or host.");
+    }
 
     auto valid = Domain::applyManagerSettingsPatch(
         Domain::ManagerSettings{}, patch);
@@ -1035,7 +1044,7 @@ void validateOutcome(const Domain::ManagerSettingsUpdateOutcome& outcome)
     } else {
         requireAllowedFields(
             root,
-            {"apply", "dashboard", "manager", "sessions", "shell", "log_level"},
+            {"apply", "dashboard", "manager", "sessions", "shell", "log_level", "filesystem_access"},
             "Manager settings mutation");
     }
 

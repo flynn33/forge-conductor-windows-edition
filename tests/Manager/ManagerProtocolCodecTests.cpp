@@ -128,6 +128,7 @@ void replaceOne(
     settings.handoffReserve = 6'144U;
     settings.estimationSafetyMargin = 3'072U;
     settings.shellEnabled = false;
+    settings.fileSystemAccess = Domain::FileSystemAccessMode::Host;
     return settings;
 }
 
@@ -152,6 +153,7 @@ void replaceOne(
     patch.handoffReserve = 6'144U;
     patch.estimationSafetyMargin = 3'072U;
     patch.shellEnabled = false;
+    patch.fileSystemAccess = Domain::FileSystemAccessMode::Host;
     return patch;
 }
 
@@ -554,6 +556,7 @@ void testEveryRequestMethodRoundTripsDeterministically()
     REQUIRE(updatePayload.patch.localModelName == "fixture-model");
     REQUIRE(updatePayload.patch.effectiveContextCapacity == 65'536U);
     REQUIRE(updatePayload.patch.shellEnabled == false);
+    REQUIRE(updatePayload.patch.fileSystemAccess == Domain::FileSystemAccessMode::Host);
 
     const auto managedStart = take(Manager::ManagerProtocolCodec::decodeRequest(
         take(Manager::ManagerProtocolCodec::encodeRequest(request(
@@ -1051,6 +1054,7 @@ void testResponseResultAndErrorRoundTrips()
     REQUIRE(settings.nextResponseReserve == 8'192U);
     REQUIRE(settings.handoffReserve == 6'144U);
     REQUIRE(settings.estimationSafetyMargin == 3'072U);
+    REQUIRE(settings.fileSystemAccess == Domain::FileSystemAccessMode::Host);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedSettings)) ==
             settingsFrame);
 
@@ -1144,7 +1148,7 @@ void testNullOptionalFieldsAreLossless()
         request(Manager::ManagerSettingsUpdateRequest{emptyPatch, false})));
     const auto patchRoot = Json::parse(payloadText(patchFrame));
     const auto& patch = patchRoot.at("params").at("patch");
-    REQUIRE(patch.size() == 18U);
+    REQUIRE(patch.size() == 19U);
     for (const auto& field : patch) REQUIRE(field.is_null());
     const auto decodedPatch = take(
         Manager::ManagerProtocolCodec::decodeRequest(patchFrame));
@@ -1152,6 +1156,34 @@ void testNullOptionalFieldsAreLossless()
         std::get<Manager::ManagerSettingsUpdateRequest>(decodedPatch.payload).patch;
     REQUIRE(!actualPatch.dashboardHost && !actualPatch.dashboardPort);
     REQUIRE(!actualPatch.autoRestart && !actualPatch.logLevel);
+    REQUIRE(!actualPatch.fileSystemAccess);
+}
+
+void testFileSystemAccessCompatibilityAndDenials()
+{
+    auto settingsRoot = responseJson(Manager::ManagerResult{sampleSettings()});
+    settingsRoot["result"]["value"].erase("filesystem_access");
+    const auto legacy = take(Manager::ManagerProtocolCodec::decodeResponse(frameFromJson(settingsRoot)));
+    REQUIRE(std::get<Domain::ManagerSettings>(std::get<Manager::ManagerResult>(legacy.body)).fileSystemAccess ==
+        Domain::FileSystemAccessMode::Workspace);
+    auto patchRoot = requestJson(Manager::ManagerSettingsUpdateRequest{samplePatch(), true});
+    patchRoot["params"]["patch"].erase("filesystem_access");
+    const auto legacyPatch = take(Manager::ManagerProtocolCodec::decodeRequest(frameFromJson(patchRoot)));
+    REQUIRE(!std::get<Manager::ManagerSettingsUpdateRequest>(legacyPatch.payload).patch.fileSystemAccess);
+    for (const auto& invalid : std::vector<Json>{"HOST", "full", true, 1}) {
+        settingsRoot["result"]["value"]["filesystem_access"] = invalid;
+        requireError(Manager::ManagerProtocolCodec::decodeResponse(frameFromJson(settingsRoot)),
+            Domain::ErrorCodes::InvalidRequest);
+        patchRoot["params"]["patch"]["filesystem_access"] = invalid;
+        requireError(Manager::ManagerProtocolCodec::decodeRequest(frameFromJson(patchRoot)),
+            Domain::ErrorCodes::InvalidRequest);
+    }
+    settingsRoot["result"]["value"]["filesystem_access"] = nullptr;
+    requireError(Manager::ManagerProtocolCodec::decodeResponse(frameFromJson(settingsRoot)),
+        Domain::ErrorCodes::InvalidRequest);
+    patchRoot["params"]["patch"]["filesystem_access"] = nullptr;
+    const auto emptyModePatch = take(Manager::ManagerProtocolCodec::decodeRequest(frameFromJson(patchRoot)));
+    REQUIRE(!std::get<Manager::ManagerSettingsUpdateRequest>(emptyModePatch.payload).patch.fileSystemAccess);
 }
 
 void testTimestampPrecisionAndRepresentableBounds()
@@ -1701,6 +1733,7 @@ int main()
         {"settings-update-outcome-round-trips",
          testSettingsUpdateOutcomeRoundTrips},
         {"optional-fields", testNullOptionalFieldsAreLossless},
+        {"filesystem-access", testFileSystemAccessCompatibilityAndDenials},
         {"timestamp-precision-bounds", testTimestampPrecisionAndRepresentableBounds},
         {"hostile-framing-json", testHostileFramingAndJsonAreRejected},
         {"hostile-request", testHostileRequestSchemaAndIdentityAreRejected},

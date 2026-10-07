@@ -85,6 +85,23 @@ constexpr std::string_view CluServerName = "forge-conductor-clu";
 {
     constexpr std::size_t MaximumTextBlockBytes = 32U * 1024U;
     constexpr std::size_t FragmentBytes = 12U * 1024U;
+    Json imageBlock;
+    if (!isError && payload.contains("image_base64")) {
+        const auto& encoded = payload.at("image_base64");
+        if (!encoded.is_string() || !payload.contains("image_mime_type") ||
+            !payload.at("image_mime_type").is_string() || payload.at("image_mime_type") != "image/png" ||
+            encoded.get_ref<const std::string&>().empty() || encoded.get_ref<const std::string&>().size() > 512U * 1024U ||
+            encoded.get_ref<const std::string&>().size() % 4U != 0U ||
+            encoded.get_ref<const std::string&>().find_first_not_of(
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=") != std::string::npos) {
+            return toolEnvelope(stableErrorPayload(Domain::makeError(
+                Domain::ErrorCodes::InternalFailure,
+                "The native image result is invalid or exceeds its bounded preview limit.")), true);
+        }
+        imageBlock = Json{{"type", "image"}, {"mimeType", "image/png"}, {"data", encoded}};
+        payload.erase("image_base64");
+        payload["image_content_block"] = true;
+    }
     const auto text = payload.dump();
     Json content = Json::array();
     if (text.size() <= MaximumTextBlockBytes) {
@@ -115,6 +132,7 @@ constexpr std::string_view CluServerName = "forge-conductor-clu";
             content.push_back(Json{{"text", fragment}, {"type", "text"}});
         }
     }
+    if (!imageBlock.is_null()) content.push_back(std::move(imageBlock));
     return Json{{"content", std::move(content)}, {"isError", isError},
         {"structuredContent", std::move(payload)}};
 }

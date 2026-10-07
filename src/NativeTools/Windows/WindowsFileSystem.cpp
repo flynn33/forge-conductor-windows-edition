@@ -87,7 +87,7 @@ atomicWriteError(Domain::Error error, const Domain::PathText &canonicalPath) {
 [[nodiscard]] Domain::Result<void>
 rejectAuthorityRoot(const std::wstring_view target,
                     const Domain::PathText &authorityRoot) noexcept {
-  auto root = InfrastructureDetail::WindowsPathResolver::resolveAppOwnedRoot(
+  auto root = InfrastructureDetail::WindowsPathResolver::resolveWorkspacePath(
       authorityRoot.value());
   if (!root) {
     return Domain::Result<void>::failure(std::move(root).error());
@@ -294,21 +294,25 @@ openMoveDestinationParent(const std::wstring_view destinationPath,
                           const Domain::PathText &authorityRoot,
                           const Domain::OperationContext &context) noexcept {
   try {
-    auto root = InfrastructureDetail::WindowsPathResolver::resolveAppOwnedRoot(
+    auto root = InfrastructureDetail::WindowsPathResolver::resolveWorkspacePath(
         authorityRoot.value());
     if (!root) {
       return Domain::Result<MoveDestinationParent>::failure(
           std::move(root).error());
     }
+    const auto relativeStart = root.value().size() +
+        (root.value().back() == L'\\' ? 0U : 1U);
     const auto finalSeparator = destinationPath.find_last_of(L'\\');
     if (finalSeparator == std::wstring_view::npos ||
-        finalSeparator < root.value().size()) {
+        finalSeparator + 1U < relativeStart ||
+        finalSeparator + 1U >= destinationPath.size()) {
       return Domain::Result<MoveDestinationParent>::failure(
           Domain::makeError(
               Domain::ErrorCodes::PathOutsideAuthority,
               "The move destination has no authorized parent directory."));
     }
-    const auto parentPath = destinationPath.substr(0U, finalSeparator);
+    const auto parentPath = destinationPath.substr(0U,
+        finalSeparator == 2U ? 3U : finalSeparator);
     auto current = Detail::openCanonicalDirectory(
         root.value(),
         FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES,
@@ -323,14 +327,14 @@ openMoveDestinationParent(const std::wstring_view destinationPath,
       return Domain::Result<MoveDestinationParent>::success(
           std::move(result));
     }
-    std::size_t start = root.value().size() + 1U;
+    std::size_t start = relativeStart;
     std::wstring currentPath{root.value()};
     while (start < parentPath.size()) {
       const auto separator = parentPath.find(L'\\', start);
       const auto end =
           separator == std::wstring_view::npos ? parentPath.size() : separator;
       const auto component = parentPath.substr(start, end - start);
-      currentPath.push_back(L'\\');
+      if (currentPath.back() != L'\\') currentPath.push_back(L'\\');
       currentPath.append(component);
       auto next = Detail::openChildObject(
           result.handle(), component, currentPath,
@@ -496,7 +500,7 @@ WindowsFileSystem::list(const Contracts::AuthorizedPath &directory,
             std::move(valid).error());
       }
       std::wstring path{opened.value().canonicalPath};
-      path.push_back(L'\\');
+      if (path.back() != L'\\') path.push_back(L'\\');
       path.append(entry.name);
       auto converted =
           InfrastructureDetail::WindowsPathResolver::toPathText(path);
@@ -526,7 +530,7 @@ Domain::Result<void> WindowsFileSystem::createDirectory(
     if (!target) {
       return Domain::Result<void>::failure(std::move(target).error());
     }
-    auto root = InfrastructureDetail::WindowsPathResolver::resolveAppOwnedRoot(
+    auto root = InfrastructureDetail::WindowsPathResolver::resolveWorkspacePath(
         directory.authorityRoot().value());
     if (!root) {
       return Domain::Result<void>::failure(std::move(root).error());
@@ -536,13 +540,13 @@ Domain::Result<void> WindowsFileSystem::createDirectory(
     }
     auto current = Detail::openCanonicalDirectory(
         root.value(),
-        FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES |
-            FILE_ADD_SUBDIRECTORY,
+        FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES,
         FILE_SHARE_READ, context);
     if (!current) {
       return Domain::Result<void>::failure(std::move(current).error());
     }
-    const std::size_t relativeStart = root.value().size() + 1U;
+    const std::size_t relativeStart = root.value().size() +
+        (root.value().back() == L'\\' ? 0U : 1U);
     if (relativeStart >= target.value().size()) {
       return Domain::Result<void>::failure(Domain::makeError(
           Domain::ErrorCodes::PathOutsideAuthority,
@@ -556,7 +560,7 @@ Domain::Result<void> WindowsFileSystem::createDirectory(
           separator == std::wstring::npos ? target.value().size() : separator;
       const auto component =
           std::wstring_view{target.value()}.substr(start, end - start);
-      currentPath.push_back(L'\\');
+      if (currentPath.back() != L'\\') currentPath.push_back(L'\\');
       currentPath.append(component);
       auto next = Detail::openOrCreateChildDirectory(
           current.value().handle.get(), component, currentPath, context);

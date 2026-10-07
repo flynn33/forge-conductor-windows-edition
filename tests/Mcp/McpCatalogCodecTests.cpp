@@ -63,14 +63,18 @@ void testCanonicalCatalog()
     static_assert(!std::is_copy_constructible_v<Mcp::McpToolCatalog>);
     static_assert(!std::is_move_constructible_v<Mcp::McpToolCatalog>);
 
-    constexpr std::array<std::string_view, 80U> ExpectedNames{
+    constexpr std::array<std::string_view, 103U> ExpectedNames{
+        "agent_cancel",
         "agent_context",
         "agent_get",
         "agent_list",
+        "agent_poll",
         "agent_recommend",
         "agent_run_complete",
         "agent_run_start",
         "agent_run_status",
+        "agent_spawn",
+        "browser_open",
         "clu.evaluate",
         "clu.export_log",
         "clu.findings",
@@ -84,6 +88,13 @@ void testCanonicalCatalog()
         "continuity.request_rollover",
         "continuity.resume",
         "continuity.status",
+        "desktop_capture",
+        "desktop_click",
+        "desktop_key",
+        "desktop_list",
+        "desktop_read",
+        "desktop_type",
+        "document_write",
         "evidence_digest",
         "evidence_log_read",
         "forge_status",
@@ -102,6 +113,10 @@ void testCanonicalCatalog()
         "git_log",
         "git_status",
         "github_read",
+        "host_capabilities",
+        "http_request",
+        "image_read",
+        "image_write",
         "instruction_package.read",
         "memory_delete",
         "memory_get",
@@ -110,6 +125,7 @@ void testCanonicalCatalog()
         "memory_set",
         "pdf_from_file",
         "pdf_write",
+        "presentation_write",
         "process_adopt",
         "process_kill",
         "process_launch",
@@ -133,6 +149,10 @@ void testCanonicalCatalog()
         "reviewer_cancel",
         "reviewer_start",
         "reviewer_status",
+        "schedule_cancel",
+        "schedule_create",
+        "schedule_list",
+        "schedule_run_now",
         "search_text",
         "session_checkpoint",
         "session_handoff",
@@ -141,8 +161,11 @@ void testCanonicalCatalog()
         "shell_job_list",
         "shell_job_start",
         "shell_job_status",
+        "spreadsheet_write",
         "verification_env_create",
         "verification_env_status",
+        "web_fetch",
+        "web_search",
         "workspace_authority_bind"};
 
     auto catalog = take(Mcp::McpToolCatalog::create());
@@ -173,8 +196,8 @@ void testCanonicalCatalog()
             ++writeEffects;
         }
     }
-    REQUIRE(readEffects == 40U);
-    REQUIRE(writeEffects == 40U);
+    REQUIRE(readEffects == 48U);
+    REQUIRE(writeEffects == 55U);
     REQUIRE(descriptor(tools, "agent_run_status").tool.effect == Domain::ToolEffect::Write);
     REQUIRE(descriptor(tools, "agent_run_start").tool.requiresProject);
     REQUIRE(descriptor(tools, "agent_run_status").tool.requiresProject);

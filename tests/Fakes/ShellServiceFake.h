@@ -37,12 +37,14 @@ public:
 
     DeterministicResult<Domain::ProcessResult> executeResult;
     DeterministicResult<Domain::ShellJobSnapshot> startJobResult;
+    DeterministicResult<Domain::ShellJobSnapshot> startProcessResult;
     DeterministicResult<Domain::ShellJobSnapshot> getJobResult;
     DeterministicResult<Domain::ShellJobSnapshot> cancelJobResult;
     DeterministicResult<std::vector<Domain::ShellJobSnapshot>> listJobsResult;
     std::optional<Domain::ProcessRequest> lastJobRequest;
     std::string lastJobId;
     std::size_t jobStartCalls{};
+    std::size_t processStartCalls{};
     bool jobsEnabled{true};
 
     [[nodiscard]] bool supportsJobs() const noexcept override { return jobsEnabled; }
@@ -54,6 +56,15 @@ public:
         ++jobStartCalls;
         lastJobRequest = request;
         return startJobResult.get();
+    }
+    [[nodiscard]] Domain::Result<Domain::ShellJobSnapshot> startProcess(
+        const Domain::ProcessRequest& request,
+        const Contracts::WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept override
+    {
+        ++processStartCalls;
+        lastJobRequest = request;
+        return startProcessResult.get();
     }
     [[nodiscard]] Domain::Result<Domain::ShellJobSnapshot> getJob(
         const std::string_view id,

@@ -547,12 +547,12 @@ struct AnchoredDirectoryTree final {
                 separator == std::wstring_view::npos ? canonicalDirectory.size() : separator;
             const std::wstring_view component =
                 canonicalDirectory.substr(componentStart, componentEnd - componentStart);
-            const bool finalComponent = componentEnd == canonicalDirectory.size();
             const std::wstring expectedPath{canonicalDirectory.substr(0U, componentEnd)};
 
             InfrastructureDetail::RelativeOpenOptions options{};
-            options.desiredAccess = DirectoryAnchorAccess |
-                                    (finalComponent ? FILE_ADD_FILE : 0U);
+            // Relative leaf creation checks the current directory ACL. A
+            // retained traversal anchor must coexist with no-write observers.
+            options.desiredAccess = DirectoryAnchorAccess;
             options.shareAccess = DirectoryShare;
             options.disposition = InfrastructureDetail::RelativeOpenDisposition::OpenExisting;
             options.fileAttributes = FILE_ATTRIBUTE_DIRECTORY;

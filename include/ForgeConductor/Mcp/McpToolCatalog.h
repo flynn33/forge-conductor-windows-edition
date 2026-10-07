@@ -13,7 +13,7 @@ namespace ForgeConductor::Mcp {
 // both server roles. Routing and transport are intentionally separate.
 class McpToolCatalog final : public Contracts::IToolCatalog {
 public:
-    static constexpr std::size_t ExpectedToolCount = 80U;
+    static constexpr std::size_t ExpectedToolCount = 103U;
     static constexpr std::size_t MaximumProjectMemoryKinds = 100U;
 
     [[nodiscard]] static Domain::Result<std::unique_ptr<McpToolCatalog>>

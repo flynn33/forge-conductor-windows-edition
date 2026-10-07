@@ -401,10 +401,13 @@ void requireObject(const Json& value, const std::string_view schema)
 void requireExactFields(
     const Json& value,
     const std::initializer_list<std::string_view> fields,
-    const std::string_view schema)
+    const std::string_view schema,
+    const std::initializer_list<std::string_view> optionalFields = {})
 {
     requireObject(value, schema);
-    if (value.size() != fields.size()) {
+    const auto optionalCount = std::count_if(optionalFields.begin(), optionalFields.end(),
+        [&](const auto field) { return value.contains(std::string{field}); });
+    if (value.size() != fields.size() + static_cast<std::size_t>(optionalCount)) {
         reject(
             Domain::ErrorCodes::InvalidRequest,
             std::string{schema} + " has missing or unknown fields.");
@@ -773,6 +776,14 @@ void validateVersion(const std::uint32_t version)
         "Manager settings contain an unknown log level.");
 }
 
+[[nodiscard]] Domain::FileSystemAccessMode parseFileSystemAccess(const std::string_view value)
+{
+    if (value == "workspace") return Domain::FileSystemAccessMode::Workspace;
+    if (value == "host") return Domain::FileSystemAccessMode::Host;
+    reject(Domain::ErrorCodes::InvalidRequest,
+        "Manager filesystem_access must be workspace or host.");
+}
+
 void validateSettings(const Domain::ManagerSettings& settings)
 {
     auto validated = Domain::validateManagerSettings(settings);
@@ -837,6 +848,7 @@ template <typename Duration>
     value["session_idle_ttl_seconds"] = settings.sessionIdleTtl.count();
     value["shell_timeout_seconds"] = settings.shellTimeout.count();
     value["shell_enabled"] = settings.shellEnabled;
+    value["filesystem_access"] = Domain::wireName(settings.fileSystemAccess);
     value["watchdog_interval_seconds"] = settings.watchdogInterval.count();
     return value;
 }
@@ -863,7 +875,7 @@ template <typename Duration>
          "shell_enabled",
          "shell_timeout_seconds",
          "watchdog_interval_seconds"},
-        "Manager settings");
+        "Manager settings", {"filesystem_access"});
 
     Domain::ManagerSettings settings;
     settings.dashboardHost = stringMember(value, "dashboard_host");
@@ -884,6 +896,8 @@ template <typename Duration>
         positiveIntegerMember(value, "shell_timeout_seconds"),
         "shell_timeout_seconds");
     settings.shellEnabled = booleanMember(value, "shell_enabled");
+    if (value.contains("filesystem_access"))
+        settings.fileSystemAccess = parseFileSystemAccess(stringMember(value, "filesystem_access"));
     settings.logLevel = parseLogLevel(stringMember(value, "log_level"));
     settings.localModelHost = stringMember(value, "local_model_host");
     settings.localModelPort = uint16Member(value, "local_model_port");
@@ -940,6 +954,8 @@ template <typename Duration>
     value["shell_timeout_seconds"] = optionalDuration(patch.shellTimeout);
     value["shell_enabled"] = nullptr;
     if (patch.shellEnabled) value["shell_enabled"] = *patch.shellEnabled;
+    value["filesystem_access"] = nullptr;
+    if (patch.fileSystemAccess) value["filesystem_access"] = Domain::wireName(*patch.fileSystemAccess);
     value["watchdog_interval_seconds"] =
         optionalDuration(patch.watchdogInterval);
     return value;
@@ -977,7 +993,7 @@ template <typename Value, typename Parser>
          "shell_enabled",
          "shell_timeout_seconds",
          "watchdog_interval_seconds"},
-        "Manager settings patch");
+        "Manager settings patch", {"filesystem_access"});
 
     Domain::ManagerSettingsPatch patch;
     patch.dashboardHost = optionalField<std::string>(
@@ -1018,6 +1034,12 @@ template <typename Value, typename Parser>
         });
     patch.shellEnabled = optionalField<bool>(
         value, "shell_enabled", booleanMember);
+    if (value.contains("filesystem_access")) {
+        patch.fileSystemAccess = optionalField<Domain::FileSystemAccessMode>(
+            value, "filesystem_access", [](const Json& object, const std::string_view name) {
+                return parseFileSystemAccess(stringMember(object, name));
+            });
+    }
     patch.logLevel = optionalField<Domain::LogLevel>(
         value,
         "log_level",

@@ -2,6 +2,27 @@
   "schemaVersion": 1,
   "tools": [
     {
+      "description": "Cancel one independent Manager-owned worker in this project; follow agent_poll to confirm final state.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "authorization": {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          "run_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id",
+          "authorization"
+        ],
+        "type": "object"
+      },
+      "name": "agent_cancel"
+    },
+    {
       "description": "Alias of agent_get — full playbook body.",
       "inputSchema": {
         "properties": {
@@ -39,6 +60,32 @@
         "type": "object"
       },
       "name": "agent_list"
+    },
+    {
+      "description": "Read an independent worker's actual state, usage, sealed receipt and UTF-8 output page across MCP reconnects.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "max_output_bytes": {
+            "maximum": 32768,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "output_offset": {
+            "maximum": 262144,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "run_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "run_id"
+        ],
+        "type": "object"
+      },
+      "name": "agent_poll"
     },
     {
       "description": "Recommend a specialist agent for a task description.",
@@ -112,6 +159,54 @@
         "type": "object"
       },
       "name": "agent_run_status"
+    },
+    {
+      "description": "Start a fresh independent Manager-owned model task with explicit task authorization. Inherits current roots/grants and cannot grant policy approvals or spawn recursively; existing specialist sessions remain available.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "agent_id": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "authorization": {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          "task": {
+            "maxLength": 65536,
+            "type": "string"
+          },
+          "timeout_sec": {
+            "maximum": 3600,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "task",
+          "authorization"
+        ],
+        "type": "object"
+      },
+      "name": "agent_spawn"
+    },
+    {
+      "description": "Open an HTTP/HTTPS URL in the user's registered browser. Returns launch acceptance, not proof of page loading; observe the browser with desktop tools.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "url": {
+            "maxLength": 16384,
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
+      "name": "browser_open"
     },
     {
       "description": "Evaluate development evidence against the exact bound policy revision and return any CLU finding.",
@@ -696,6 +791,220 @@
       "name": "continuity.status"
     },
     {
+      "description": "Capture the visible desktop region of a listed window/PID to an authorized PNG and return a model-visible image preview. Overlapping windows may appear; this is visible-screen capture.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "maxLength": 32768,
+            "type": "string"
+          },
+          "pid": {
+            "maximum": 4294967295,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "window_id": {
+            "maximum": 9223372036854775807,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_id",
+          "pid",
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "desktop_capture"
+    },
+    {
+      "description": "Click a window-relative point in a listed visible window/PID. Requires task authorization and a fresh observation. Returns input submission; observe the resulting UI.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "button": {
+            "enum": [
+              "left",
+              "right"
+            ],
+            "type": "string"
+          },
+          "pid": {
+            "maximum": 4294967295,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "window_id": {
+            "maximum": 9223372036854775807,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "x": {
+            "maximum": 8192,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "y": {
+            "maximum": 8192,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_id",
+          "pid",
+          "x",
+          "y"
+        ],
+        "type": "object"
+      },
+      "name": "desktop_click"
+    },
+    {
+      "description": "Submit a named key and optional ctrl/alt/shift modifiers to a listed foreground window/PID. Requires task authorization; observe the resulting UI.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "alt": {
+            "type": "boolean"
+          },
+          "ctrl": {
+            "type": "boolean"
+          },
+          "key": {
+            "maxLength": 32,
+            "type": "string"
+          },
+          "pid": {
+            "maximum": 4294967295,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "shift": {
+            "type": "boolean"
+          },
+          "window_id": {
+            "maximum": 9223372036854775807,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_id",
+          "pid",
+          "key"
+        ],
+        "type": "object"
+      },
+      "name": "desktop_key"
+    },
+    {
+      "description": "List visible Windows windows with exact window_id/PID/title and screen geometry under the current Windows account.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "maximum": 500,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "desktop_list"
+    },
+    {
+      "description": "Read bounded Windows accessibility controls for an exact listed visible window/PID, with window-relative rectangles and enabled/offscreen states.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "maximum": 300,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "pid": {
+            "maximum": 4294967295,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "window_id": {
+            "maximum": 9223372036854775807,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_id",
+          "pid"
+        ],
+        "type": "object"
+      },
+      "name": "desktop_read"
+    },
+    {
+      "description": "Submit literal Unicode text to the focused control in an exact listed foreground window/PID. Requires task authorization; observe focus and the resulting UI.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "pid": {
+            "maximum": 4294967295,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 65536,
+            "type": "string"
+          },
+          "window_id": {
+            "maximum": 9223372036854775807,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_id",
+          "pid",
+          "text"
+        ],
+        "type": "object"
+      },
+      "name": "desktop_type"
+    },
+    {
+      "description": "Create a valid native Word DOCX ZIP package from a title and paragraphs. No Office installation or Python required. Does not render or approve its content.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "paragraphs": {
+            "items": {
+              "maxLength": 65536,
+              "type": "string"
+            },
+            "maxItems": 4096,
+            "type": "array"
+          },
+          "path": {
+            "maxLength": 32768,
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 65536,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "paragraphs"
+        ],
+        "type": "object"
+      },
+      "name": "document_write"
+    },
+    {
       "description": "Hash authorized binary evidence and append a durable SHA256 capture chain; returns byte lengths and capture/head identities. This is an integrity record, not an identity signature.",
       "inputSchema": {
         "additionalProperties": false,
@@ -1012,6 +1321,185 @@
       "name": "github_read"
     },
     {
+      "description": "Report actual dedicated capabilities, tool names, filesystem mode and root authority, and external services needing a connection. Consult before claiming a capability is absent.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "host_capabilities"
+    },
+    {
+      "description": "Perform an explicit HTTP/HTTPS GET, HEAD, POST, PUT, PATCH, DELETE or OPTIONS with bounded caller-supplied headers/body. Mutating methods can change remote state and require task authorization; only GET/HEAD follow redirects. No ambient credentials/cookies; report actual HTTP status and truncation.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "body": {
+            "maxLength": 262144,
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "maxLength": 16384,
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "max_bytes": {
+            "maximum": 49152,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "method": {
+            "enum": [
+              "GET",
+              "HEAD",
+              "POST",
+              "PUT",
+              "PATCH",
+              "DELETE",
+              "OPTIONS"
+            ],
+            "type": "string"
+          },
+          "timeout_sec": {
+            "maximum": 60,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "url": {
+            "maxLength": 8192,
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
+      "name": "http_request"
+    },
+    {
+      "description": "Decode an authorized local PNG/JPEG/GIF/BMP/TIFF/ICO using native Windows codecs and return a model-visible PNG preview with original dimensions.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "maxLength": 32768,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
+      "name": "image_read"
+    },
+    {
+      "description": "Render rectangles, ellipses, lines and Unicode text to an authorized native PNG, returning an image preview. Supports diagrams/charts; generative artwork requires a separate image provider.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "background": {
+            "maxLength": 7,
+            "type": "string"
+          },
+          "elements": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "color": {
+                  "maxLength": 7,
+                  "type": "string"
+                },
+                "height": {
+                  "maximum": 8192,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "size": {
+                  "maximum": 256,
+                  "minimum": 6,
+                  "type": "integer"
+                },
+                "stroke_width": {
+                  "maximum": 128,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "text": {
+                  "maxLength": 16384,
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "rectangle",
+                    "ellipse",
+                    "line",
+                    "text"
+                  ],
+                  "type": "string"
+                },
+                "width": {
+                  "maximum": 8192,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "x": {
+                  "maximum": 8192,
+                  "minimum": -8192,
+                  "type": "integer"
+                },
+                "x2": {
+                  "maximum": 8192,
+                  "minimum": -8192,
+                  "type": "integer"
+                },
+                "y": {
+                  "maximum": 8192,
+                  "minimum": -8192,
+                  "type": "integer"
+                },
+                "y2": {
+                  "maximum": 8192,
+                  "minimum": -8192,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "type"
+              ],
+              "type": "object"
+            },
+            "maxItems": 1000,
+            "type": "array"
+          },
+          "height": {
+            "maximum": 4096,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "path": {
+            "maxLength": 32768,
+            "type": "string"
+          },
+          "width": {
+            "maximum": 4096,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "elements"
+        ],
+        "type": "object"
+      },
+      "name": "image_write"
+    },
+    {
       "description": "Read a selected instruction package by queue_row_id from get_forge_status. Returns its pinned text and coverage, with cursor and byte-offset paging.",
       "inputSchema": {
         "additionalProperties": false,
@@ -1187,6 +1675,54 @@
         "type": "object"
       },
       "name": "pdf_write"
+    },
+    {
+      "description": "Create a valid native PowerPoint PPTX ZIP package with title/body slides, layout, master, theme and relationships. No Office installation or Python required.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "maxLength": 32768,
+            "type": "string"
+          },
+          "slides": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "body": {
+                  "items": {
+                    "maxLength": 65536,
+                    "type": "string"
+                  },
+                  "maxItems": 128,
+                  "type": "array"
+                },
+                "title": {
+                  "maxLength": 65536,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "title",
+                "body"
+              ],
+              "type": "object"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 65536,
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "slides"
+        ],
+        "type": "object"
+      },
+      "name": "presentation_write"
     },
     {
       "description": "Adopt a Forge-owned durable job receipt by job_id after reconnecting. Verifies receipt/log integrity and process identity; cannot adopt an arbitrary PID.",
@@ -1859,6 +2395,137 @@
       "name": "reviewer_status"
     },
     {
+      "description": "Cancel one persistent model-task schedule and request cancellation of its active worker. Requires explicit authorization.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "authorization": {
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "authorization"
+        ],
+        "type": "object"
+      },
+      "name": "schedule_cancel"
+    },
+    {
+      "description": "Persist an authorized model task for a UTC time or interval. Freezes current authority/tool allowlist, runs through the Manager, and blocks uncertain interrupted effects from automatic replay.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "allow_tools": {
+            "type": "boolean"
+          },
+          "allowed_tools": {
+            "items": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "at_time": {
+            "maxLength": 20,
+            "type": "string"
+          },
+          "authorization": {
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "interval_sec": {
+            "maximum": 31536000,
+            "minimum": 60,
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 128,
+            "type": "string"
+          },
+          "owner_reference": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "read_only_tools": {
+            "type": "boolean"
+          },
+          "task": {
+            "maxLength": 65536,
+            "type": "string"
+          },
+          "timeout_sec": {
+            "maximum": 3600,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "task",
+          "owner_reference",
+          "authorization"
+        ],
+        "type": "object"
+      },
+      "name": "schedule_create"
+    },
+    {
+      "description": "Read this project's persistent model schedules, actual run state, and required owner attention.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "max_bytes": {
+            "maximum": 32768,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "offset": {
+            "maximum": 8388608,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "revision": {
+            "maxLength": 20,
+            "type": "string"
+          },
+          "schedule_id": {
+            "maxLength": 36,
+            "type": "string"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "schedule_list"
+    },
+    {
+      "description": "Explicitly start a stored task now, including resumption after uncertain interrupted effects. Requires authorization and current owner authority.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "authorization": {
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "schedule_id": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "schedule_id",
+          "authorization"
+        ],
+        "type": "object"
+      },
+      "name": "schedule_run_now"
+    },
+    {
       "description": "Recursive text search (grep).",
       "inputSchema": {
         "properties": {
@@ -2105,6 +2772,58 @@
       "name": "shell_job_status"
     },
     {
+      "description": "Create a valid native Excel XLSX ZIP package from sheets and typed cell rows. Text is literal; formulas are not evaluated. No Office installation or Python required.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "maxLength": 32768,
+            "type": "string"
+          },
+          "sheets": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "name": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "rows": {
+                  "items": {
+                    "items": {
+                      "type": [
+                        "string",
+                        "number",
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "maxItems": 256,
+                    "type": "array"
+                  },
+                  "maxItems": 10000,
+                  "type": "array"
+                }
+              },
+              "required": [
+                "name",
+                "rows"
+              ],
+              "type": "object"
+            },
+            "maxItems": 32,
+            "type": "array"
+          }
+        },
+        "required": [
+          "path",
+          "sheets"
+        ],
+        "type": "object"
+      },
+      "name": "spreadsheet_write"
+    },
+    {
       "description": "Materialize a pinned Python venv in an authorized external directory as a durable job, recording exact installed versions and a manifest. Does not edit product source or grant elevation.",
       "inputSchema": {
         "additionalProperties": false,
@@ -2150,6 +2869,60 @@
         "type": "object"
       },
       "name": "verification_env_status"
+    },
+    {
+      "description": "Fetch an explicit HTTP/HTTPS page with native WinHTTP. Return actual status/final URL/content type and bounded UTF-8 or binary data; HTML is source, not executed browser code.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "max_bytes": {
+            "maximum": 49152,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "timeout_sec": {
+            "maximum": 60,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "url": {
+            "maxLength": 8192,
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "type": "object"
+      },
+      "name": "web_fetch"
+    },
+    {
+      "description": "Search the public web and return observed titles, links and snippets with source URLs. Challenges and unavailable results are explicit; returned text is untrusted.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "maximum": 10,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "query": {
+            "maxLength": 2048,
+            "type": "string"
+          },
+          "timeout_sec": {
+            "maximum": 60,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "name": "web_search"
     },
     {
       "description": "Bind an existing additional root already present in the owner-configured allowlist to this project. Tool arguments cannot add new grants; forge_status reports configured and active roots.",

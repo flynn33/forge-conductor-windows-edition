@@ -243,6 +243,12 @@ std::string escapedToolText()
 class RouterFake final : public Contracts::IToolRouter {
 public:
     enum class Mode {
+        Image,
+        InvalidImage,
+        InvalidImageType,
+        InvalidImageMimeType,
+        MissingImageMimeType,
+        OversizedImage,
         Success,
         Failure,
         WaitForCancellation,
@@ -305,7 +311,19 @@ public:
                         "The scripted router observed cancellation."));
             }
             std::string payload{R"({"value":7,"ok":true})"};
-            if (mode == Mode::LargeSuccess) {
+            if (mode == Mode::Image || mode == Mode::InvalidImage || mode == Mode::InvalidImageType ||
+                mode == Mode::InvalidImageMimeType || mode == Mode::MissingImageMimeType || mode == Mode::OversizedImage) {
+                auto preview = Json{{"ok", true}, {"path", "C:\\workspace\\image.png"},
+                    {"image_mime_type", "image/png"}, {"preview_width", 1}, {"preview_height", 1},
+                    {"image_base64", mode == Mode::InvalidImage
+                        ? "invalid!"
+                        : "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jT9kAAAAASUVORK5CYII="}};
+                if (mode == Mode::InvalidImageType) preview["image_base64"] = 17;
+                if (mode == Mode::InvalidImageMimeType) preview["image_mime_type"] = 17;
+                if (mode == Mode::MissingImageMimeType) preview.erase("image_mime_type");
+                if (mode == Mode::OversizedImage) preview["image_base64"] = std::string(512U * 1024U + 4U, 'A');
+                payload = preview.dump();
+            } else if (mode == Mode::LargeSuccess) {
                 payload = Json{{"ok", true}, {"stdout", escapedToolText()}}.dump();
             } else if (mode == Mode::NearWireLimit || mode == Mode::NearWireLimitRejected) {
                 payload = Json{{"ok", true}, {"value", std::string(
@@ -654,7 +672,7 @@ void testInitializeNegotiationAndRoles(Contracts::IToolCatalog& catalog)
         const auto response = parse(session.output.front());
         REQUIRE(response.at("result").at("instructions").get<std::string>().find(
                     "Project folder: D:\\workspace") != std::string::npos);
-        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.3.13");
+        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.3.14");
         REQUIRE(response.at("result").at("serverInfo").at("name") ==
             (role == Domain::McpRole::Primary
                  ? "forge-conductor"
@@ -732,7 +750,7 @@ void testMethodsNotificationsAndExactList(Contracts::IToolCatalog& catalog)
     REQUIRE(parse(session.output[0]).at("id") == "string-id");
     const auto listed = parse(session.output[1]).at("result").at("tools");
     REQUIRE(listed.size() == Mcp::McpToolCatalog::ExpectedToolCount);
-    REQUIRE(listed.front().at("name") == "agent_context");
+    REQUIRE(listed.front().at("name") == "agent_cancel");
     REQUIRE(listed.back().at("name") == "workspace_authority_bind");
     REQUIRE(parse(session.output[2]).at("result").at("resources").empty());
     REQUIRE(parse(session.output[3]).at("result").at("prompts").empty());
@@ -1019,6 +1037,47 @@ void testLargeToolTextFragments(Contracts::IToolCatalog& catalog)
                     REQUIRE(response.dump().size() > 1000U * 1024U);
                 }
             }
+        }
+    }
+}
+
+void testNativeImageContent(Contracts::IToolCatalog& catalog)
+{
+    for (const auto mode : {RouterFake::Mode::Image, RouterFake::Mode::InvalidImage,
+                           RouterFake::Mode::InvalidImageType, RouterFake::Mode::InvalidImageMimeType,
+                           RouterFake::Mode::MissingImageMimeType, RouterFake::Mode::OversizedImage}) {
+        RouterFake router{{mode}};
+        ResolverFake resolver;
+        SequenceUuidGenerator uuids;
+        auto session = serve(catalog, router, resolver, uuids, Domain::McpRole::Primary,
+            {Inbound::json(request(1, "tools/call", Json{{"arguments", Json::object()},
+                {"name", "agent_list"}})), Inbound::json(request(2, "ping"))}, 2U);
+        REQUIRE(session.result.hasValue());
+        REQUIRE(session.output.size() == 2U);
+        Json response;
+        bool ping{};
+        for (const auto& encoded : session.output) {
+            const auto frame = Json::parse(encoded);
+            if (frame.at("id") == 1) response = frame.at("result");
+            if (frame.at("id") == 2) { REQUIRE(frame.at("result").is_object()); ping = true; }
+        }
+        REQUIRE(ping && response.is_object());
+        if (mode != RouterFake::Mode::Image) {
+            REQUIRE(response.at("isError") == true);
+            REQUIRE(response.at("structuredContent").at("code") == std::string{Domain::ErrorCodes::InternalFailure});
+            REQUIRE(response.at("content").size() == 1U);
+            REQUIRE(response.at("content").at(0).at("type") == "text");
+        } else {
+            REQUIRE(response.at("isError") == false);
+            REQUIRE(response.at("content").size() == 2U);
+            const auto metadata = Json::parse(response.at("content").at(0).at("text").get<std::string>());
+            REQUIRE(metadata == response.at("structuredContent"));
+            REQUIRE(!metadata.contains("image_base64"));
+            REQUIRE(metadata.at("image_content_block") == true);
+            REQUIRE(metadata.at("preview_width") == 1);
+            REQUIRE(response.at("content").at(1).at("type") == "image");
+            REQUIRE(response.at("content").at(1).at("mimeType") == "image/png");
+            REQUIRE(response.at("content").at(1).at("data").get<std::string>().starts_with("iVBORw0KGgo"));
         }
     }
 }
@@ -1332,6 +1391,7 @@ int main()
         testToolSuccessFailureAndAuthority(*catalog);
         testRouterPayloadBoundsAndRecovery(*catalog);
         testLargeToolTextFragments(*catalog);
+        testNativeImageContent(*catalog);
         testBoundedIdentifiersAndNames(*catalog);
         testPreCancellationAndActiveCancellation(*catalog);
         testQueueBoundAndCleanEofDrain(*catalog);

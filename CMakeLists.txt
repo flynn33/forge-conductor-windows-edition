@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.3.13
+    VERSION 1.3.14
     LANGUAGES CXX RC
 )
 
@@ -157,6 +157,7 @@ set(FORGE_APPLICATION_SOURCES
     src/Application/LegacyInstructionPackageMigration.cpp
     src/Application/ManagerController.cpp
     src/Application/ManagedRunService.cpp
+    src/Application/ScheduledTaskService.cpp
     src/Application/ProjectMemoryRepositoryCache.cpp
     src/Application/ProjectMemoryService.cpp
     src/Application/ProjectPolicyService.cpp
@@ -351,6 +352,7 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsProjectWorkspaceAuthority.cpp
     src/Infrastructure/Windows/WindowsReviewerRunStore.cpp
     src/Infrastructure/Windows/WindowsRuntimeDiagnostics.cpp
+    src/Infrastructure/Windows/WindowsScheduledTaskNotifier.cpp
     src/Infrastructure/Windows/WindowsUnicodeCanonicalizer.cpp
     src/Infrastructure/Windows/WindowsUuidGenerator.cpp
     src/Infrastructure/Windows/WindowsWorkspaceAuthority.cpp
@@ -407,6 +409,8 @@ target_link_libraries(ForgeConductor.Infrastructure.Windows PRIVATE
     shell32
     taskschd
     version
+    windowsapp
+    runtimeobject
     winhttp)
 
 set(FORGE_PERSISTENCE_WINDOWS_SOURCES
@@ -488,6 +492,9 @@ set(FORGE_NATIVE_TOOLS_WINDOWS_SOURCES
     src/NativeTools/Windows/WindowsGitService.cpp
     src/NativeTools/Windows/WindowsPathGlobService.cpp
     src/NativeTools/Windows/WindowsPdfService.cpp
+    src/NativeTools/Windows/WindowsArtifactDocumentService.cpp
+    src/NativeTools/Windows/WindowsDesktopArtifactService.cpp
+    src/NativeTools/Windows/WindowsWebAccessService.cpp
     src/NativeTools/Windows/WindowsShellService.cpp
     src/NativeTools/Windows/ShellJobStorage.cpp
     src/NativeTools/Windows/WindowsTextSearchService.cpp
@@ -498,7 +505,8 @@ forge_add_layer(ForgeConductor.NativeTools.Windows ForgeConductor::NativeTools.W
     ForgeConductor::Contracts
     ForgeConductor::Infrastructure.Windows)
 forge_configure_native_target(ForgeConductor.NativeTools.Windows)
-target_link_libraries(ForgeConductor.NativeTools.Windows PRIVATE nlohmann_json::nlohmann_json)
+target_link_libraries(ForgeConductor.NativeTools.Windows PRIVATE nlohmann_json::nlohmann_json
+    ole32 oleaut32 user32 gdi32 windowscodecs uiautomationcore shell32 winhttp shlwapi)
 target_include_directories(ForgeConductor.NativeTools.Windows
     PUBLIC "${PROJECT_SOURCE_DIR}/include"
     PRIVATE "${PROJECT_SOURCE_DIR}/src")
@@ -523,6 +531,7 @@ target_include_directories(ForgeNativeSessionHostPlugin PUBLIC
 target_link_libraries(ForgeNativeSessionHostPlugin PRIVATE
     ForgeConductor::SessionHost.Core)
 add_library(ForgeConductor.Mcp STATIC
+    src/Mcp/McpAgentWorkerTools.cpp
     src/Mcp/McpClientWorkspaceContext.cpp
     src/Mcp/McpExecutionServices.cpp
     src/Mcp/McpInvocationGuard.cpp
@@ -2239,12 +2248,12 @@ if(BUILD_TESTING)
 
     add_executable(ForgeConductor.Mcp.ServeProcessSnapshotTests
         tests/Mcp/McpServeProcessSnapshotTests.cpp)
-    add_dependencies(ForgeConductor.Mcp.ServeProcessSnapshotTests ForgeConductor.Manager)
+    add_dependencies(ForgeConductor.Mcp.ServeProcessSnapshotTests ForgeConductor.Manager ForgeConductor.SessionHost)
     forge_configure_native_target(
         ForgeConductor.Mcp.ServeProcessSnapshotTests)
     target_link_libraries(
         ForgeConductor.Mcp.ServeProcessSnapshotTests PRIVATE
-        nlohmann_json::nlohmann_json ws2_32)
+        ForgeConductor::Infrastructure.Windows nlohmann_json::nlohmann_json ws2_32)
     add_dependencies(
         ForgeConductor.Mcp.ServeProcessSnapshotTests
         ForgeConductor.Cli)
@@ -2320,6 +2329,20 @@ if(BUILD_TESTING)
 
     add_executable(ForgeConductor.Mcp.ToolPackAdapterTests
         tests/Mcp/McpToolPackAdapterTests.cpp)
+
+    add_executable(ForgeConductor.Mcp.AgentWorkerTests
+        tests/Mcp/McpAgentWorkerToolsTests.cpp)
+    forge_configure_native_target(ForgeConductor.Mcp.AgentWorkerTests)
+    target_include_directories(ForgeConductor.Mcp.AgentWorkerTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(ForgeConductor.Mcp.AgentWorkerTests PRIVATE
+        ForgeConductor::Mcp ForgeConductor::Application ForgeConductor::Infrastructure.Windows
+        ForgeConductor::NativeTools.Windows
+        nlohmann_json::nlohmann_json)
+    add_test(NAME ForgeConductor.Mcp.AgentWorkerTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Mcp.AgentWorkerTests>)
+    set_tests_properties(ForgeConductor.Mcp.AgentWorkerTests PROPERTIES
+        LABELS "T-UNIT;T-INTEGRATION;T-MANAGED-RUN;T-SEC" TIMEOUT 120)
     forge_configure_standard_target(ForgeConductor.Mcp.ToolPackAdapterTests)
     target_include_directories(
         ForgeConductor.Mcp.ToolPackAdapterTests PRIVATE
@@ -3021,6 +3044,29 @@ if(BUILD_TESTING)
 
     add_executable(ForgeConductor.ManagedRun.ServiceTests
         tests/Application/ManagedRunServiceTests.cpp)
+
+    add_executable(ForgeConductor.ScheduledTask.ServiceTests
+        tests/Application/ScheduledTaskServiceTests.cpp)
+    forge_configure_standard_target(ForgeConductor.ScheduledTask.ServiceTests)
+    target_include_directories(ForgeConductor.ScheduledTask.ServiceTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(ForgeConductor.ScheduledTask.ServiceTests PRIVATE
+        ForgeConductor::Application ForgeConductor::Mcp nlohmann_json::nlohmann_json)
+    add_test(NAME ForgeConductor.ScheduledTask.ServiceTests
+        COMMAND $<TARGET_FILE:ForgeConductor.ScheduledTask.ServiceTests>)
+    set_tests_properties(ForgeConductor.ScheduledTask.ServiceTests PROPERTIES
+        LABELS "T-UNIT;T-INTEGRATION;T-MANAGED-RUN;T-SEC" TIMEOUT 120)
+    add_executable(ForgeConductor.ScheduledTask.NotifierTests
+        tests/Infrastructure/WindowsScheduledTaskNotifierTests.cpp)
+    forge_configure_standard_target(ForgeConductor.ScheduledTask.NotifierTests)
+    target_include_directories(ForgeConductor.ScheduledTask.NotifierTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(ForgeConductor.ScheduledTask.NotifierTests PRIVATE
+        ForgeConductor::Infrastructure.Windows nlohmann_json::nlohmann_json)
+    add_test(NAME ForgeConductor.ScheduledTask.NotifierTests
+        COMMAND $<TARGET_FILE:ForgeConductor.ScheduledTask.NotifierTests>)
+    set_tests_properties(ForgeConductor.ScheduledTask.NotifierTests PROPERTIES
+        LABELS "T-UNIT;T-INTEGRATION;T-MANAGED-RUN;T-SEC" TIMEOUT 120)
     forge_configure_standard_target(
         ForgeConductor.ManagedRun.ServiceTests)
     target_link_libraries(
@@ -3463,6 +3509,42 @@ if(BUILD_TESTING)
         LABELS "T-INTEGRATION;T-PROC;T-SEC;G13"
         TIMEOUT 60
     )
+
+    add_executable(ForgeConductor.NativeTools.WebTests
+        tests/NativeTools/WindowsWebAccessServiceTests.cpp)
+    forge_configure_native_target(ForgeConductor.NativeTools.WebTests)
+    target_include_directories(ForgeConductor.NativeTools.WebTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(ForgeConductor.NativeTools.WebTests PRIVATE
+        ForgeConductor::NativeTools.Windows nlohmann_json::nlohmann_json)
+    add_test(NAME ForgeConductor.NativeTools.WebTests
+        COMMAND $<TARGET_FILE:ForgeConductor.NativeTools.WebTests>)
+    set_tests_properties(ForgeConductor.NativeTools.WebTests PROPERTIES
+        LABELS "T-UNIT;T-INTEGRATION;T-WEB;T-SEC" TIMEOUT 120)
+
+    add_executable(ForgeConductor.NativeTools.ArtifactDocumentTests
+        tests/NativeTools/WindowsArtifactDocumentServiceTests.cpp)
+    forge_configure_native_target(ForgeConductor.NativeTools.ArtifactDocumentTests)
+    target_include_directories(ForgeConductor.NativeTools.ArtifactDocumentTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(ForgeConductor.NativeTools.ArtifactDocumentTests PRIVATE
+        ForgeConductor::NativeTools.Windows nlohmann_json::nlohmann_json xmllite ole32)
+    add_test(NAME ForgeConductor.NativeTools.ArtifactDocumentTests
+        COMMAND $<TARGET_FILE:ForgeConductor.NativeTools.ArtifactDocumentTests>)
+    set_tests_properties(ForgeConductor.NativeTools.ArtifactDocumentTests PROPERTIES
+        LABELS "T-UNIT;T-INTEGRATION;T-DOC;T-SEC" TIMEOUT 120)
+
+    add_executable(ForgeConductor.NativeTools.DesktopArtifactTests
+        tests/NativeTools/WindowsDesktopArtifactServiceTests.cpp)
+    forge_configure_native_target(ForgeConductor.NativeTools.DesktopArtifactTests)
+    target_include_directories(ForgeConductor.NativeTools.DesktopArtifactTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(ForgeConductor.NativeTools.DesktopArtifactTests PRIVATE
+        ForgeConductor::NativeTools.Windows nlohmann_json::nlohmann_json crypt32)
+    add_test(NAME ForgeConductor.NativeTools.DesktopArtifactTests
+        COMMAND $<TARGET_FILE:ForgeConductor.NativeTools.DesktopArtifactTests>)
+    set_tests_properties(ForgeConductor.NativeTools.DesktopArtifactTests PROPERTIES
+        LABELS "T-UNIT;T-INTEGRATION;T-DOC;T-SEC" TIMEOUT 120)
 
     add_executable(ForgeConductor.NativeTools.PdfTests
         tests/NativeTools/WindowsPdfServiceTests.cpp)

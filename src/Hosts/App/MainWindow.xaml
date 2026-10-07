@@ -250,6 +250,11 @@
        <Border Style="{ThemeResource ForgeCardStyle}" MinHeight="250">
         <StackPanel Spacing="7">
          <Grid><StackPanel Orientation="Horizontal" Spacing="9"><FontIcon Glyph="&#xE713;" FontSize="17" Foreground="{ThemeResource ForgeAccentBrush}"/><TextBlock Text="Runtime configuration" Style="{ThemeResource ForgeSectionTitleStyle}"/></StackPanel><Button HorizontalAlignment="Right" Content="Edit configuration" Click="OpenSettingsClicked"/></Grid>
+         <StackPanel Orientation="Horizontal" Spacing="8">
+          <Button Content="Ensure manager" Click="StartClicked"/>
+          <Button Content="Restart service" Click="RestartClicked"/>
+          <Button Content="Stop service" Click="StopClicked"/>
+         </StackPanel>
          <Border Style="{ThemeResource ForgeInsetStyle}" Padding="12,9"><Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="90"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><FontIcon Glyph="&#xE77B;" Foreground="{ThemeResource ForgeTextSecondaryBrush}"/><TextBlock Grid.Column="1" Text="Manager"/><Ellipse x:Name="WorkflowDot" Grid.Column="2" Width="8" Height="8" Fill="{ThemeResource ForgeSuccessBrush}" VerticalAlignment="Center"/><TextBlock x:Name="WorkflowStatus" Grid.Column="3" Margin="8,0,0,0" Text="Waiting for Manager workflow inventory" TextTrimming="CharacterEllipsis" AutomationProperties.LiveSetting="Polite"/><FontIcon Grid.Column="4" Glyph="&#xE76C;" Foreground="{ThemeResource ForgeTextTertiaryBrush}"/></Grid></Border>
          <Border Style="{ThemeResource ForgeInsetStyle}" Padding="12,9"><Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="90"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><FontIcon Glyph="&#xE71B;" Foreground="{ThemeResource ForgeTextSecondaryBrush}"/><TextBlock Grid.Column="1" Text="Provider"/><Ellipse x:Name="ProviderDot" Grid.Column="2" Width="8" Height="8" Fill="{ThemeResource ForgeSuccessBrush}" VerticalAlignment="Center"/><TextBlock x:Name="ProviderHealth" Grid.Column="3" Margin="8,0,0,0" Text="Waiting for a sample" TextTrimming="CharacterEllipsis"/><FontIcon Grid.Column="4" Glyph="&#xE76C;" Foreground="{ThemeResource ForgeTextTertiaryBrush}"/></Grid></Border>
          <Border Style="{ThemeResource ForgeInsetStyle}" Padding="12,9"><Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="90"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><FontIcon Glyph="&#xE8F1;" Foreground="{ThemeResource ForgeTextSecondaryBrush}"/><TextBlock Grid.Column="1" Text="Continuity"/><Ellipse x:Name="ContinuityDot" Grid.Column="2" Width="8" Height="8" Fill="{ThemeResource ForgeSuccessBrush}" VerticalAlignment="Center"/><TextBlock x:Name="ContinuityHealth" Grid.Column="3" Margin="8,0,0,0" Text="Waiting for a sample" TextTrimming="CharacterEllipsis"/><FontIcon Grid.Column="4" Glyph="&#xE76C;" Foreground="{ThemeResource ForgeTextTertiaryBrush}"/></Grid></Border>
@@ -561,6 +566,11 @@
       <NumberBox x:Name="SettingsShellTimeout" Grid.Row="3" Grid.Column="1" Header="Shell timeout (seconds)" Minimum="1" Maximum="3600" SpinButtonPlacementMode="Compact" AutomationProperties.Name="Shell timeout in seconds" />
      </Grid>
      <ToggleSwitch x:Name="SettingsShellEnabled" Header="Allow shell-backed tools" OffContent="Disabled" OnContent="Enabled" />
+     <ComboBox x:Name="SettingsFileSystemAccess" Header="Filesystem access" SelectedIndex="0" HorizontalAlignment="Stretch" AutomationProperties.Name="Filesystem access">
+      <ComboBoxItem Content="Project and explicitly bound configured roots"/>
+      <ComboBoxItem Content="All local drives with this Windows account's permissions"/>
+     </ComboBox>
+     <TextBlock Text="Saved filesystem access changes apply to the Manager immediately. Reconnect the LM Studio integrations to refresh their scopes." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
      <ComboBox x:Name="SettingsLogLevel" Header="Log detail" Width="260" HorizontalAlignment="Left" AutomationProperties.Name="Log detail">
       <ComboBoxItem Content="Trace"/><ComboBoxItem Content="Debug"/><ComboBoxItem Content="Information"/>
       <ComboBoxItem Content="Warning"/><ComboBoxItem Content="Error"/><ComboBoxItem Content="Critical"/>

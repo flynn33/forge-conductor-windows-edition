@@ -820,10 +820,21 @@ public:
                             Domain::ErrorCodes::InvalidRequest,
                             "The managed function output is invalid.");
                     }
+                    if (output.image && !Domain::isValidManagedImagePreview(*output.image)) {
+                        return failure<Domain::ManagedProviderTurnResult>(Domain::ErrorCodes::InvalidRequest,
+                            "The managed image preview is invalid or exceeds its 512 KiB encoded bound.");
+                    }
+                    Json content = output.canonicalOutput;
+                    if (output.image) {
+                        content = Json::array({
+                            Json{{"type", "input_text"}, {"text", output.canonicalOutput}},
+                            Json{{"type", "input_image"}, {"detail", "auto"},
+                                {"image_url", "data:" + output.image->mimeType + ";base64," + output.image->base64Data}}});
+                    }
                     body["input"].push_back(Json{
                         {"type", "function_call_output"},
                         {"call_id", output.callId},
-                        {"output", output.canonicalOutput}});
+                        {"output", std::move(content)}});
                 }
             }
             if (!request.tools.empty()) {

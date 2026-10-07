@@ -49,6 +49,9 @@
 #include "ForgeConductor/NativeTools/Windows/WindowsGitService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsPathGlobService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsPdfService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsArtifactDocumentService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsDesktopArtifactService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsWebAccessService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsShellService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsEvidenceService.h"
 #include <nlohmann/json.hpp>
@@ -74,6 +77,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -484,22 +488,103 @@ void ensureDirectory(const Domain::PathText& directory)
         context));
 }
 
-// Never cross profile boundaries or route to an older broker. A unavailable
-// Manager leaves connector-owned jobs explicitly marked non-durable.
+[[nodiscard]] bool sameWindowsPath(const std::wstring_view left,
+    const std::wstring_view right) noexcept
+{
+    return ::CompareStringOrdinal(left.data(), static_cast<int>(left.size()),
+        right.data(), static_cast<int>(right.size()), TRUE) == CSTR_EQUAL;
+}
+
+[[nodiscard]] std::wstring quoteWindowsArgument(const std::wstring_view value)
+{
+    std::wstring quoted{L"\""};
+    std::size_t backslashes{};
+    for (const auto character : value) {
+        if (character == L'\\') { ++backslashes; continue; }
+        quoted.append(backslashes * (character == L'\"' ? 2U : 1U) +
+            (character == L'\"' ? 1U : 0U), L'\\');
+        quoted.push_back(character);
+        backslashes = 0U;
+    }
+    quoted.append(backslashes * 2U, L'\\');
+    quoted.push_back(L'\"');
+    return quoted;
+}
+
+[[nodiscard]] std::optional<std::filesystem::path> siblingManagerExecutable()
+{
+    std::array<wchar_t, 32'768U> module{};
+    const auto length = ::GetModuleFileNameW(nullptr, module.data(), static_cast<DWORD>(module.size()));
+    if (!length || length >= module.size()) return std::nullopt;
+    return std::filesystem::path{std::wstring{module.data(), length}}.parent_path() /
+        L"ForgeConductor.Manager.exe";
+}
+
+[[nodiscard]] Domain::Result<void> validateDurableManagerStatus(const Domain::ManagerStatus& status,
+    const Domain::PathText& home, const std::filesystem::path& executable)
+{
+    const auto unavailable = [](const char* message) {
+        return Domain::Result<void>::failure(Domain::makeError(
+            Domain::ErrorCodes::HostCapabilityUnavailable, message));
+    };
+    if (!status.isManager || status.processId == 0U)
+        return unavailable("The authenticated endpoint is not a live durable Manager.");
+    if (status.version != ProductVersion)
+        return unavailable("The durable Manager version differs from this connector; use matching package binaries.");
+    auto expectedHome = strictUtf8ToWide(home.value());
+    auto servingHome = strictUtf8ToWide(status.home.value());
+    if (!expectedHome || !servingHome || !sameWindowsPath(servingHome.value(), expectedHome.value()))
+        return unavailable("The durable Manager home differs from this connector profile.");
+    const HANDLE process = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, status.processId);
+    if (!process) return unavailable("The durable Manager serving process could not be verified.");
+    std::array<wchar_t, 32'768U> image{};
+    DWORD characters = static_cast<DWORD>(image.size());
+    const bool matching = ::QueryFullProcessImageNameW(process, 0U, image.data(), &characters) != FALSE &&
+        sameWindowsPath(std::wstring_view{image.data(), characters}, executable.native());
+    ::CloseHandle(process);
+    if (!matching) return unavailable("The authenticated Manager is serving from a different executable package.");
+    return Domain::Result<void>::success();
+}
+
+// A broker owns its own lifetime. Startup never replaces an existing lease,
+// inherits MCP stdio, or connects across profile/version/package boundaries.
 [[nodiscard]] std::unique_ptr<InfrastructureWindows::WindowsManagerNamedPipeClient>
-connectDurableManager(const Domain::PathText& home, const Domain::OperationContext& parent,
-    const std::shared_ptr<InfrastructureWindows::SystemClock>& clock) noexcept
+ensureDurableManager(const Domain::PathText& home, const Domain::OperationContext& parent,
+    const std::shared_ptr<InfrastructureWindows::SystemClock>& clock,
+    std::string& startupError) noexcept
 {
     try {
+        startupError = "The matching durable Manager could not be started or authenticated.";
         auto identity = InfrastructureWindows::WindowsCurrentUserIdentity::load();
         if (!identity) return {};
-        const auto connect = [&](const InfrastructureWindows::WindowsManagerInstanceLeaseOptions& options,
-                                 const std::wstring& registrySubkey) -> std::unique_ptr<InfrastructureWindows::WindowsManagerNamedPipeClient> {
+        const auto sibling = siblingManagerExecutable();
+        if (!sibling) return {};
+        const auto& executable = *sibling;
+        if (!isSingleLinkRegularExecutable(executable)) {
+            startupError = "The regular Manager executable beside this connector is unavailable.";
+            return {};
+        }
+        auto homeWide = strictUtf8ToWide(home.value());
+        auto persistentRoot = InfrastructureWindows::WindowsAlphaManagerProfile::persistentDataRoot();
+        if (!homeWide || !persistentRoot) return {};
+        const bool persistent = sameWindowsPath(homeWide.value(), persistentRoot.value());
+        auto profile = InfrastructureWindows::WindowsAlphaManagerProfile::create(home);
+        if (!profile) return {};
+        InfrastructureWindows::WindowsManagerInstanceLeaseOptions options;
+        if (!persistent) options.purposeSuffix = profile.value().purposeSuffix();
+        const std::wstring registrySubkey = persistent
+            ? std::wstring{InfrastructureWindows::DpapiSecureStorage::DefaultRegistrySubkey}
+            : std::wstring{profile.value().secureStorageRegistrySubkey()};
+        auto names = InfrastructureWindows::WindowsManagerInstanceLease::namesFor(identity.value(), options);
+        if (!names) return {};
+        const auto readyDeadline = (std::min)(parent.deadline,
+            clock->monotonicNow() + std::chrono::seconds{10});
+        const auto active = [&] { return !parent.isCancellationRequested() &&
+            clock->monotonicNow() < readyDeadline; };
+        const auto connect = [&]() -> std::unique_ptr<InfrastructureWindows::WindowsManagerNamedPipeClient> {
             const Domain::OperationContext context{parent.operationId,
-                (std::min)(parent.deadline, clock->monotonicNow() + std::chrono::seconds{2}),
+                (std::min)(readyDeadline, clock->monotonicNow() + std::chrono::milliseconds{250}),
                 parent.cancellation, parent.correlationId};
-            auto names = InfrastructureWindows::WindowsManagerInstanceLease::namesFor(identity.value(), options);
-            if (!names) return {};
             InfrastructureWindows::DpapiSecureStorage secure{registrySubkey};
             InfrastructureWindows::WindowsManagerAuthenticationTokenGenerator generator;
             InfrastructureWindows::WindowsManagerAuthenticationTokenStore tokens{secure, generator};
@@ -509,18 +594,63 @@ connectDurableManager(const Domain::PathText& home, const Domain::OperationConte
                 clock, std::wstring{names.value().pipeName()}, *nonce.value());
             if (!client) return {};
             auto status = client.value()->status(context);
-            if (!status || !status.value().isManager || status.value().version != ProductVersion ||
-                std::filesystem::path(status.value().home.value()) != std::filesystem::path(home.value())) return {};
+            if (!status) return {};
+            const auto verified = validateDurableManagerStatus(status.value(), home, executable);
+            if (!verified) {
+                startupError = verified.error().message;
+                return {};
+            }
+            startupError.clear();
             return std::move(client).value();
         };
-        if (auto persistent = connect({}, std::wstring{InfrastructureWindows::DpapiSecureStorage::DefaultRegistrySubkey}))
-            return persistent;
-        auto profile = InfrastructureWindows::WindowsAlphaManagerProfile::create(home);
-        if (!profile) return {};
-        InfrastructureWindows::WindowsManagerInstanceLeaseOptions options;
-        options.purposeSuffix = profile.value().purposeSuffix();
-        return connect(options, std::wstring{profile.value().secureStorageRegistrySubkey()});
-    } catch (...) { return {}; }
+        if (auto existing = connect()) return existing;
+        if (!active()) return {};
+        auto startupOptions = options;
+        startupOptions.purposeSuffix += persistent ? "startup" : "-startup";
+        auto startupLease = InfrastructureWindows::WindowsManagerInstanceLease::acquire(
+            identity.value(), startupOptions);
+        if (startupLease) {
+            if (auto existing = connect()) return existing;
+            // A busy, incompatible, or still-starting owner must keep its lease.
+            const HANDLE existingLease = ::OpenMutexW(SYNCHRONIZE, FALSE,
+                std::wstring{names.value().mutexName()}.c_str());
+            if (existingLease) {
+                ::CloseHandle(existingLease);
+                startupError = "An existing Manager owns this profile but has not passed the matching package, version, and home handshake.";
+            } else if (::GetLastError() == ERROR_FILE_NOT_FOUND && active()) {
+                auto arguments = quoteWindowsArgument(executable.native());
+                arguments += persistent ? L" --home " : L" --alpha-root ";
+                arguments += quoteWindowsArgument(homeWide.value());
+                STARTUPINFOW startup{};
+                startup.cb = sizeof(startup);
+                PROCESS_INFORMATION process{};
+                if (!::CreateProcessW(executable.c_str(), arguments.data(), nullptr, nullptr,
+                        FALSE, CREATE_NO_WINDOW, nullptr, executable.parent_path().c_str(),
+                        &startup, &process)) {
+                    startupError = "Windows could not start the matching Manager (error " +
+                        std::to_string(::GetLastError()) + ").";
+                    return {};
+                }
+                ::CloseHandle(process.hThread);
+                ::CloseHandle(process.hProcess);
+            } else {
+                startupError = "The Manager profile ownership could not be checked safely.";
+                return {};
+            }
+        } else if (startupLease.error().code != Domain::ErrorCodes::OwnershipConflict) {
+            startupError = startupLease.error().message;
+            return {};
+        }
+        while (active()) {
+            if (auto existing = connect()) return existing;
+            std::this_thread::sleep_for(std::chrono::milliseconds{50});
+        }
+        if (parent.isCancellationRequested()) startupError = "Manager startup was cancelled; the independent process was left unchanged.";
+        return {};
+    } catch (...) {
+        startupError = "The matching durable Manager startup failed safely.";
+        return {};
+    }
 }
 
 } // namespace
@@ -750,7 +880,7 @@ private:
         workspaceAuthority_ = std::make_unique<
             InfrastructureWindows::WindowsProjectWorkspaceAuthority>(
             *projectRegistry_, *uuidGenerator_, clientId_,
-            configuration_.shell.enabled, configuration_.allowedRoots);
+            configuration_.shell.enabled, configuration_.allowedRoots, configuration_.fileSystemAccess);
 
         const auto gitExecutable = discoverGitExecutable();
         const auto powerShellExecutable = discoverPowerShellExecutable();
@@ -787,6 +917,11 @@ private:
             NativeToolsWindows::WindowsTextSearchService>();
         pdf_ = std::make_unique<NativeToolsWindows::WindowsPdfService>(
             *atomicFileStore_);
+        artifactDocuments_ = std::make_unique<NativeToolsWindows::WindowsArtifactDocumentService>(
+            *workspaceAuthority_, *atomicFileStore_);
+        desktopArtifacts_ = std::make_unique<NativeToolsWindows::WindowsDesktopArtifactService>(
+            *workspaceAuthority_, *atomicFileStore_);
+        webAccess_ = std::make_unique<NativeToolsWindows::WindowsWebAccessService>();
         git_ = std::make_unique<NativeToolsWindows::WindowsGitService>(
             gitExecutable, processSupervisor_);
         shell_ = std::make_unique<NativeToolsWindows::WindowsShellService>(
@@ -837,7 +972,7 @@ private:
                     authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Write, operation),
                     authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Create, operation)});
             }, dataRoot);
-        managerBroker_ = connectDurableManager(dataRoot, startupContext, clock_);
+        managerBroker_ = ensureDurableManager(dataRoot, startupContext, clock_, managerStartupError_);
         agentCatalog_ = take(Application::AgentCatalog::create(
             clock_, std::span<const Application::AgentDefinitionDocument>{},
             startupContext));
@@ -987,13 +1122,25 @@ private:
                     if (visibleChatContinuity_) visibleChatContinuity_->bindWorkspace(project, root);
                 }};
         toolDependencies.evidence = evidence_.get();
-        if (managerBroker_) toolDependencies.durableToolBroker = [this](
+        toolDependencies.webAccess = webAccess_.get();
+        toolDependencies.artifactDocuments = artifactDocuments_.get();
+        toolDependencies.desktopArtifacts = desktopArtifacts_.get();
+        toolDependencies.managerStartupError = managerStartupError_;
+        if (managerBroker_) toolDependencies.durableToolBroker = [this, dataRoot](
             const std::string_view name, const std::string_view arguments,
             const Domain::ProjectId& project, const Domain::OperationContext& operation) {
             const Domain::OperationContext brokerOperation{operation.operationId,
                 (std::min)(operation.deadline, clock_->monotonicNow() +
                     ForgeConductor::Manager::ManagerTransportLimits::DefaultMaximumRequestLifetime),
                 operation.cancellation, operation.correlationId};
+            auto status = managerBroker_->status(brokerOperation);
+            if (!status) return Domain::Result<std::string>::failure(status.error());
+            const auto executable = siblingManagerExecutable();
+            if (!executable) return Domain::Result<std::string>::failure(Domain::makeError(
+                Domain::ErrorCodes::HostCapabilityUnavailable,
+                "The durable Manager sibling path could not be resolved."));
+            const auto verified = validateDurableManagerStatus(status.value(), dataRoot, *executable);
+            if (!verified) return Domain::Result<std::string>::failure(verified.error());
             auto result = managerBroker_->invokeTool(
                 {project, std::string{name}, std::string{arguments}}, brokerOperation);
             if (!result) return Domain::Result<std::string>::failure(result.error());
@@ -1166,6 +1313,9 @@ private:
         shell_.reset();
         git_.reset();
         pdf_.reset();
+        artifactDocuments_.reset();
+        desktopArtifacts_.reset();
+        webAccess_.reset();
         textSearch_.reset();
         pathGlob_.reset();
         fileSystem_.reset();
@@ -1281,11 +1431,15 @@ private:
     std::unique_ptr<NativeToolsWindows::WindowsPathGlobService> pathGlob_;
     std::unique_ptr<NativeToolsWindows::WindowsTextSearchService> textSearch_;
     std::unique_ptr<NativeToolsWindows::WindowsPdfService> pdf_;
+    std::unique_ptr<NativeToolsWindows::WindowsArtifactDocumentService> artifactDocuments_;
+    std::unique_ptr<NativeToolsWindows::WindowsDesktopArtifactService> desktopArtifacts_;
+    std::unique_ptr<NativeToolsWindows::WindowsWebAccessService> webAccess_;
     std::unique_ptr<NativeToolsWindows::WindowsGitService> git_;
     std::unique_ptr<NativeToolsWindows::WindowsShellService> shell_;
     std::unique_ptr<NativeToolsWindows::WindowsEvidenceService> evidence_;
     std::unique_ptr<InfrastructureWindows::WindowsGitHubReadService> githubRead_;
     std::unique_ptr<InfrastructureWindows::WindowsManagerNamedPipeClient> managerBroker_;
+    std::string managerStartupError_;
 
     std::shared_ptr<PersistenceWindows::WindowsProjectMemoryArtifactStore>
         projectArtifactStore_;

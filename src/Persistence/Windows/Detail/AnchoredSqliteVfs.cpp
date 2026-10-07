@@ -1530,11 +1530,11 @@ int SQLITE_CALLBACK anchoredOpen(
             // second pathname-based exclusive create.
             delegatedFlags &= ~SQLITE_OPEN_EXCLUSIVE;
         }
-        const std::string& canonicalName =
-            callback.state().namespaceLease->canonicalUtf8Path(role);
+        // Classification and the pinned leaf already constrain this canonical
+        // name. Preserve SQLite's filename metadata and its xClose lifetime.
         const int result = callback.state().underlying->xOpen(
             callback.state().underlying,
-            canonicalName.c_str(),
+            name,
             wrapper->delegated,
             delegatedFlags,
             outputFlags);

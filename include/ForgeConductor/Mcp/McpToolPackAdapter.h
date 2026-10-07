@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ForgeConductor/Contracts/IScheduledTaskService.h"
+
 #include "ForgeConductor/Contracts/IAgentServices.h"
 #include "ForgeConductor/Contracts/IEvidenceService.h"
 #include "ForgeConductor/Contracts/IGitHubReadService.h"
@@ -18,6 +20,9 @@
 #include "ForgeConductor/Contracts/IProjectMemoryService.h"
 #include "ForgeConductor/Contracts/IProjectPolicyService.h"
 #include "ForgeConductor/Contracts/IToolServices.h"
+#include "ForgeConductor/Contracts/IWebAccessService.h"
+#include "ForgeConductor/Contracts/IArtifactDocumentService.h"
+#include "ForgeConductor/Contracts/IDesktopArtifactService.h"
 
 #include <chrono>
 #include <cstdint>
@@ -78,6 +83,12 @@ struct McpToolPackDependencies final {
     std::function<Domain::Result<std::string>(std::string_view, std::string_view,
         const Domain::ProjectId&, const Domain::OperationContext&)> durableToolBroker;
     std::function<Contracts::IManagedRunService*()> reviewerRuns;
+    Contracts::IWebAccessService* webAccess{};
+    Contracts::IArtifactDocumentService* artifactDocuments{};
+    Contracts::IDesktopArtifactService* desktopArtifacts{};
+    std::function<Contracts::IManagedRunService*()> workerRuns;
+    std::function<Contracts::IScheduledTaskService*()> scheduledTasks;
+    std::string managerStartupError;
 };
 
 // Parses source-compatible tool arguments into transport-neutral Domain

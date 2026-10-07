@@ -188,7 +188,7 @@ walkDirectory(const HANDLE directory,
         continue;
       }
       std::wstring canonical{canonicalDirectory};
-      canonical.push_back(L'\\');
+      if (canonical.back() != L'\\') canonical.push_back(L'\\');
       canonical.append(entry.name);
       std::wstring relative{relativeDirectory};
       if (!relative.empty()) {
@@ -327,7 +327,9 @@ Domain::Result<OpenedNativeObject> openAuthorizedObject(
           std::move(anchored).error());
     }
     const auto name = leafName(anchored.value().canonicalPath());
-    if (name.empty()) {
+    const bool volumeRoot = requiredAccess == Domain::FileAccess::Read &&
+        anchored.value().canonicalPath().size() == 3U;
+    if (name.empty() && !volumeRoot) {
       return Domain::Result<OpenedNativeObject>::failure(Domain::makeError(
           Domain::ErrorCodes::InvalidRequest,
           "The authorized native tool path has no leaf component."));
@@ -343,6 +345,13 @@ Domain::Result<OpenedNativeObject> openAuthorizedObject(
     if (!anchorsValid) {
       return Domain::Result<OpenedNativeObject>::failure(
           std::move(anchorsValid).error());
+    }
+    if (volumeRoot) {
+      auto opened = openCanonicalDirectory(anchored.value().canonicalPath(),
+          desiredAccess, shareAccess, context);
+      if (!opened) return opened;
+      opened.value().authorizedPathOwner.emplace(std::move(anchored).value());
+      return opened;
     }
     bool directory{};
     auto opened = openRelativeAny(anchored.value().parentDirectoryHandle(),
@@ -474,7 +483,7 @@ openOrCreateChildDirectory(const HANDLE parentDirectory,
     }
     InfrastructureDetail::RelativeOpenOptions options{};
     options.desiredAccess = FILE_LIST_DIRECTORY | FILE_TRAVERSE |
-                            FILE_READ_ATTRIBUTES | FILE_ADD_SUBDIRECTORY;
+                            FILE_READ_ATTRIBUTES;
     options.shareAccess = FILE_SHARE_READ;
     options.disposition =
         InfrastructureDetail::RelativeOpenDisposition::OpenOrCreate;
@@ -527,23 +536,26 @@ Domain::Result<void> ensureAuthorizedParentDirectories(
     if (!target) {
       return Domain::Result<void>::failure(std::move(target).error());
     }
-    auto root = InfrastructureDetail::WindowsPathResolver::resolveAppOwnedRoot(
+    auto root = InfrastructureDetail::WindowsPathResolver::resolveWorkspacePath(
         path.authorityRoot().value());
     if (!root) {
       return Domain::Result<void>::failure(std::move(root).error());
     }
+    const auto relativeStart = root.value().size() +
+        (root.value().back() == L'\\' ? 0U : 1U);
     const auto separator = target.value().find_last_of(L'\\');
-    if (separator == std::wstring::npos || separator < root.value().size()) {
+    if (separator == std::wstring::npos || separator + 1U < relativeStart ||
+        separator + 1U >= target.value().size()) {
       return Domain::Result<void>::failure(Domain::makeError(
           Domain::ErrorCodes::PathOutsideAuthority,
           "The destination must name a child below its authority root."));
     }
-    const std::wstring_view parentPath{target.value().data(), separator};
+    const std::wstring_view parentPath{target.value().data(),
+        separator == 2U ? 3U : separator};
     if (samePath(parentPath, root.value())) {
       return Domain::Result<void>::success();
     }
-    if (parentPath.size() <= root.value().size() ||
-        parentPath[root.value().size()] != L'\\') {
+    if (parentPath.size() < relativeStart) {
       return Domain::Result<void>::failure(Domain::makeError(
           Domain::ErrorCodes::PathOutsideAuthority,
           "The destination parent is outside its authority root."));
@@ -551,14 +563,13 @@ Domain::Result<void> ensureAuthorizedParentDirectories(
     std::vector<OpenedNativeObject> anchors;
     auto rootDirectory = openCanonicalDirectory(
         root.value(),
-        FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES |
-            FILE_ADD_SUBDIRECTORY,
+        FILE_LIST_DIRECTORY | FILE_TRAVERSE | FILE_READ_ATTRIBUTES,
         FILE_SHARE_READ, context);
     if (!rootDirectory) {
       return Domain::Result<void>::failure(std::move(rootDirectory).error());
     }
     anchors.push_back(std::move(rootDirectory).value());
-    std::size_t start = root.value().size() + 1U;
+    std::size_t start = relativeStart;
     std::wstring currentPath{root.value()};
     while (start < parentPath.size()) {
       const auto nextSeparator = parentPath.find(L'\\', start);
@@ -566,7 +577,7 @@ Domain::Result<void> ensureAuthorizedParentDirectories(
                            ? parentPath.size()
                            : nextSeparator;
       const auto component = parentPath.substr(start, end - start);
-      currentPath.push_back(L'\\');
+      if (currentPath.back() != L'\\') currentPath.push_back(L'\\');
       currentPath.append(component);
       auto next = openOrCreateChildDirectory(
           anchors.back().handle.get(), component, currentPath, context);

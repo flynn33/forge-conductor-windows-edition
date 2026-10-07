@@ -47,6 +47,96 @@ namespace {
     return Domain::makeError(code, message, retryable);
 }
 
+[[nodiscard]] bool workerScopeTool(const std::string_view name) noexcept
+{
+    return name == "agent_spawn" || name == "agent_poll" || name == "agent_cancel" ||
+        name == "schedule_create" || name == "schedule_list" || name == "schedule_cancel" || name == "schedule_run_now";
+}
+
+struct WorkerToolCall final {
+    std::string arguments;
+    Contracts::WorkspaceAuthority authority;
+};
+
+[[nodiscard]] Domain::Result<WorkerToolCall> workerToolCall(
+    const ManagerToolInvokeRequest& request, const Contracts::WorkspaceAuthority& baseline,
+    Contracts::IWorkspaceAuthority& issuer, const Domain::OperationContext& context)
+{
+    using Json = nlohmann::json;
+    try {
+        if (request.canonicalArguments.size() > ManagerProtocolCodec::DefaultMaximumFrameBytes)
+            return Domain::Result<WorkerToolCall>::failure(error(Domain::ErrorCodes::PayloadTooLarge, "Broker tool arguments exceed 2 MiB."));
+        std::vector<std::set<std::string>> keys;
+        const auto callback = [&](int depth, Json::parse_event_t event, Json& value) {
+            if (depth > static_cast<int>(ManagerProtocolCodec::MaximumJsonNesting))
+                throw std::invalid_argument{"Broker argument nesting exceeds its protocol bound."};
+            if (event == Json::parse_event_t::object_start) keys.emplace_back();
+            else if (event == Json::parse_event_t::key) {
+                if (keys.empty() || !keys.back().insert(value.get<std::string>()).second)
+                    throw std::invalid_argument{"Broker arguments contain duplicate object keys."};
+            } else if (event == Json::parse_event_t::object_end) keys.pop_back();
+            return true;
+        };
+        auto arguments = Json::parse(request.canonicalArguments, callback);
+        if (!arguments.is_object()) throw std::invalid_argument{"Broker arguments must be an object."};
+        const auto found = arguments.find("_forge_worker_scope");
+        if (found == arguments.end()) return Domain::Result<WorkerToolCall>::success({request.canonicalArguments, baseline});
+        if (!workerScopeTool(request.toolName)) throw std::invalid_argument{"Worker scope is not valid for this tool."};
+        const auto& scope = *found;
+        if (!scope.is_object() || scope.size() != 4U || !scope.contains("trusted_roots") ||
+            !scope.contains("grants") || !scope.contains("denials") || !scope.contains("shell_enabled") ||
+            !scope.at("shell_enabled").is_boolean() || !scope.at("trusted_roots").is_array() ||
+            scope.at("trusted_roots").empty() || scope.at("trusted_roots").size() > 32U)
+            throw std::invalid_argument{"Worker scope fields or root bounds are invalid."};
+        std::vector<Domain::PathText> requestedRoots;
+        for (const auto& root : scope.at("trusted_roots")) {
+            if (!root.is_string()) throw std::invalid_argument{"Worker roots must be strings."};
+            auto parsed = Domain::PathText::create(root.get<std::string>());
+            if (!parsed || std::find(requestedRoots.begin(), requestedRoots.end(), parsed.value()) != requestedRoots.end())
+                throw std::invalid_argument{"Worker roots must be valid distinct paths."};
+            requestedRoots.push_back(std::move(parsed).value());
+        }
+        const auto accessList = [&](std::string_view name) {
+            const auto& values = scope.at(std::string{name});
+            if (!values.is_array() || values.size() > 5U) throw std::invalid_argument{"Worker access lists exceed their bounds."};
+            std::vector<Domain::FileAccess> result;
+            for (const auto& value : values) {
+                if (!value.is_string()) throw std::invalid_argument{"Worker access must use wire names."};
+                const auto wire = value.get<std::string>();
+                const auto access = wire == "read" ? Domain::FileAccess::Read : wire == "write" ? Domain::FileAccess::Write :
+                    wire == "create" ? Domain::FileAccess::Create : wire == "delete" ? Domain::FileAccess::Delete :
+                    wire == "execute" ? Domain::FileAccess::Execute : static_cast<Domain::FileAccess>(-1);
+                if (access == static_cast<Domain::FileAccess>(-1) || std::find(result.begin(), result.end(), access) != result.end())
+                    throw std::invalid_argument{"Worker access names must be valid and distinct."};
+                result.push_back(access);
+            }
+            return result;
+        };
+        const auto requestedGrants = accessList("grants");
+        const auto requestedDenials = accessList("denials");
+        std::vector<Domain::PathText> roots;
+        std::vector<Domain::FileAccess> grants;
+        for (const auto& root : baseline.trustedRoots())
+            if (std::find(requestedRoots.begin(), requestedRoots.end(), root) != requestedRoots.end()) roots.push_back(root);
+        for (const auto grant : baseline.grants())
+            if (std::find(requestedGrants.begin(), requestedGrants.end(), grant) != requestedGrants.end() &&
+                std::find(requestedDenials.begin(), requestedDenials.end(), grant) == requestedDenials.end() &&
+                std::find(baseline.denials().begin(), baseline.denials().end(), grant) == baseline.denials().end()) grants.push_back(grant);
+        if (roots.empty() || grants.empty() || baseline.generation() == (std::numeric_limits<std::uint64_t>::max)())
+            return Domain::Result<WorkerToolCall>::failure(error(Domain::ErrorCodes::Unauthorized, "Worker scope has no current authorized roots/grants or valid generation."));
+        const bool shell = baseline.shellEnabled() && scope.at("shell_enabled").get<bool>() &&
+            std::find(grants.begin(), grants.end(), Domain::FileAccess::Execute) != grants.end();
+        auto narrowed = issuer.narrow(baseline, roots, grants, shell, baseline.generation() + 1U, context);
+        if (!narrowed) return Domain::Result<WorkerToolCall>::failure(std::move(narrowed).error());
+        arguments.erase("_forge_worker_scope");
+        return Domain::Result<WorkerToolCall>::success({arguments.dump(), std::move(narrowed).value()});
+    } catch (const Json::exception&) {
+        return Domain::Result<WorkerToolCall>::failure(error(Domain::ErrorCodes::InvalidRequest, "Broker arguments or worker scope contain invalid JSON types."));
+    } catch (const std::invalid_argument&) {
+        return Domain::Result<WorkerToolCall>::failure(error(Domain::ErrorCodes::InvalidRequest, "Broker arguments or worker scope have invalid, duplicate, excessive, or unsupported fields."));
+    }
+}
+
 [[nodiscard]] ManagerResponse responseWithError(
     const ManagerRequest& request,
     Domain::Error failure)
@@ -2532,7 +2622,8 @@ private:
                 std::move(toolAuditDetail)});
     }
 
-    [[nodiscard]] Domain::Result<ManagerToolsSnapshot> toolsSnapshot() const
+    [[nodiscard]] Domain::Result<ManagerToolsSnapshot> toolsSnapshot(
+        const Domain::OperationContext& context) const
     {
         if (telemetrySources_.tools == nullptr) {
             return Domain::Result<ManagerToolsSnapshot>::failure(error(
@@ -2545,8 +2636,13 @@ private:
                 Domain::ErrorCodes::LimitExceeded,
                 "The native tool catalog exceeds the Manager projection bound."));
         }
+        auto settings = controller_->settings(context);
+        if (!settings) {
+            return Domain::Result<ManagerToolsSnapshot>::failure(
+                std::move(settings).error());
+        }
         ManagerToolsSnapshot snapshot;
-        snapshot.shellEnabled = telemetrySources_.shellEnabled;
+        snapshot.shellEnabled = settings.value().shellEnabled;
         snapshot.tools.reserve(catalog.size());
         for (const auto& item : catalog) {
             snapshot.tools.push_back(ManagerToolDescriptor{
@@ -2579,17 +2675,19 @@ private:
             return Domain::Result<ManagerToolOutcomeSnapshot>::failure(
                 std::move(authority).error());
         }
+        auto scoped = workerToolCall(request, authority.value(), *telemetrySources_.projectWorkspaceAuthority, context);
+        if (!scoped) return Domain::Result<ManagerToolOutcomeSnapshot>::failure(std::move(scoped).error());
         Domain::ToolCallRequest call{
             Domain::McpRequestMetadata{
                 managerRequest.requestId,
                 context.correlationId,
-                authority.value().callerId(),
+                scoped.value().authority.callerId(),
                 request.projectId,
                 "2025-11-25"},
             request.toolName,
-            request.canonicalArguments};
+            scoped.value().arguments};
         auto outcome = telemetrySources_.toolRouter->invoke(
-            call, authority.value(), context);
+            call, scoped.value().authority, context);
         if (!outcome) {
             return Domain::Result<ManagerToolOutcomeSnapshot>::failure(
                 std::move(outcome).error());
@@ -3549,12 +3647,13 @@ private:
                         request, lmStudioWorkflow(request, false, true, payload.projectId, context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerToolsRequest>) {
-                    return controllerResponse(request, toolsSnapshot());
+                    return controllerResponse(request, toolsSnapshot(context));
                 } else if constexpr (
                     std::is_same_v<Payload, ManagerToolInvokeRequest>) {
                     // This current-user authenticated pipe is the durable job
                     // broker. General desktop tool execution remains disabled.
-                    const bool brokered = payload.toolName == "workspace_authority_bind"
+                    const bool brokered = workerScopeTool(payload.toolName)
+                        || payload.toolName == "workspace_authority_bind"
                         || payload.toolName == "shell_job_start"
                         || payload.toolName == "shell_job_status"
                         || payload.toolName == "shell_job_list"

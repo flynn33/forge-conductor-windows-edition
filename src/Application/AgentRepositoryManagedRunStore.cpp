@@ -335,6 +335,8 @@ public:
         const Domain::OperationContext& context) noexcept
     {
         try {
+            if (record.workerScope) return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::Unauthorized, "Independent workers require an isolated receipt store; specialist bindings cannot be superseded."));
             auto loaded = repository_.getRun(record.runId, context);
             if (!loaded) {
                 return Domain::Result<void>::failure(

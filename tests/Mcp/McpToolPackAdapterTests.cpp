@@ -25,8 +25,10 @@
 #include <chrono>
 #include <concepts>
 #include <cstddef>
+#include <cstdint>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -78,6 +80,53 @@ template <typename T>
 {
     return take(T::parse(value));
 }
+
+class ProjectModeWorkspaceAuthority final : public Contracts::IWorkspaceAuthority {
+public:
+    ProjectModeWorkspaceAuthority(Domain::AuthorityId id, Domain::ClientId caller, std::vector<Domain::PathText> roots,
+        Domain::FileAccess intent, std::vector<Domain::FileAccess> grants, std::vector<Domain::FileAccess> denials,
+        bool shell, std::uint64_t generation)
+        : workspace_{std::move(id), std::move(caller), std::move(roots), intent, std::move(grants), std::move(denials), shell, generation}
+    {}
+    void enableHost(const Contracts::WorkspaceAuthority& baseline, Domain::PathText project) {
+        project_ = std::move(project);
+        host_ = std::make_unique<Fakes::DeterministicWorkspaceAuthority>(baseline.authorityId(), baseline.callerId(),
+            std::vector<Domain::PathText>{take(Domain::PathText::create("D:/")), take(Domain::PathText::create("E:/"))},
+            baseline.intent(), baseline.grants(), baseline.denials(), baseline.shellEnabled(), baseline.generation());
+    }
+    void restoreWorkspace() { host_.reset(); project_.reset(); }
+    Domain::FileSystemAccessMode fileSystemAccessMode() const noexcept override
+    { return host_ ? Domain::FileSystemAccessMode::Host : Domain::FileSystemAccessMode::Workspace; }
+    Domain::Result<Domain::PathText> defaultWorkspacePath(const Contracts::WorkspaceAuthority& token,
+        const Domain::OperationContext& context) noexcept override {
+        return project_ ? Domain::Result<Domain::PathText>::success(*project_) :
+            Contracts::IWorkspaceAuthority::defaultWorkspacePath(token, context);
+    }
+    Domain::Result<Contracts::WorkspaceAuthority> authorityFor(const Domain::ProjectId& id,
+        const Domain::OperationContext& context) noexcept override { return delegate().authorityFor(id, context); }
+    Domain::Result<Contracts::WorkspaceAuthority> narrow(const Contracts::WorkspaceAuthority& token,
+        const std::vector<Domain::PathText>& roots, const std::vector<Domain::FileAccess>& grants, bool shell,
+        std::uint64_t generation, const Domain::OperationContext& context) noexcept override
+    { return delegate().narrow(token, roots, grants, shell, generation, context); }
+    Domain::Result<Contracts::AuthorizedPath> authorize(const Contracts::WorkspaceAuthority& token,
+        const Domain::PathAuthorizationRequest& request, const Domain::OperationContext& context) noexcept override {
+        lastExcludedSubtree = request.excludedSubtree;
+        if (request.excludedSubtree) {
+            const auto& excluded = request.excludedSubtree->value();
+            const auto& path = request.requestedPath.value();
+            if (path == excluded || path.starts_with(excluded + "/") || path.starts_with(excluded + "\\"))
+                return Domain::Result<Contracts::AuthorizedPath>::failure(Domain::makeError(Domain::ErrorCodes::Unauthorized,
+                    "The fake path is inside the excluded project subtree."));
+        }
+        return delegate().authorize(token, request, context);
+    }
+    std::optional<Domain::PathText> lastExcludedSubtree;
+private:
+    Fakes::DeterministicWorkspaceAuthority& delegate() { return host_ ? *host_ : workspace_; }
+    Fakes::DeterministicWorkspaceAuthority workspace_;
+    std::unique_ptr<Fakes::DeterministicWorkspaceAuthority> host_;
+    std::optional<Domain::PathText> project_;
+};
 
 class PassiveReportInspector final
     : public Contracts::IAgentCompletionReportInspector {
@@ -509,6 +558,27 @@ private:
     bool closed_{};
 };
 
+class NativeCapabilityRecorder final : public Contracts::IWebAccessService,
+    public Contracts::IArtifactDocumentService, public Contracts::IDesktopArtifactService {
+public:
+    std::vector<std::string> calls;
+    Json lastArguments;
+    std::vector<Domain::PathText> lastRoots;
+    Domain::Result<std::string> execute(std::string_view name, std::string_view arguments,
+        const Domain::OperationContext&) noexcept override
+    { return record(name, arguments); }
+    Domain::Result<std::string> execute(std::string_view name, std::string_view arguments,
+        const Contracts::WorkspaceAuthority& authority, const Domain::OperationContext&) noexcept override
+    { lastRoots = authority.trustedRoots(); return record(name, arguments); }
+private:
+    Domain::Result<std::string> record(std::string_view name, std::string_view arguments) noexcept
+    {
+        try { calls.emplace_back(name); lastArguments = Json::parse(arguments);
+            return Domain::Result<std::string>::success(Json{{"ok", true}, {"observed_tool", name}}.dump()); }
+        catch (...) { return unavailable<std::string>("Capability test recorder failed"); }
+    }
+};
+
 class StaticReviewerRuns final : public Contracts::IManagedRunService {
 public:
     explicit StaticReviewerRuns(Domain::ManagedRunRecord initial) : record{std::move(initial)} {}
@@ -562,7 +632,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
 {
     auto catalog = take(Mcp::McpToolCatalog::create());
     const auto tools = catalog->tools();
-    REQUIRE(tools.size() == 80U);
+    REQUIRE(tools.size() == 103U);
 
     const std::map<std::string_view, std::size_t> expectedPackCounts{
         {"AgentToolPack", 9U},
@@ -579,7 +649,9 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
         {"SearchToolPack", 1U},
         {"ShellToolPack", 5U},
         {"EvidenceToolPack", 2U}, {"GitHubReadToolPack", 1U}, {"ProcessToolPack", 7U},
-        {"HostInspectionToolPack", 2U}, {"ReviewerToolPack", 3U}, {"VerificationToolPack", 2U}};
+        {"HostInspectionToolPack", 3U}, {"ReviewerToolPack", 3U}, {"VerificationToolPack", 2U},
+        {"WebAccessToolPack", 3U}, {"OfficeDocumentToolPack", 3U}, {"DesktopToolPack", 7U},
+        {"ImageToolPack", 2U}, {"AgentWorkerToolPack", 3U}, {"ScheduledTaskToolPack", 4U}};
     std::map<std::string_view, std::size_t> actualPackCounts;
     for (const auto& descriptor : tools) {
         ++actualPackCounts[descriptor.tool.pack];
@@ -602,7 +674,10 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
             descriptor.tool.pack == "ProcessToolPack" ||
             descriptor.tool.pack == "HostInspectionToolPack" ||
             descriptor.tool.pack == "ReviewerToolPack" ||
-            descriptor.tool.pack == "VerificationToolPack";
+            descriptor.tool.pack == "VerificationToolPack" ||
+            descriptor.tool.pack == "WebAccessToolPack" || descriptor.tool.pack == "OfficeDocumentToolPack" ||
+            descriptor.tool.pack == "DesktopToolPack" || descriptor.tool.pack == "ImageToolPack" ||
+            descriptor.tool.pack == "AgentWorkerToolPack" || descriptor.tool.pack == "ScheduledTaskToolPack";
         REQUIRE(schema.value("additionalProperties", true) != closedPack);
     }
     REQUIRE(actualPackCounts == expectedPackCounts);
@@ -627,7 +702,7 @@ void testRuntimeDispatchAndSchemaPolicy()
         {},
         correlationId};
 
-    Fakes::DeterministicWorkspaceAuthority workspaceAuthority{
+    ProjectModeWorkspaceAuthority workspaceAuthority{
         authorityId,
         clientId,
         {root, secondaryRoot},
@@ -841,10 +916,15 @@ void testRuntimeDispatchAndSchemaPolicy()
                 observedWorkspace = std::make_pair(project, selectedRoot);
             }};
     adapterDependencies.reviewerRuns = [&]() -> Contracts::IManagedRunService* { return &reviewerRuns; };
+    NativeCapabilityRecorder nativeCapabilities;
+    adapterDependencies.webAccess = &nativeCapabilities;
+    adapterDependencies.artifactDocuments = &nativeCapabilities;
+    adapterDependencies.desktopArtifacts = &nativeCapabilities;
+    auto workerBrokerDependencies = adapterDependencies;
     auto brokeredBindingDependencies = adapterDependencies;
     auto brokeredExecutionDependencies = adapterDependencies;
     auto adapter = take(Mcp::McpToolPackAdapter::create(std::move(adapterDependencies)));
-    REQUIRE(adapter->tools().size() == 80U);
+    REQUIRE(adapter->tools().size() == 103U);
 
     const auto authorizeFor = [&] (
                                   const std::string& toolName,
@@ -886,6 +966,56 @@ void testRuntimeDispatchAndSchemaPolicy()
             requestId,
             authority);
     };
+
+    {
+        const auto capabilities = Json::parse(take(adapter->handle(authorize("host_capabilities", Domain::ToolEffect::Read,
+            "{}", "native-capability-report"), authority, context)).canonicalPayload);
+        REQUIRE(capabilities.at("tool_count") == 103U);
+        REQUIRE(capabilities.at("dedicated").at("word_excel_powerpoint_creation") == true);
+        REQUIRE(capabilities.at("filesystem_access") == "workspace");
+        for (const auto& [name, arguments] : std::vector<std::pair<std::string, Json>>{
+            {"web_fetch", {{"url", "https://example.com"}}},
+            {"web_search", {{"query", "Windows"}}},
+            {"http_request", {{"url", "https://example.com"}, {"method", "POST"}, {"body", "bounded"}}},
+            {"document_write", {{"path", "file.docx"}, {"paragraphs", Json::array({"Unicode: \xE2\x9C\x93"})}}},
+            {"spreadsheet_write", {{"path", "file.xlsx"}, {"sheets", Json::array({Json{{"name", "Sheet"}, {"rows", Json::array({Json::array({1, "literal"})})}}})}}},
+            {"presentation_write", {{"path", "file.pptx"}, {"slides", Json::array({Json{{"title", "Title"}, {"body", Json::array({"Body"})}}})}}},
+            {"desktop_read", {{"window_id", 42}, {"pid", 123}}},
+            {"image_write", {{"path", "file.png"}, {"width", 40}, {"height", 40}, {"elements", Json::array()}}}}) {
+            const auto found = std::find_if(catalog->tools().begin(), catalog->tools().end(),
+                [&](const auto& descriptor) { return descriptor.tool.name == name; });
+            REQUIRE(found != catalog->tools().end());
+            const auto effect = found->tool.effect;
+            auto outcome = take(adapter->handle(authorize(name, effect, arguments.dump(), "native-dispatch-" + name), authority, context));
+            REQUIRE(outcome.receipt.ok);
+            REQUIRE(nativeCapabilities.calls.back() == name);
+            REQUIRE(nativeCapabilities.lastArguments == arguments);
+        }
+        REQUIRE(nativeCapabilities.lastRoots == authority.trustedRoots());
+        const auto count = nativeCapabilities.calls.size();
+        auto invalid = adapter->handle(authorize("web_fetch", Domain::ToolEffect::Read,
+            R"({"url":"https://example.com","ambient_credentials":true})", "native-invalid-schema"), authority, context);
+        REQUIRE(!invalid && invalid.error().code == Domain::ErrorCodes::InvalidRequest);
+        REQUIRE(nativeCapabilities.calls.size() == count);
+        std::size_t workerBrokerCalls{};
+        Json actualScope;
+        workerBrokerDependencies.durableToolBroker = [&](std::string_view name, std::string_view arguments,
+            const Domain::ProjectId&, const Domain::OperationContext&) {
+            REQUIRE(name == "agent_spawn"); ++workerBrokerCalls;
+            actualScope = Json::parse(arguments).at("_forge_worker_scope");
+            return Domain::Result<std::string>::success(R"({"ok":true,"state":"running"})");
+        };
+        auto workerAdapter = take(Mcp::McpToolPackAdapter::create(std::move(workerBrokerDependencies)));
+        const auto spawn = Json{{"task", "Authorized bounded worker task"}, {"authorization", "owner task"}};
+        REQUIRE(take(workerAdapter->handle(authorize("agent_spawn", Domain::ToolEffect::Write,
+            spawn.dump(), "worker-inherited-scope"), authority, context)).receipt.ok);
+        REQUIRE(actualScope.at("trusted_roots") == Json::array({root.value(), secondaryRoot.value()}));
+        REQUIRE(actualScope.at("shell_enabled") == true);
+        auto forged = spawn; forged["_forge_worker_scope"] = {{"trusted_roots", Json::array({"C:/"})}};
+        REQUIRE(!workerAdapter->handle(authorize("agent_spawn", Domain::ToolEffect::Write,
+            forged.dump(), "worker-public-forgery"), authority, context));
+        REQUIRE(workerBrokerCalls == 1U);
+    }
 
     {
         std::size_t bindBrokerCalls{};
@@ -2678,6 +2808,31 @@ void testRuntimeDispatchAndSchemaPolicy()
     Domain::ShellJobSnapshot trackedJob{"job-runtime-test", Domain::ShellJobState::Running,
         "Write-Output long-test", root.value(), 1800U, std::nullopt, std::nullopt, 10ms};
     shell.startJobResult.set(Domain::Result<Domain::ShellJobSnapshot>::success(trackedJob));
+    shell.startProcessResult.set(Domain::Result<Domain::ShellJobSnapshot>::success(trackedJob));
+    {
+        const auto starts = shell.processStartCalls;
+        const auto sourceArguments = Json{{"path", root.value() + "/verification-env"}, {"python_path", "C:/Python/python.exe"}};
+        const auto workspaceDenied = adapter->handle(authorizeFor("verification_env_create", Domain::ToolEffect::Write,
+            sourceArguments.dump(), "verification-workspace-source-denied", shellAuthority), shellAuthority, context);
+        REQUIRE(!workspaceDenied && workspaceDenied.error().code == Domain::ErrorCodes::Unauthorized);
+        REQUIRE(!workspaceAuthority.lastExcludedSubtree);
+        REQUIRE(shell.processStartCalls == starts);
+        workspaceAuthority.enableHost(shellAuthority, root);
+        const auto hostToken = take(workspaceAuthority.authorityFor(projectId, context));
+        const auto hostDenied = adapter->handle(authorizeFor("verification_env_create", Domain::ToolEffect::Write,
+            sourceArguments.dump(), "verification-host-source-denied", hostToken), hostToken, context);
+        REQUIRE(!hostDenied && hostDenied.error().code == Domain::ErrorCodes::Unauthorized);
+        REQUIRE(workspaceAuthority.lastExcludedSubtree == std::optional<Domain::PathText>{root});
+        REQUIRE(shell.processStartCalls == starts);
+        const auto outsideArguments = Json{{"path", "D:/workspace-other/verification-env"}, {"python_path", "C:/Python/python.exe"}};
+        const auto outside = take(adapter->handle(authorizeFor("verification_env_create", Domain::ToolEffect::Write,
+            outsideArguments.dump(), "verification-host-outside-admitted", hostToken), hostToken, context));
+        REQUIRE(outside.receipt.ok);
+        REQUIRE(workspaceAuthority.lastExcludedSubtree == std::optional<Domain::PathText>{root});
+        REQUIRE(shell.processStartCalls == starts + 1U);
+        REQUIRE(shell.lastJobRequest && shell.lastJobRequest->arguments.at(3) == "D:/workspace-other/verification-env");
+        workspaceAuthority.restoreWorkspace();
+    }
     auto startJobCall = authorizeFor("shell_job_start", Domain::ToolEffect::Write,
         R"({"command":"Write-Output long-test","cwd":"D:/workspace"})", "start-shell-job", shellAuthority);
     auto jobStart = take(adapter->handle(startJobCall, shellAuthority, context));

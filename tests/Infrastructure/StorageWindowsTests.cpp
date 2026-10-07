@@ -2770,6 +2770,42 @@ void configurationPreservesUnknownFieldsAndUsesBackup()
             "configuration update must persist offline provider settings");
 }
 
+void configurationFileSystemAccessIsOwnerPersistedAndStrict()
+{
+    ConfigurationFixture fixture;
+    MemoryAtomicFileStore files;
+    files.exists = true;
+    files.content = bytes(R"({"schema_version":1,"future":"preserved"})");
+    WindowsConfigurationStore store{files, fixture.readPath, fixture.writePath,
+        fixture.createPath, fixture.backupReadPath};
+    require(take(store.load(liveContext())).fileSystemAccess == Domain::FileSystemAccessMode::Workspace,
+        "An existing configuration without a filesystem mode gained host access.");
+    Domain::AppConfigPatch patch;
+    patch.fileSystemAccess = Domain::FileSystemAccessMode::Host;
+    require(take(store.update(patch, liveContext())).fileSystemAccess == Domain::FileSystemAccessMode::Host,
+        "Owner-selected host filesystem access was not published.");
+    const auto document = nlohmann::json::parse(text(files.content));
+    require(document.at("filesystem_access") == "host" && document.at("future") == "preserved",
+        "Host filesystem mode persistence lost the selected mode or unknown owner fields.");
+    WindowsConfigurationStore reopened{files, fixture.readPath, fixture.writePath,
+        fixture.createPath, fixture.backupReadPath};
+    require(take(reopened.load(liveContext())).fileSystemAccess == Domain::FileSystemAccessMode::Host,
+        "Host filesystem access did not survive a store restart.");
+    patch.fileSystemAccess = Domain::FileSystemAccessMode::Workspace;
+    require(take(reopened.update(patch, liveContext())).fileSystemAccess == Domain::FileSystemAccessMode::Workspace &&
+        nlohmann::json::parse(text(files.content)).at("filesystem_access") == "workspace",
+        "Owner could not restore workspace-only filesystem access.");
+    for (const auto value : {R"("HOST")", R"("full")", "true", "1", "null"}) {
+        MemoryAtomicFileStore invalidFiles;
+        invalidFiles.exists = true;
+        invalidFiles.content = bytes(std::string{R"({"schema_version":1,"filesystem_access":)"} + value + "}");
+        WindowsConfigurationStore invalid{invalidFiles, fixture.readPath, fixture.writePath,
+            fixture.createPath, fixture.backupReadPath};
+        requireError(invalid.load(liveContext()), Domain::ErrorCodes::IntegrityFailure,
+            "Malformed filesystem mode was accepted or defaulted to host access.");
+    }
+}
+
 void configurationRecoversOnlyFromValidBackup()
 {
     ConfigurationFixture fixture;
@@ -3246,6 +3282,8 @@ void registerStorageWindowsTests(TestRegistry &tests)
             atomicReplacementHonorsCancellationAtTargetPublishBoundary);
     addTest(tests, "storage.config.unknown-field-preservation",
             configurationPreservesUnknownFieldsAndUsesBackup);
+    addTest(tests, "storage.config.filesystem-access",
+            configurationFileSystemAccessIsOwnerPersistedAndStrict);
     addTest(tests, "storage.config.valid-backup-recovery",
             configurationRecoversOnlyFromValidBackup);
     addTest(tests, "storage.config.hostile-json",

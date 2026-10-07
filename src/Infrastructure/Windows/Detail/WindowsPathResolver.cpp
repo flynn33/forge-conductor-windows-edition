@@ -491,13 +491,14 @@ constexpr DWORD DirectoryAnchorOpenRetrySliceMilliseconds = 10U;
                                   "The authorized path has no canonical parent directory."));
         }
 
+        const auto parentEnd = (std::max)(finalSeparator, std::size_t{3U});
         std::vector<UniqueHandle> anchors;
         const auto contentionDeadline =
             std::chrono::steady_clock::now() + MaximumDirectoryAnchorOpenWait;
         std::size_t componentEnd = 3U;
         for (;;)
         {
-            const bool finalParent = componentEnd == finalSeparator;
+            const bool finalParent = componentEnd == parentEnd;
             // Ancestors stay replacement-pinned by omitting FILE_SHARE_DELETE,
             // while sibling operations may retain write-capable directory
             // handles. The exact target parent keeps the caller's stricter
@@ -515,14 +516,14 @@ constexpr DWORD DirectoryAnchorOpenRetrySliceMilliseconds = 10U;
                     std::move(anchor).error());
             }
             anchors.push_back(std::move(anchor).value());
-            if (componentEnd == finalSeparator)
+            if (componentEnd == parentEnd)
             {
                 break;
             }
             componentEnd = path.find(L'\\', componentEnd + 1U);
-            if (componentEnd == std::wstring_view::npos || componentEnd > finalSeparator)
+            if (componentEnd == std::wstring_view::npos || componentEnd > parentEnd)
             {
-                componentEnd = finalSeparator;
+                componentEnd = parentEnd;
             }
         }
         return Domain::Result<std::vector<UniqueHandle>>::success(std::move(anchors));
@@ -662,6 +663,7 @@ Domain::Result<void> AnchoredAuthorizedPath::revalidateDirectoryAnchors() const 
                                   "The anchored path has no retained parent directory."));
         }
 
+        const auto parentEnd = (std::max)(finalSeparator, std::size_t{3U});
         std::size_t anchorIndex{};
         std::size_t componentEnd = 3U;
         for (;;)
@@ -679,14 +681,14 @@ Domain::Result<void> AnchoredAuthorizedPath::revalidateDirectoryAnchors() const 
                 return verified;
             }
             ++anchorIndex;
-            if (componentEnd == finalSeparator)
+            if (componentEnd == parentEnd)
             {
                 break;
             }
             componentEnd = canonicalPath_.find(L'\\', componentEnd + 1U);
-            if (componentEnd == std::wstring::npos || componentEnd > finalSeparator)
+            if (componentEnd == std::wstring::npos || componentEnd > parentEnd)
             {
-                componentEnd = finalSeparator;
+                componentEnd = parentEnd;
             }
         }
         if (anchorIndex != directoryAnchors_.size())
@@ -795,6 +797,28 @@ Domain::Result<std::wstring> WindowsPathResolver::resolveAppOwnedChild(
     }
 }
 
+Domain::Result<std::wstring> WindowsPathResolver::resolveWorkspacePath(
+    const std::string_view utf8Path) noexcept
+{
+    try
+    {
+        auto converted = strictUtf8ToUtf16(utf8Path);
+        if (!converted)
+            return Domain::Result<std::wstring>::failure(std::move(converted).error());
+        auto normalized = normalizeAbsolutePath(converted.value());
+        if (!normalized) return normalized;
+        auto ancestry = verifyExistingAncestry(normalized.value(), MissingPathPolicy::AllowDescendants);
+        if (!ancestry)
+            return Domain::Result<std::wstring>::failure(std::move(ancestry).error());
+        return normalized;
+    }
+    catch (...)
+    {
+        return pathFailure(Domain::ErrorCodes::InternalFailure,
+                           "The workspace path could not be resolved.");
+    }
+}
+
 Domain::Result<std::wstring> WindowsPathResolver::resolveAuthorizedPath(
     const Contracts::AuthorizedPath &path, const Domain::FileAccess requiredAccess,
     const MissingPathPolicy policy) noexcept
@@ -807,7 +831,7 @@ Domain::Result<std::wstring> WindowsPathResolver::resolveAuthorizedPath(
                                "The authorized path does not grant the required access mode.");
         }
 
-        auto root = resolveAppOwnedRoot(path.authorityRoot().value());
+        auto root = resolveWorkspacePath(path.authorityRoot().value());
         if (!root)
         {
             return root;

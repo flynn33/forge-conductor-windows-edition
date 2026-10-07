@@ -1,6 +1,13 @@
 #include "PersistenceTestSupport.h"
 
+#include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
+#include "ForgeConductor/Infrastructure/Windows/SecretRedactor.h"
+#include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsAtomicFileStore.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsDiagnosticSink.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsWorkspaceAuthority.h"
 #include "Infrastructure/Windows/Detail/UniqueHandle.h"
+#include "Infrastructure/Windows/Detail/UniqueLocalAllocation.h"
 #include "Persistence/Windows/Detail/AnchoredSqliteVfs.h"
 #include "Persistence/Windows/Detail/DatabaseNamespaceLease.h"
 #include "Persistence/Windows/Detail/WinsqliteConnection.h"
@@ -9,6 +16,8 @@
 #include <winsqlite/winsqlite3.h>
 
 #include <Windows.h>
+#include <Aclapi.h>
+#include <sddl.h>
 #include <winioctl.h>
 
 #include <array>
@@ -588,6 +597,71 @@ void testVfsRejectsAmbientAndUnrecognizedOpens()
     database->close(context);
 }
 
+void testVfsPreservesCoreFilenameMetadata()
+{
+    ScopedTestDirectory directory{L"authority-vfs-filename-metadata"};
+    auto namespaceLease = makeNamespace(
+        directory.path(), L"metadata.sqlite", L"metadata.sqlite.lock");
+    auto anchoredVfs = take(PersistenceDetail::AnchoredSqliteVfs::create(namespaceLease));
+    sqlite3_vfs* const vfs = ::sqlite3_vfs_find(
+        std::string{anchoredVfs->vfsName()}.c_str());
+    require(vfs != nullptr && vfs->xOpen != nullptr,
+            "the filename-metadata authority VFS is not registered");
+
+    for (const bool powersafeOverwrite : std::array{false, true}) {
+        const std::size_t words =
+            (static_cast<std::size_t>(vfs->szOsFile) + sizeof(std::max_align_t) - 1U) /
+            sizeof(std::max_align_t);
+        std::vector<std::max_align_t> storage(words);
+        auto* const file = reinterpret_cast<sqlite3_file*>(storage.data());
+        std::memset(file, 0, static_cast<std::size_t>(vfs->szOsFile));
+        std::array<const char*, 2U> parameters{
+            "psow", powersafeOverwrite ? "1" : "0"};
+        std::unique_ptr<const char, decltype(&::sqlite3_free_filename)> filename{
+            ::sqlite3_create_filename(
+                namespaceLease->canonicalUtf8Path(
+                    PersistenceDetail::DatabaseLeafRole::Main).c_str(),
+                namespaceLease->canonicalUtf8Path(
+                    PersistenceDetail::DatabaseLeafRole::Journal).c_str(),
+                namespaceLease->canonicalUtf8Path(
+                    PersistenceDetail::DatabaseLeafRole::Wal).c_str(),
+                1, parameters.data()),
+            &::sqlite3_free_filename};
+        require(filename != nullptr,
+                "SQLite could not allocate a valid metadata-bearing filename");
+        const auto closeFile = [](sqlite3_file* const opened) noexcept {
+            if (opened != nullptr && opened->pMethods != nullptr &&
+                opened->pMethods->xClose != nullptr) {
+                static_cast<void>(opened->pMethods->xClose(opened));
+            }
+        };
+        // Close the delegated file before SQLite releases its filename metadata.
+        std::unique_ptr<sqlite3_file, decltype(closeFile)> openedFile{file, closeFile};
+        int outputFlags{};
+        const int result = vfs->xOpen(
+            vfs, filename.get(), openedFile.get(),
+            SQLITE_OPEN_MAIN_DB | SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+            &outputFlags);
+        require(result == SQLITE_OK && file->pMethods != nullptr &&
+                    file->pMethods->xDeviceCharacteristics != nullptr,
+                "the anchored VFS could not open a valid core filename");
+        require(anchoredVfs->openFileCount() == 1U &&
+                    namespaceLease->openVfsFileCount() == 1U,
+                "the metadata-bearing open did not retain its exact pinned leaf");
+        const bool observedPowersafeOverwrite =
+            (file->pMethods->xDeviceCharacteristics(file) &
+             SQLITE_IOCAP_POWERSAFE_OVERWRITE) != 0;
+        require(observedPowersafeOverwrite == powersafeOverwrite,
+                "the anchored VFS discarded SQLite's powersafe-overwrite filename metadata");
+        const int closeResult = file->pMethods->xClose(openedFile.release());
+        require(closeResult == SQLITE_OK,
+                "the metadata-bearing delegated file could not be closed");
+        require(anchoredVfs->openFileCount() == 0U &&
+                    namespaceLease->openVfsFileCount() == 0U,
+                "the metadata-bearing close retained a pinned database leaf");
+    }
+}
+
 void testHandleRelativePublication()
 {
     ScopedTestDirectory directory{L"authority-publication"};
@@ -713,6 +787,151 @@ void testBoundedHandleRelativeLeafEnumeration()
                  "handle-relative leaf enumeration accepted a wildcard fragment");
 }
 
+void testDatabaseAndDiagnosticDirectoryAnchorsCoexist()
+{
+    namespace InfrastructureWindows = ForgeConductor::Infrastructure::Windows;
+    ScopedTestDirectory directory{L"authority-diagnostics"};
+    const auto operation = authorityContext("p07-database-diagnostics");
+    auto database = OpenAnchoredDatabase::create(directory.path(), L"live.sqlite", L"live.sqlite.lock",
+        PersistenceDetail::WinsqliteOpenMode::ReadWriteCreate, operation);
+    take(database->connection().execute("CREATE TABLE records(value TEXT); INSERT INTO records VALUES('first');", operation));
+    require(std::filesystem::is_regular_file(directory.path() / L"live.sqlite-wal") &&
+        std::filesystem::is_regular_file(directory.path() / L"live.sqlite-shm"),
+        "the live SQLite fixture must actually retain its WAL and SHM sidecars");
+
+    auto clock = std::make_shared<InfrastructureWindows::SystemClock>();
+    auto authority = std::make_shared<InfrastructureWindows::WindowsWorkspaceAuthority>(
+        std::vector<InfrastructureWindows::WindowsWorkspaceAuthorityPolicy>{{
+            parse<Domain::AuthorityId>("81000000-0000-4000-8000-000000000010"),
+            parse<Domain::ProjectId>("81000000-0000-4000-8000-000000000011"),
+            parse<Domain::ClientId>("database-diagnostics-test"),
+            {PersistenceSupport::pathText(directory.path())}, Domain::FileAccess::Write,
+            {Domain::FileAccess::Read, Domain::FileAccess::Write, Domain::FileAccess::Create}, {}, false, 1U}});
+    InfrastructureWindows::WindowsDiagnosticSink sink{
+        {PersistenceSupport::pathText(directory.path() / L"diagnostics"),
+         PersistenceSupport::pathText(directory.path() / L"exports"),
+         Domain::budgetsForProfile(Domain::ResourceProfile::Standard16GiB), false},
+        clock, std::make_shared<InfrastructureWindows::SecretRedactor>(),
+        std::make_shared<InfrastructureWindows::BCryptSha256Hasher>(), authority,
+        std::make_shared<InfrastructureWindows::WindowsAtomicFileStore>()};
+    const Domain::DiagnosticEnvelope event{clock->utcNow(), "database-and-diagnostic-coexist",
+        Domain::DiagnosticSeverity::Info, "test", ::GetCurrentProcessId(),
+        Domain::DiagnosticCategory::Diagnostics, {}};
+    const auto diagnosticOperation = authorityContext("p07-diagnostic-live-database", {}, 2s);
+    const auto recorded = sink.record(event, diagnosticOperation);
+    require(recorded.hasValue(), recorded.hasValue() ? "diagnostic recording failed"
+        : "diagnostic recording while SQLite is open failed: " + recorded.error().code + ": " + recorded.error().message);
+    require(PersistenceSupport::readFixture(directory.path() / L"diagnostics" / L"forge-diagnostics.jsonl")
+        .find("database-and-diagnostic-coexist") != std::string::npos,
+        "the actual diagnostic record was not durably appended");
+    take(database->connection().execute("INSERT INTO records VALUES('after diagnostic');", operation));
+    require(queryInteger(database->connection(), "SELECT count(*) FROM records;", operation) == 2,
+        "diagnostic recording disrupted the live SQLite database");
+    database->close(operation);
+}
+
+void testTraversalOnlyDatabaseAnchorStillEnforcesCreationAcl()
+{
+    ScopedTestDirectory directory{L"authority-creation-acl"};
+    const auto operation = authorityContext("p07-database-creation-acl");
+    {
+        auto database = OpenAnchoredDatabase::create(directory.path(), L"existing.sqlite", L"existing.sqlite.lock",
+            PersistenceDetail::WinsqliteOpenMode::ReadWriteCreate, operation);
+        take(database->connection().execute("CREATE TABLE records(value INTEGER); INSERT INTO records VALUES(1);", operation));
+        require(queryInteger(database->connection(), "PRAGMA wal_checkpoint(TRUNCATE);", operation) == 0,
+            "the owned creation-denial fixture WAL could not be fully checkpointed");
+        database->close(operation);
+        // Production close deliberately retains WAL state. Remove only exact
+        // checkpointed, closed fixture sidecars before testing new creation.
+        for (const auto role : {PersistenceDetail::DatabaseLeafRole::Wal,
+                 PersistenceDetail::DatabaseLeafRole::SharedMemory}) {
+            auto& namespaceLease = database->namespaceLease();
+            if (take(namespaceLease.accessLeaf(role, PersistenceDetail::DatabaseLeafAccess::Exists))) {
+                const auto identity = [&] {
+                    auto leaf = take(namespaceLease.openLeaf(role,
+                        PersistenceDetail::DatabaseLeafDisposition::OpenExisting, FILE_READ_ATTRIBUTES));
+                    return leaf.identity();
+                }();
+                take(namespaceLease.deleteClosedLeaf(role, identity));
+            }
+        }
+    }
+    require(!std::filesystem::exists(directory.path() / L"existing.sqlite-wal") &&
+        !std::filesystem::exists(directory.path() / L"existing.sqlite-shm"),
+        "the denied sidecar fixture must begin without WAL or SHM files");
+    auto native = directory.path().native();
+    PSECURITY_DESCRIPTOR originalDescriptor{};
+    PACL originalDacl{};
+    require(::GetNamedSecurityInfoW(native.data(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION,
+        nullptr, nullptr, &originalDacl, nullptr, &originalDescriptor) == ERROR_SUCCESS,
+        "the owned database fixture DACL could not be captured");
+    InfrastructureDetail::UniqueLocalAllocation<void> originalOwner{originalDescriptor};
+    SECURITY_DESCRIPTOR_CONTROL control{}; DWORD revision{};
+    require(::GetSecurityDescriptorControl(originalDescriptor, &control, &revision) != FALSE,
+        "the owned database fixture DACL control could not be captured");
+    struct DaclRestorer final {
+        std::wstring path; PACL acl; SECURITY_INFORMATION flags;
+        DWORD restore() noexcept { return ::SetNamedSecurityInfoW(path.data(), SE_FILE_OBJECT,
+            flags, nullptr, nullptr, acl, nullptr); }
+        ~DaclRestorer() noexcept { static_cast<void>(restore()); }
+    } restore{native, originalDacl, DACL_SECURITY_INFORMATION |
+        ((control & SE_DACL_PROTECTED) ? PROTECTED_DACL_SECURITY_INFORMATION : UNPROTECTED_DACL_SECURITY_INFORMATION)};
+    PSECURITY_DESCRIPTOR descriptor{};
+    require(::ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        L"D:(D;;0x2;;;WD)(A;OICI;FA;;;WD)", SDDL_REVISION_1, &descriptor, nullptr) != FALSE,
+        "the owned database creation-denial DACL could not be created");
+    InfrastructureDetail::UniqueLocalAllocation<void> deniedOwner{descriptor};
+    PACL deniedDacl{}; BOOL present{}, defaulted{};
+    require(::GetSecurityDescriptorDacl(descriptor, &present, &deniedDacl, &defaulted) != FALSE && present,
+        "the owned database creation-denial DACL could not be read");
+    require(::SetNamedSecurityInfoW(native.data(), SE_FILE_OBJECT,
+        DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION,
+        nullptr, nullptr, deniedDacl, nullptr) == ERROR_SUCCESS,
+        "the owned database creation-denial DACL could not be applied");
+
+    auto missing = makeNamespace(directory.path(), L"denied.sqlite", L"denied.sqlite.lock");
+    auto existing = makeNamespace(directory.path(), L"existing.sqlite", L"existing.sqlite.lock");
+    {
+        const auto missingLeaf = missing->openLeaf(PersistenceDetail::DatabaseLeafRole::Main,
+            PersistenceDetail::DatabaseLeafDisposition::CreateNew, GENERIC_WRITE | FILE_READ_ATTRIBUTES);
+        require(!missingLeaf && (missingLeaf.error().message.find("Win32 error 5 (") != std::string::npos ||
+            missingLeaf.error().message.ends_with("Win32 error 5.")),
+            "the traversal-only namespace bypassed kernel denial of main database creation");
+        const auto walLeaf = existing->openLeaf(PersistenceDetail::DatabaseLeafRole::Wal,
+            PersistenceDetail::DatabaseLeafDisposition::CreateNew, GENERIC_WRITE | FILE_READ_ATTRIBUTES);
+        const auto shmLeaf = existing->openLeaf(PersistenceDetail::DatabaseLeafRole::SharedMemory,
+            PersistenceDetail::DatabaseLeafDisposition::CreateNew, GENERIC_WRITE | FILE_READ_ATTRIBUTES);
+        require(!walLeaf && !shmLeaf,
+            "the traversal-only namespace bypassed kernel denial of WAL/SHM creation");
+    }
+    auto deniedVfs = take(PersistenceDetail::AnchoredSqliteVfs::create(missing));
+    auto deniedDatabase = PersistenceDetail::WinsqliteConnection::open(missing->canonicalMainDatabasePath(),
+        {std::string{deniedVfs->vfsName()}, PersistenceDetail::WinsqliteOpenMode::ReadWriteCreate,
+         PersistenceDetail::WinsqliteSynchronousMode::Full, PersistenceDetail::WinsqliteJournalMode::WriteAheadLog, missing}, operation);
+    require(!deniedDatabase, "SQLite bypassed the denied main database creation ACL");
+    take(deniedVfs->close());
+    auto sidecarVfs = take(PersistenceDetail::AnchoredSqliteVfs::create(existing));
+    auto deniedSidecarDatabase = PersistenceDetail::WinsqliteConnection::open(existing->canonicalMainDatabasePath(),
+        {std::string{sidecarVfs->vfsName()}, PersistenceDetail::WinsqliteOpenMode::ReadWriteExisting,
+         PersistenceDetail::WinsqliteSynchronousMode::Full, PersistenceDetail::WinsqliteJournalMode::WriteAheadLog, existing}, operation);
+    if (deniedSidecarDatabase) {
+        const auto deniedInsert = deniedSidecarDatabase.value().execute("INSERT INTO records VALUES(2);", operation);
+        require(!deniedInsert, "SQLite wrote after bypassing the denied sidecar creation ACL");
+        take(deniedSidecarDatabase.value().close(operation));
+    }
+    take(sidecarVfs->close());
+    require(restore.restore() == ERROR_SUCCESS, "the owned database fixture DACL could not be restored");
+    require(!std::filesystem::exists(directory.path() / L"denied.sqlite") &&
+        !std::filesystem::exists(directory.path() / L"existing.sqlite-wal") &&
+        !std::filesystem::exists(directory.path() / L"existing.sqlite-shm"),
+        "denied database or sidecar creation produced filesystem effects");
+    auto restored = OpenAnchoredDatabase::create(directory.path(), L"existing.sqlite", L"existing.sqlite.lock",
+        PersistenceDetail::WinsqliteOpenMode::ReadWriteExisting, operation);
+    require(queryInteger(restored->connection(), "SELECT count(*) FROM records;", operation) == 1,
+        "the denied database creation altered original content");
+    restored->close(operation);
+}
+
 } // namespace
 
 void registerDatabaseAuthorityTests(TestRegistry& tests)
@@ -728,11 +947,15 @@ void registerDatabaseAuthorityTests(TestRegistry& tests)
             testPinnedMainAndSidecarsRejectReplacement);
     addTest(tests, "persistence.authority.vfs-denials",
             testVfsRejectsAmbientAndUnrecognizedOpens);
+    addTest(tests, "persistence.authority.vfs-filename-metadata",
+            testVfsPreservesCoreFilenameMetadata);
     addTest(tests, "persistence.authority.publication", testHandleRelativePublication);
     addTest(tests, "persistence.authority.publication-lock-waiter",
             testPublicationRemovesFinalLockWithOpenWaiter);
     addTest(tests, "persistence.authority.bounded-enumeration",
             testBoundedHandleRelativeLeafEnumeration);
+    addTest(tests, "persistence.authority.diagnostic-coexistence", testDatabaseAndDiagnosticDirectoryAnchorsCoexist);
+    addTest(tests, "persistence.authority.creation-acl", testTraversalOnlyDatabaseAnchorStillEnforcesCreationAcl);
 }
 
 } // namespace ForgeConductor::Tests

@@ -15,6 +15,7 @@
 #include <iterator>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace ForgeConductor::Tests {
 namespace {
@@ -165,6 +166,81 @@ void boundsRetentionAndHonorsContext() {
     requireError(store->save(extra, cancelled.active()), Domain::ErrorCodes::Cancelled, "Reviewer store ignored cancellation.");
     requireError(store->load(first.runId, TestContext{}.expired()), Domain::ErrorCodes::DeadlineExceeded, "Reviewer store ignored a deadline.");
 }
+void isolatesWorkerPurposeAndFrozenGrants() {
+    Fixture fixture;
+    auto reviewers = fixture.store();
+    WindowsReviewerRunStore workers{fixture.files, fixture.hasher, fixture.clock, fixture.directory,
+        fixture.resolver(), ManagedReceiptPurpose::IndependentWorker};
+    auto record = fixture.record(); record.readOnlyTools = false;
+    record.workerScope = Domain::ManagedRunWorkerScope{fixture.token.trustedRoots(), fixture.token.grants(),
+        fixture.token.denials(), false, {"fs_read", "fs_write"}, 600U};
+    record.outputText = std::string(8192U, 'x') + "\xCE\xA9\xE2\x82\xAC";
+    requireError(reviewers->save(record, context()), Domain::ErrorCodes::Unauthorized,
+        "The default reviewer store accepted a mutable worker.");
+    take(workers.save(record, context()));
+    require(Json::parse(read(fixture.path(record.runId))).at("kind") == "forge_independent_worker", "Worker was persisted as a reviewer.");
+    requireError(reviewers->load(record.runId, context()), Domain::ErrorCodes::IntegrityFailure,
+        "A worker receipt was read as a reviewer.");
+    auto loaded = take(workers.load(record.runId, context()));
+    require(loaded && loaded->workerScope == record.workerScope && !loaded->readOnlyTools && loaded->outputText == record.outputText &&
+        loaded->evidenceIntegrity == Domain::ManagedRunEvidenceIntegrity::Verified && !loaded->workerInterrupted,
+        "Worker capability/output/integrity was not preserved.");
+    auto widened = record; widened.workerScope->shellEnabled = true;
+    requireError(workers.save(widened, context()), Domain::ErrorCodes::OwnershipConflict, "A persisted worker capability was widened.");
+    auto interrupted = record; interrupted.runId = Domain::SessionId{take(fixture.uuids.next())};
+    interrupted.state = Domain::ManagedRunState::Running;
+    interrupted.pendingFunctionCalls.push_back({"uncertain", "fs_write", "{}"});
+    take(workers.save(interrupted, context()));
+    auto recovered = take(workers.load(interrupted.runId, context()));
+    require(recovered && recovered->workerInterrupted && recovered->state == Domain::ManagedRunState::Failed &&
+        recovered->pendingFunctionCalls.size() == 1U && recovered->workerScope == interrupted.workerScope,
+        "An interrupted worker was replayed or its uncertain effects were discarded.");
+    const auto before = read(fixture.path(interrupted.runId));
+    static_cast<void>(take(workers.load(interrupted.runId, context())));
+    require(read(fixture.path(interrupted.runId)) == before, "Worker recovery repeated receipt mutation.");
+    auto envelope = Json::parse(read(fixture.path(record.runId)));
+    envelope["record"]["worker_scope"]["shell_enabled"] = true;
+    write(fixture.path(record.runId), envelope.dump());
+    requireError(workers.load(record.runId, context()), Domain::ErrorCodes::IntegrityFailure, "Tampered worker grants passed integrity verification.");
+}
+void recurringWorkersRetainEveryReceiptBeyondReviewLifetimeLimit() {
+    Fixture fixture;
+    WindowsReviewerRunStore workers{fixture.files, fixture.hasher, fixture.clock, fixture.directory,
+        fixture.resolver(), ManagedReceiptPurpose::IndependentWorker};
+    std::vector<Domain::ManagedRunRecord> completed;
+    std::string originalFirst;
+    for (std::size_t index = 0U; index < 40U; ++index) {
+        auto record = fixture.record(); record.readOnlyTools = false;
+        record.task = "Authorized recurring worker task " + std::to_string(index);
+        record.outputText = "Actual recurring worker output " + std::to_string(index);
+        record.workerScope = Domain::ManagedRunWorkerScope{fixture.token.trustedRoots(), fixture.token.grants(),
+            fixture.token.denials(), false, {"fs_read", "fs_write"}, 600U};
+        if (index == 39U) {
+            record.task.resize(Domain::MaximumManagedRunTaskBytes, '\x01');
+            record.outputText->resize(Domain::MaximumManagedRunOutputBytes, '\x02');
+        }
+        record.state = Domain::ManagedRunState::Running;
+        take(workers.save(record, context()));
+        record.state = Domain::ManagedRunState::Completed;
+        take(workers.save(record, context()));
+        completed.push_back(record);
+        if (index == 0U) originalFirst = read(fixture.path(record.runId));
+    }
+    require(read(fixture.path(completed.front().runId)) == originalFirst,
+        "Later recurring workers deleted or rewrote an earlier sealed result.");
+    require(std::filesystem::file_size(fixture.path(completed.back().runId)) > 1024U * 1024U &&
+        std::filesystem::file_size(fixture.path(completed.back().runId)) <= WindowsReviewerRunStore::MaximumRecordBytes,
+        "Full worker task/output did not retain the supported encoded receipt bound.");
+    WindowsReviewerRunStore restarted{fixture.files, fixture.hasher, fixture.clock, fixture.directory,
+        fixture.resolver(), ManagedReceiptPurpose::IndependentWorker};
+    for (const auto& expected : completed) {
+        const auto loaded = take(restarted.load(expected.runId, context()));
+        require(loaded && loaded->state == Domain::ManagedRunState::Completed && !loaded->workerInterrupted &&
+            loaded->evidenceIntegrity == Domain::ManagedRunEvidenceIntegrity::Verified && loaded->evidenceSeal &&
+            loaded->task == expected.task && loaded->outputText == expected.outputText && loaded->workerScope == expected.workerScope,
+            "A recurring worker receipt or its complete sealed output was lost beyond sixteen firings.");
+    }
+}
 } // namespace
 } // namespace ForgeConductor::Tests
 int main() {
@@ -173,6 +249,8 @@ int main() {
     addTest(tests, "reviewer_store.tamper_kind_authority", rejectsTamperedWrongKindAndNonReadonly);
     addTest(tests, "reviewer_store.interrupted_recovery", recoversInterruptedWithoutReplay);
     addTest(tests, "reviewer_store.retention_context", boundsRetentionAndHonorsContext);
+    addTest(tests, "worker_store.purpose_scope_recovery", isolatesWorkerPurposeAndFrozenGrants);
+    addTest(tests, "worker_store.recurring_receipt_retention", recurringWorkersRetainEveryReceiptBeyondReviewLifetimeLimit);
     std::size_t passed{};
     for (const auto& [name, run] : tests) { try { run(); ++passed; std::cout << "PASS " << name << '\n'; }
         catch (const std::exception& failure) { std::cerr << "FAIL " << name << ": " << failure.what() << '\n'; } }

@@ -202,6 +202,8 @@ void resourceAndConfigurationBoundaries()
     auto config = Domain::defaultAppConfig();
     REQUIRE(Domain::validateAppConfig(config));
     REQUIRE(config.shell.enabled);
+    REQUIRE(config.fileSystemAccess == Domain::FileSystemAccessMode::Workspace);
+    REQUIRE(Domain::wireName(config.fileSystemAccess) == "workspace");
     static_assert(Domain::MaximumAppConfigAllowedRootCount == 32U);
     const auto allowedRoot = take(Domain::PathText::create(R"(C:\workspace)"));
     config.allowedRoots.assign(Domain::MaximumAppConfigAllowedRootCount, allowedRoot);
@@ -219,6 +221,7 @@ void resourceAndConfigurationBoundaries()
     REQUIRE(config.localModel.effectiveContextCapacity == 32'768U);
     Domain::AppConfigPatch patch;
     patch.shellEnabled = false;
+    patch.fileSystemAccess = Domain::FileSystemAccessMode::Host;
     patch.dashboardHost = "::1";
     patch.mcpRole = Domain::McpRole::Fallback;
     patch.localModelName = "loaded-model";
@@ -229,6 +232,8 @@ void resourceAndConfigurationBoundaries()
     auto updated = Domain::applyConfigPatch(config, patch);
     REQUIRE(updated);
     REQUIRE(!updated.value().shell.enabled);
+    REQUIRE(updated.value().fileSystemAccess == Domain::FileSystemAccessMode::Host);
+    REQUIRE(Domain::wireName(updated.value().fileSystemAccess) == "host");
     REQUIRE(updated.value().mcpRole == Domain::McpRole::Fallback);
     REQUIRE(updated.value().localModel.model ==
             std::optional<std::string>{"loaded-model"});
@@ -244,6 +249,9 @@ void resourceAndConfigurationBoundaries()
     patch.effectiveContextCapacity = 4'096U;
     REQUIRE(!Domain::applyConfigPatch(config, patch));
     REQUIRE(Domain::wireName(Domain::LogLevel::Warning) == "warn");
+    Domain::AppConfigPatch invalidMode;
+    invalidMode.fileSystemAccess = static_cast<Domain::FileSystemAccessMode>(99);
+    REQUIRE(!Domain::applyConfigPatch(config, invalidMode));
 }
 
 void agentAndLegacyMemoryParity()
@@ -1438,6 +1446,7 @@ void processToolTelemetryAndManagerBounds()
 
     Domain::ManagerSettings settings;
     REQUIRE(Domain::validateManagerSettings(settings));
+    REQUIRE(settings.fileSystemAccess == Domain::FileSystemAccessMode::Workspace);
     settings.dashboardHost = "::1";
     REQUIRE(Domain::validateManagerSettings(settings));
 
@@ -1491,10 +1500,15 @@ void processToolTelemetryAndManagerBounds()
     settingsPatch.autoRestart = false;
     settingsPatch.dashboardHost = "::1";
     settingsPatch.localModelName = "";
+    settingsPatch.fileSystemAccess = Domain::FileSystemAccessMode::Host;
     auto patched = Domain::applyManagerSettingsPatch(settings, settingsPatch);
     REQUIRE(patched);
     REQUIRE(!patched.value().autoRestart);
     REQUIRE(patched.value().localModelName.empty());
+    REQUIRE(patched.value().fileSystemAccess == Domain::FileSystemAccessMode::Host);
+    auto invalidModePatch = settingsPatch;
+    invalidModePatch.fileSystemAccess = static_cast<Domain::FileSystemAccessMode>(99);
+    REQUIRE(!Domain::applyManagerSettingsPatch(settings, invalidModePatch));
     settingsPatch.dashboardHost = "0.0.0.0";
     REQUIRE(!Domain::applyManagerSettingsPatch(settings, settingsPatch));
     settingsPatch.dashboardHost = "localhost";

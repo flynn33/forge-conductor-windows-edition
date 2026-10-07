@@ -165,7 +165,7 @@ template <typename T>
     const Domain::PathText& root) noexcept
 {
     try {
-        auto resolved = Detail::WindowsPathResolver::resolveAppOwnedRoot(root.value());
+        auto resolved = Detail::WindowsPathResolver::resolveWorkspacePath(root.value());
         if (!resolved) {
             return resolved;
         }
@@ -178,7 +178,7 @@ template <typename T>
         // The second opened-handle resolution occurs after the exact root was
         // proven to exist and rejects any parent substitution during admission.
         auto revalidated =
-            Detail::WindowsPathResolver::resolveAppOwnedRoot(root.value());
+            Detail::WindowsPathResolver::resolveWorkspacePath(root.value());
         if (!revalidated) {
             return revalidated;
         }
@@ -197,7 +197,7 @@ template <typename T>
         auto nativeRequestedPath = requestedPath.value();
         std::replace(nativeRequestedPath.begin(), nativeRequestedPath.end(), '/', '\\');
         auto resolved =
-            Detail::WindowsPathResolver::resolveAppOwnedRoot(nativeRequestedPath);
+            Detail::WindowsPathResolver::resolveWorkspacePath(nativeRequestedPath);
         if (!resolved) {
             return resolved;
         }
@@ -358,7 +358,10 @@ template <typename T>
         }
         if (authority.callerId() != policy->callerId ||
             authority.generation() < policy->generation ||
-            authority.intent() != policy->intent ||
+            (authority.intent() != policy->intent &&
+                (authority.intent() != Domain::FileAccess::Read ||
+                 !containsValue(authority.grants(), Domain::FileAccess::Read) ||
+                 containsValue(authority.denials(), Domain::FileAccess::Read))) ||
             authority.trustedRoots().empty() || authority.grants().empty() ||
             containsDuplicates(authority.trustedRoots()) ||
             containsDuplicates(authority.grants()) ||
@@ -592,6 +595,15 @@ Domain::Result<Contracts::AuthorizedPath> WindowsWorkspaceAuthority::authorize(
                 Domain::makeError(
                     Domain::ErrorCodes::PathOutsideAuthority,
                     "The requested path escaped its canonical workspace root."));
+        }
+        if (request.excludedSubtree) {
+            auto excluded = resolveExistingRoot(*request.excludedSubtree);
+            if (!excluded) return Domain::Result<Contracts::AuthorizedPath>::failure(excluded.error());
+            if (isWithin(requested.value(), excluded.value())) {
+                return Domain::Result<Contracts::AuthorizedPath>::failure(Domain::makeError(
+                    Domain::ErrorCodes::Unauthorized,
+                    "The requested path is inside an excluded canonical subtree."));
+            }
         }
         if (request.protectAuthorityRoot && destructiveAccess(request.access) &&
             equalPath(requested.value(), root.value())) {

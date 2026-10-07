@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ForgeConductor/Contracts/AuthorityCapabilities.h"
+#include "ForgeConductor/Domain/ConfigurationModels.h"
 #include "ForgeConductor/Domain/OperationContext.h"
 #include "ForgeConductor/Domain/Result.h"
 
@@ -33,6 +34,18 @@ class IWorkspaceAuthority {
 public:
     virtual ~IWorkspaceAuthority() = default;
 
+    [[nodiscard]] virtual Domain::FileSystemAccessMode fileSystemAccessMode() const noexcept
+    { return Domain::FileSystemAccessMode::Workspace; }
+
+    [[nodiscard]] virtual Domain::Result<Domain::PathText> defaultWorkspacePath(
+        const WorkspaceAuthority& authority,
+        const Domain::OperationContext&) noexcept
+    {
+        if (authority.trustedRoots().empty()) return Domain::Result<Domain::PathText>::failure(
+            Domain::makeError(Domain::ErrorCodes::Unauthorized, "Workspace authority has no default path."));
+        return Domain::Result<Domain::PathText>::success(authority.trustedRoots().front());
+    }
+
     [[nodiscard]] virtual Domain::Result<WorkspaceAuthority> authorityFor(
         const Domain::ProjectId& projectId,
         const Domain::OperationContext& context) noexcept = 0;
@@ -59,7 +72,7 @@ public:
         const Domain::OperationContext&) noexcept
     { return Domain::Result<std::vector<Domain::PathText>>::success({}); }
 
-    // Only roots explicitly activated for this project, never the entire owner allowlist.
+    // Explicit project bindings, or automatically active volumes in owner-selected host mode.
     [[nodiscard]] virtual Domain::Result<std::vector<Domain::PathText>> boundConfiguredRoots(
         const Domain::ProjectId&, const Domain::OperationContext&) noexcept
     { return Domain::Result<std::vector<Domain::PathText>>::success({}); }
@@ -128,12 +141,14 @@ protected:
                 Domain::ErrorCodes::Unauthorized,
                 "Authority narrowing attempted to widen scope or reuse a generation."));
         }
+        const auto intent = contains(grants, authority.intent()) ? authority.intent() :
+            contains(grants, Domain::FileAccess::Read) ? Domain::FileAccess::Read : authority.intent();
         return issueAuthority(
             authority.authorityId(),
             authority.projectId(),
             authority.callerId(),
             std::move(trustedRoots),
-            authority.intent(),
+            intent,
             std::move(grants),
             authority.denials(),
             shellEnabled,

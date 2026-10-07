@@ -30,6 +30,24 @@
         "behavior": "The canonical memory-only handoff is prepared first, then the injected native host capability may create, acknowledge, and seal a successor session.",
         "covered_by": ["continuity.request_rollover/valid", "continuity.request_rollover/boundary"]
       },
+      "host_capability_workflow_tools": {
+        "qualification": "Windows native host extensions; separate from the unchanged canonical macOS behavior matrix",
+        "names": [
+          "agent_cancel", "agent_poll", "agent_spawn", "browser_open",
+          "desktop_capture", "desktop_click", "desktop_key", "desktop_list", "desktop_read", "desktop_type",
+          "document_write", "host_capabilities", "http_request", "image_read", "image_write", "presentation_write",
+          "schedule_cancel", "schedule_create", "schedule_list", "schedule_run_now", "spreadsheet_write", "web_fetch", "web_search"
+        ],
+        "covered_by": [
+          "tests/Mcp/McpToolPackAdapterTests.cpp",
+          "tests/Mcp/McpProtocolServerTests.cpp",
+          "tests/Mcp/McpAgentWorkerToolsTests.cpp",
+          "tests/NativeTools/WindowsWebAccessServiceTests.cpp",
+          "tests/NativeTools/WindowsArtifactDocumentServiceTests.cpp",
+          "tests/NativeTools/WindowsDesktopArtifactServiceTests.cpp",
+          "tests/Application/ScheduledTaskServiceTests.cpp"
+        ]
+      },
       "tiered_workflow_tools": {
         "qualification": "Windows host extensions; not part of the canonical macOS tool matrix",
         "names": [

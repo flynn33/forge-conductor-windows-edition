@@ -120,10 +120,12 @@ public:
         std::shared_ptr<Contracts::IClock> clock,
         std::shared_ptr<Contracts::IUuidGenerator> uuidGenerator,
         std::shared_ptr<Dashboard::IDashboardConnectionApplicationFactory>
-            applicationFactory) noexcept
+            applicationFactory,
+        OwnerPolicyApplier ownerPolicyApplier) noexcept
         : clock_{std::move(clock)},
           uuidGenerator_{std::move(uuidGenerator)},
-          applicationFactory_{std::move(applicationFactory)}
+          applicationFactory_{std::move(applicationFactory)},
+          ownerPolicyApplier_{std::move(ownerPolicyApplier)}
     {
     }
 
@@ -146,6 +148,8 @@ public:
                 return runtimeFailureLocked(
                     std::move(transitioned).error());
             }
+            auto appliedPolicy = applyOwnerPolicyLocked(config, context);
+            if (!appliedPolicy) return runtimeFailureLocked(std::move(appliedPolicy).error());
             if (std::move(transitioned).value() || !startedAt_.has_value()) {
                 startedAt_ = clock_->utcNow();
             }
@@ -209,6 +213,9 @@ public:
                     std::move(transitioned).error());
             }
 
+            auto appliedPolicy = applyOwnerPolicyLocked(config, context);
+            if (!appliedPolicy) return runtimeFailureLocked(std::move(appliedPolicy).error());
+
             // A successful explicit restart begins a fresh runtime uptime
             // epoch even when the lower A/B path retained one process graph.
             startedAt_ = clock_->utcNow();
@@ -239,6 +246,8 @@ public:
                 return runtimeFailureLocked(
                     std::move(transitioned).error());
             }
+            auto appliedPolicy = applyOwnerPolicyLocked(config, context);
+            if (!appliedPolicy) return runtimeFailureLocked(std::move(appliedPolicy).error());
             if (std::move(transitioned).value() || !startedAt_.has_value()) {
                 startedAt_ = clock_->utcNow();
             }
@@ -273,6 +282,9 @@ public:
                 return snapshotFailure(
                     nonbindingSettingsChangedEndpointError());
             }
+
+            auto appliedPolicy = applyOwnerPolicyLocked(config, context);
+            if (!appliedPolicy) return runtimeFailureLocked(std::move(appliedPolicy).error());
 
             // Refresh interval and other nonbinding policy are owned above the
             // immutable lower listener snapshot and apply to future requests
@@ -642,6 +654,14 @@ private:
         }
     }
 
+    [[nodiscard]] Domain::Result<void> applyOwnerPolicyLocked(
+        const Domain::AppConfig& config,
+        const Domain::OperationContext& context)
+    {
+        return ownerPolicyApplier_ ? ownerPolicyApplier_(config, context)
+                                  : Domain::Result<void>::success();
+    }
+
     // One mutex is the sole operation/transition owner. It is deliberately
     // held through lower-runtime wait so no caller can observe or install a
     // successor between exclusive endpoint destruction and publication.
@@ -651,6 +671,7 @@ private:
     const std::shared_ptr<
         Dashboard::IDashboardConnectionApplicationFactory>
         applicationFactory_;
+    const OwnerPolicyApplier ownerPolicyApplier_;
     std::unique_ptr<DashboardRuntime> dashboardRuntime_;
     std::optional<Domain::UtcTimePoint> startedAt_;
     std::uint32_t restartCount_{};
@@ -664,7 +685,8 @@ WindowsManagerRuntime::create(
     std::shared_ptr<Contracts::IClock> clock,
     std::shared_ptr<Contracts::IUuidGenerator> uuidGenerator,
     std::shared_ptr<Dashboard::IDashboardConnectionApplicationFactory>
-        applicationFactory) noexcept
+        applicationFactory,
+    OwnerPolicyApplier ownerPolicyApplier) noexcept
 {
     using CreateResult =
         Domain::Result<std::unique_ptr<WindowsManagerRuntime>>;
@@ -677,7 +699,7 @@ WindowsManagerRuntime::create(
         auto implementation = std::make_unique<Impl>(
             std::move(clock),
             std::move(uuidGenerator),
-            std::move(applicationFactory));
+            std::move(applicationFactory), std::move(ownerPolicyApplier));
         return CreateResult::success(
             std::unique_ptr<WindowsManagerRuntime>{
                 new WindowsManagerRuntime{std::move(implementation)}});

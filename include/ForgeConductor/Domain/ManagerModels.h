@@ -56,6 +56,7 @@ struct ManagerSettings final {
     std::uint32_t handoffReserve{4'096U};
     std::uint32_t estimationSafetyMargin{2'048U};
     bool shellEnabled{true};
+    FileSystemAccessMode fileSystemAccess{FileSystemAccessMode::Workspace};
 
     bool operator==(const ManagerSettings&) const = default;
 };
@@ -80,6 +81,7 @@ struct ManagerSettingsPatch final {
     std::optional<std::uint32_t> handoffReserve;
     std::optional<std::uint32_t> estimationSafetyMargin;
     std::optional<bool> shellEnabled;
+    std::optional<FileSystemAccessMode> fileSystemAccess;
 };
 
 // One serialized manager settings mutation produces this complete outcome.

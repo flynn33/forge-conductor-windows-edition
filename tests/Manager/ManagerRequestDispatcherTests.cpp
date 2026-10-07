@@ -201,6 +201,13 @@ public:
         const Domain::OperationContext&) noexcept override
     {
         ++settingsCalls_;
+        if (failSettings_) {
+            return Domain::Result<Domain::ManagerSettings>::failure(
+                Domain::makeError(
+                    Domain::ErrorCodes::DatabaseBusy,
+                    "injected settings failure",
+                    true));
+        }
         return Domain::Result<Domain::ManagerSettings>::success(currentSettings);
     }
 
@@ -300,6 +307,7 @@ public:
     }
 
     bool failStatus_{};
+    bool failSettings_{};
     bool failRequestShutdown_{};
     std::atomic_size_t statusCalls_{};
     std::atomic_size_t settingsCalls_{};
@@ -565,6 +573,13 @@ public:
     int exitCode{};
     std::size_t calls{};
     std::string lastCommand;
+    std::string lastArguments;
+    std::vector<Domain::PathText> lastRoots;
+    std::vector<Domain::FileAccess> lastGrants;
+    std::vector<Domain::FileAccess> lastDenials;
+    bool lastShell{};
+    std::uint64_t lastGeneration{};
+    Domain::FileAccess lastIntent{Domain::FileAccess::Read};
     Domain::ProjectId lastProject = Domain::ProjectId::parse(uuidText(1U)).value();
 
     [[nodiscard]] Domain::Result<Domain::ToolCallOutcome> invoke(
@@ -574,6 +589,13 @@ public:
     {
         ++calls;
         lastProject = authority.projectId();
+        lastArguments = call.canonicalArguments;
+        lastRoots = authority.trustedRoots();
+        lastGrants = authority.grants();
+        lastDenials = authority.denials();
+        lastShell = authority.shellEnabled();
+        lastGeneration = authority.generation();
+        lastIntent = authority.intent();
         lastCommand = call.canonicalArguments.find("Write-Output OK") !=
             std::string::npos ? "Write-Output OK" : "exit 1";
         const auto payload = std::string{"{\"ok\":"} +
@@ -773,6 +795,101 @@ private:
     Snapshot snapshot_;
     Consumer consumer_;
 };
+
+void testWorkerScopeBrokerPreservesOnlyCurrentCallerGrants()
+{
+    using Json = nlohmann::json;
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    const auto project = Domain::ProjectId::parse(uuidText(900U)).value();
+    const auto first = Domain::PathText::create("D:\\WorkerFirst").value();
+    const auto second = Domain::PathText::create("D:\\WorkerSecond").value();
+    TestFakes::DeterministicWorkspaceAuthority issuer{
+        Domain::AuthorityId::parse(uuidText(901U)).value(), Domain::ClientId::parse("worker-scope-fixture").value(),
+        {first, second}, Domain::FileAccess::Write,
+        {Domain::FileAccess::Read, Domain::FileAccess::Write, Domain::FileAccess::Create, Domain::FileAccess::Delete, Domain::FileAccess::Execute},
+        {}, true, 7U};
+    FakeNativeCheckToolRouter router;
+    Manager::ManagerTelemetrySources sources;
+    sources.projectWorkspaceAuthority = &issuer; sources.toolRouter = &router;
+    Manager::ManagerRequestDispatcher dispatcher{controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+    unsigned sequence = 902U;
+    const auto invoke = [&](std::string_view tool, Json input) {
+        return dispatcher.dispatch(request(*clock, sequence++, Manager::ManagerToolInvokeRequest{project, std::string{tool}, input.dump()}));
+    };
+    Json scope{{"trusted_roots", Json::array({first.value()})}, {"grants", Json::array({"read"})},
+        {"denials", Json::array()}, {"shell_enabled", false}};
+    for (const auto tool : {"agent_spawn", "agent_poll", "agent_cancel", "schedule_create", "schedule_list", "schedule_cancel", "schedule_run_now"}) {
+        const auto response = invoke(tool, Json{{"marker", "preserve public args"}, {"_forge_worker_scope", scope}});
+        require(responseValue<Manager::ManagerToolOutcomeSnapshot>(response) != nullptr,
+            "Worker tool scope could not be admitted by its broker.");
+        require(router.lastRoots == std::vector<Domain::PathText>{first} && router.lastGrants == std::vector<Domain::FileAccess>{Domain::FileAccess::Read} &&
+            router.lastIntent == Domain::FileAccess::Read && !router.lastShell && router.lastGeneration == 8U,
+            "Read-only worker scope restored removed roots, Write/Execute grants, shell, or the original intent.");
+        const auto arguments = Json::parse(router.lastArguments);
+        require(!arguments.contains("_forge_worker_scope") && arguments.at("marker") == "preserve public args",
+            "Broker metadata leaked through public tool schema validation or erased public arguments.");
+    }
+    auto denied = scope;
+    denied["grants"] = Json::array({"read", "write", "create", "delete", "execute"});
+    denied["denials"] = Json::array({"write", "execute"}); denied["shell_enabled"] = true;
+    require(responseValue<Manager::ManagerToolOutcomeSnapshot>(invoke("agent_poll", Json{{"_forge_worker_scope", denied}})) != nullptr,
+        "Restrictive worker denials were not admitted.");
+    require(std::find(router.lastGrants.begin(), router.lastGrants.end(), Domain::FileAccess::Write) == router.lastGrants.end() &&
+        std::find(router.lastGrants.begin(), router.lastGrants.end(), Domain::FileAccess::Execute) == router.lastGrants.end() && !router.lastShell,
+        "Caller denial did not remove effective Write/Execute grants and shell access.");
+    auto full = scope;
+    full["trusted_roots"] = Json::array({first.value(), second.value(), "Z:\\Unconfigured"});
+    full["grants"] = Json::array({"read", "write", "create", "delete", "execute"}); full["shell_enabled"] = false;
+    require(responseValue<Manager::ManagerToolOutcomeSnapshot>(invoke("schedule_list", Json{{"_forge_worker_scope", full}})) != nullptr &&
+        router.lastRoots == std::vector<Domain::PathText>{first, second} && !router.lastShell,
+        "Worker scope added an unconfigured root or restored caller-disabled shell.");
+    const auto invalid = [&](Json metadata, std::string_view code) {
+        const auto calls = router.calls;
+        requireError(invoke("agent_poll", Json{{"_forge_worker_scope", std::move(metadata)}}), code, "Invalid worker scope");
+        require(router.calls == calls, "Invalid worker metadata reached the tool router.");
+    };
+    auto bad = scope; bad["trusted_roots"] = Json::array({"Z:\\Unconfigured"}); invalid(bad, Domain::ErrorCodes::Unauthorized);
+    bad = scope; bad["trusted_roots"] = Json::array({first.value(), first.value()}); invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["trusted_roots"] = Json::array(); invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["trusted_roots"] = Json::array({17}); invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["grants"] = Json::array({"read", "read"}); invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["grants"] = Json::array({"admin"}); invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["grants"] = Json::array(); invalid(bad, Domain::ErrorCodes::Unauthorized);
+    bad = scope; bad["denials"] = Json::array({"read"}); invalid(bad, Domain::ErrorCodes::Unauthorized);
+    bad = scope; bad["shell_enabled"] = "false"; invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["unknown"] = false; invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["denials"] = Json::array({"execute", "execute"}); invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["denials"] = Json::array({"elevate"}); invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["trusted_roots"] = Json::array();
+    for (unsigned index = 0; index < 33U; ++index) bad["trusted_roots"].push_back("D:\\ExcessRoot" + std::to_string(index));
+    invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    const auto previousCalls = router.calls;
+    const auto duplicateArguments = std::string{"{\"_forge_worker_scope\":"} + scope.dump() + ",\"_forge_worker_scope\":" + scope.dump() + "}";
+    requireError(dispatcher.dispatch(request(*clock, sequence++, Manager::ManagerToolInvokeRequest{project, "agent_poll", duplicateArguments})),
+        Domain::ErrorCodes::InvalidRequest, "Duplicate broker scope field was accepted");
+    require(router.calls == previousCalls, "Duplicate broker fields reached the router.");
+    requireError(invoke("process_launch", Json{{"_forge_worker_scope", scope}}), Domain::ErrorCodes::InvalidRequest,
+        "Unrelated tool accepted private worker metadata");
+    require(router.calls == previousCalls, "Unrelated worker metadata reached the router.");
+    require(responseValue<Manager::ManagerToolOutcomeSnapshot>(invoke("agent_poll", Json{{"no_scope", true}})) != nullptr &&
+        router.lastRoots == std::vector<Domain::PathText>{first, second} && router.lastShell && router.lastIntent == Domain::FileAccess::Write && router.lastGeneration == 7U,
+        "Native owner invocation without forwarded metadata did not retain its baseline.");
+
+    const std::vector<Domain::FileAccess> currentDenials{Domain::FileAccess::Write, Domain::FileAccess::Create, Domain::FileAccess::Delete, Domain::FileAccess::Execute};
+    TestFakes::DeterministicWorkspaceAuthority restrictedIssuer{
+        Domain::AuthorityId::parse(uuidText(950U)).value(), Domain::ClientId::parse("worker-restricted-fixture").value(),
+        {first}, Domain::FileAccess::Read, {Domain::FileAccess::Read}, currentDenials, false, 10U};
+    sources.projectWorkspaceAuthority = &restrictedIssuer;
+    Manager::ManagerRequestDispatcher restrictedDispatcher{controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+    full["shell_enabled"] = true;
+    const auto restrictedResponse = restrictedDispatcher.dispatch(request(*clock, sequence++,
+        Manager::ManagerToolInvokeRequest{project, "agent_spawn", Json{{"_forge_worker_scope", full}}.dump()}));
+    require(responseValue<Manager::ManagerToolOutcomeSnapshot>(restrictedResponse) != nullptr &&
+        router.lastRoots == std::vector<Domain::PathText>{first} && router.lastGrants == std::vector<Domain::FileAccess>{Domain::FileAccess::Read} &&
+        router.lastDenials == currentDenials && !router.lastShell && router.lastIntent == Domain::FileAccess::Read && router.lastGeneration == 11U,
+        "Forwarded full scope widened the current issuer's revoked root, grants, denials, or shell restriction.");
+}
 
 void testTelemetryCannotReadRemovedManagedRuns()
 {
@@ -2344,6 +2461,53 @@ void testPayloadMappingAndControllerFailures()
         "controller failure mapping");
 }
 
+void testToolsSnapshotReadsLiveSettingsAndPropagatesFailure()
+{
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    TestFakes::BoundedToolCatalogFake catalog{{Domain::McpToolDescriptor{
+        Domain::ToolDescriptor{
+            "shell", "Native shell", "shell", Domain::ToolEffect::Execute,
+            Domain::ToolAvailability::Available, true, true},
+        R"({"type":"object"})"}}};
+    Manager::ManagerTelemetrySources sources;
+    sources.tools = &catalog;
+    sources.shellEnabled = true;
+    Manager::ManagerRequestDispatcher dispatcher{
+        controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+
+    controller->currentSettings.shellEnabled = false;
+    const auto disabled = dispatcher.dispatch(request(
+        *clock, 6U, Manager::ManagerToolsRequest{}));
+    const auto* disabledTools = responseValue<Manager::ManagerToolsSnapshot>(disabled);
+    require(disabledTools != nullptr && !disabledTools->shellEnabled &&
+        disabledTools->tools.size() == 1U &&
+        disabledTools->tools.front().name == "shell",
+        "tools snapshot uses current disabled policy rather than startup telemetry");
+
+    controller->currentSettings.shellEnabled = true;
+    const auto enabled = dispatcher.dispatch(request(
+        *clock, 7U, Manager::ManagerToolsRequest{}));
+    const auto* enabledTools = responseValue<Manager::ManagerToolsSnapshot>(enabled);
+    require(enabledTools != nullptr && enabledTools->shellEnabled,
+        "tools snapshot reflects shell access enabled after construction");
+
+    controller->currentSettings.shellEnabled = false;
+    const auto disabledAgain = dispatcher.dispatch(request(
+        *clock, 8U, Manager::ManagerToolsRequest{}));
+    const auto* disabledAgainTools =
+        responseValue<Manager::ManagerToolsSnapshot>(disabledAgain);
+    require(disabledAgainTools != nullptr && !disabledAgainTools->shellEnabled,
+        "tools snapshot reflects shell access revoked after construction");
+
+    controller->failSettings_ = true;
+    requireError(dispatcher.dispatch(request(
+        *clock, 9U, Manager::ManagerToolsRequest{})),
+        Domain::ErrorCodes::DatabaseBusy, "tools snapshot settings failure");
+    require(controller->settingsCalls_.load() == 4U,
+        "each tools snapshot reads live settings exactly once");
+}
+
 void testDuplicateCapacityAndCancellationBypass()
 {
     auto clock = std::make_shared<FakeClock>();
@@ -2608,6 +2772,8 @@ int main()
 {
     try {
         testPayloadMappingAndControllerFailures();
+        testToolsSnapshotReadsLiveSettingsAndPropagatesFailure();
+        testWorkerScopeBrokerPreservesOnlyCurrentCallerGrants();
         testManagedRunEndpointsAreRemoved();
         testAutomaticContinuityPreferenceIsProjectProviderScopedAndDurable();
         testRunHistoryIsBoundToSelectedProject();
@@ -2630,7 +2796,7 @@ int main()
         testBoundedCloseDefersControllerShutdownUntilIdle();
         testRacingReleaseAndShutdownClosesExactlyOnce();
         testConstructionRejectsNullDependencies();
-        std::cout << "Manager request dispatcher tests passed: 23 groups\n";
+        std::cout << "Manager request dispatcher tests passed: 25 groups\n";
         return 0;
     } catch (const std::exception& failure) {
         std::cerr << "Manager request dispatcher tests failed: "

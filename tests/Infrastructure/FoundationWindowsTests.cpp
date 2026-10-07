@@ -376,6 +376,18 @@ void testPathResolverRejectsUnsafeForms()
                  "malformed UTF-8 was accepted as an app-owned path");
 
     ScopedTestDirectory temporary;
+    const auto volume = pathText(temporary.path().root_path());
+    require(take(WindowsPathResolver::resolveWorkspacePath(volume.value())) ==
+                temporary.path().root_path().native(),
+            "an explicit workspace capability could not resolve its existing local volume");
+    requireError(WindowsPathResolver::resolveAppOwnedRoot(volume.value()),
+                 Domain::ErrorCodes::InvalidRequest,
+                 "workspace volume support weakened the application data-root boundary");
+    for (const auto& unsafe : {"relative\\root", "\\\\server\\share\\root", "\\\\?\\C:\\root",
+                              "C:\\root\\NUL.txt", "C:\\root\\file:stream", "C:\\root\\..\\escape"}) {
+        require(!WindowsPathResolver::resolveWorkspacePath(unsafe),
+                "workspace volume support admitted an unsafe namespace or component");
+    }
     const std::filesystem::path target = temporary.path() / L"target";
     const std::filesystem::path link = temporary.path() / L"link";
     require(std::filesystem::create_directory(target), "could not create a reparse target");

@@ -63,6 +63,11 @@ class WindowsPathResolver final
     [[nodiscard]] static Domain::Result<std::wstring> resolveAppOwnedRoot(
         std::string_view utf8Path) noexcept;
 
+    // Workspace capabilities may explicitly cover a local volume; app-owned
+    // data roots retain their separate prohibition against owning a drive.
+    [[nodiscard]] static Domain::Result<std::wstring> resolveWorkspacePath(
+        std::string_view utf8Path) noexcept;
+
     [[nodiscard]] static Domain::Result<std::wstring> resolveAppOwnedChild(
         std::wstring_view canonicalRoot, std::wstring_view relativePath,
         MissingPathPolicy policy) noexcept;

@@ -222,14 +222,34 @@ public:
         Domain::PathText root;
     };
 
-    explicit WorkspaceAuthorityFake(std::vector<Binding> bindings)
-        : bindings_{std::move(bindings)}
+    explicit WorkspaceAuthorityFake(std::vector<Binding> bindings,
+        const Domain::FileSystemAccessMode mode = Domain::FileSystemAccessMode::Workspace)
+        : bindings_{std::move(bindings)}, mode_{mode}
     {
     }
 
     void addBinding(Binding binding)
     {
         bindings_.push_back(std::move(binding));
+    }
+
+    [[nodiscard]] Domain::FileSystemAccessMode fileSystemAccessMode() const noexcept override
+    {
+        return mode_;
+    }
+
+    void replaceRoot(const Domain::ProjectId& projectId, Domain::PathText root)
+    {
+        for (auto& binding : bindings_) {
+            if (binding.projectId == projectId) binding.root = std::move(root);
+        }
+    }
+
+    void setReadGranted(const bool value) noexcept { readGranted_ = value; }
+
+    void setCanonicalPath(Domain::PathText requested, Domain::PathText canonical)
+    {
+        canonicalOverride_ = std::pair{std::move(requested), std::move(canonical)};
     }
 
     [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> authorityFor(
@@ -247,8 +267,8 @@ public:
                 found->projectId,
                 id<Domain::ClientId>("registered-workspace-authority"),
                 {found->root},
-                Domain::FileAccess::Read,
-                {Domain::FileAccess::Read},
+                readGranted_ ? Domain::FileAccess::Read : Domain::FileAccess::Write,
+                {readGranted_ ? Domain::FileAccess::Read : Domain::FileAccess::Write},
                 {},
                 false,
                 1U);
@@ -281,10 +301,15 @@ public:
     {
         try {
             const auto found = find(authority.projectId());
+            const auto& canonical = canonicalOverride_ &&
+                canonicalOverride_->first == request.requestedPath
+                ? canonicalOverride_->second : request.requestedPath;
+            const bool matchingBase = mode_ == Domain::FileSystemAccessMode::Host
+                ? !request.basePath || (found != bindings_.end() && request.basePath == found->root)
+                : found != bindings_.end() && request.basePath == found->root;
             if (found == bindings_.end() ||
                 request.access != Domain::FileAccess::Read ||
-                !request.basePath || request.basePath.value() != found->root ||
-                !isWithin(request.requestedPath, found->root)) {
+                !matchingBase || !isWithin(canonical, found->root)) {
                 return Domain::Result<Contracts::AuthorizedPath>::failure(
                     Domain::makeError(
                         Domain::ErrorCodes::PathOutsideAuthority,
@@ -292,7 +317,7 @@ public:
             }
             return issueAuthorizedPath(
                 authority,
-                request.requestedPath,
+                canonical,
                 found->root,
                 request.access);
         } catch (...) {
@@ -344,6 +369,9 @@ private:
     }
 
     std::vector<Binding> bindings_;
+    Domain::FileSystemAccessMode mode_;
+    bool readGranted_{true};
+    std::optional<std::pair<Domain::PathText, Domain::PathText>> canonicalOverride_;
 };
 
 [[nodiscard]] Domain::ProjectId projectA()
@@ -497,6 +525,62 @@ void usesAbsoluteKeyFileFallbackAndClearsOnNoMatch()
     REQUIRE(!take(fixture.subject.snapshot(caller, context())).has_value());
 }
 
+void hostRecoveryRetainsRegisteredAliasAndRejectsRevokedOrForeignPaths()
+{
+    const auto alias = path("C:\\workspace\\alpha");
+    RegistryFake registry{{Domain::ProjectMemoryDescriptor{
+        projectA(), "Alpha", std::nullopt, {alias}}}};
+    WorkspaceAuthorityFake authority{{WorkspaceAuthorityFake::Binding{
+        projectA(), id<Domain::AuthorityId>("aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"),
+        path("C:\\")}}, Domain::FileSystemAccessMode::Host};
+    FixedClock clock;
+    Mcp::McpClientWorkspaceContext subject{registry, authority, clock};
+    const auto caller = client("host-recovery-client");
+
+    const auto descendant = take(subject.adopt(caller,
+        record("host-descendant", 1U, std::string{"C:\\workspace\\alpha\\src"}), context()));
+    REQUIRE(descendant.snapshot.has_value());
+    REQUIRE(!descendant.warning);
+    REQUIRE(descendant.snapshot->authorityRoot == alias);
+    REQUIRE(descendant.snapshot->authorityRoot != path("C:\\"));
+    REQUIRE(descendant.snapshot->projectId == projectA());
+
+    const auto fallback = take(subject.adopt(caller,
+        record("host-key-file", 2U, std::string{"relative"},
+            {"C:\\workspace\\alpha\\notes.txt"}), context()));
+    REQUIRE(fallback.snapshot.has_value());
+    REQUIRE(fallback.snapshot->authorityRoot == alias);
+
+    for (const auto candidate : {"C:\\workspace\\unregistered", "C:\\workspace\\alpha-sibling"}) {
+        const auto outside = take(subject.adopt(caller,
+            record("host-unregistered", 3U, std::string{candidate}), context()));
+        REQUIRE(!outside.snapshot);
+        REQUIRE(outside.warning->code == Domain::ErrorCodes::PathOutsideAuthority);
+    }
+    // A broad volume authorization must not substitute a different canonical
+    // subtree for the registered project identity.
+    authority.setCanonicalPath(path("C:\\workspace\\alpha\\escape.txt"),
+        path("C:\\workspace\\sibling\\escape.txt"));
+    const auto escaped = take(subject.adopt(caller,
+        record("host-canonical-escape", 4U,
+            std::string{"C:\\workspace\\alpha\\escape.txt"}), context()));
+    REQUIRE(!escaped.snapshot);
+    REQUIRE(escaped.warning->code == Domain::ErrorCodes::PathOutsideAuthority);
+
+    authority.replaceRoot(projectA(), path("D:\\"));
+    const auto revokedDrive = take(subject.adopt(caller,
+        record("host-revoked-drive", 5U, alias.value()), context()));
+    REQUIRE(!revokedDrive.snapshot);
+    REQUIRE(revokedDrive.warning->code == Domain::ErrorCodes::PathOutsideAuthority);
+    authority.replaceRoot(projectA(), path("C:\\"));
+    authority.setReadGranted(false);
+    const auto revokedRead = take(subject.adopt(caller,
+        record("host-revoked-read", 6U, alias.value()), context()));
+    REQUIRE(!revokedRead.snapshot);
+    REQUIRE(revokedRead.warning->code == Domain::ErrorCodes::PathOutsideAuthority);
+    REQUIRE(!take(subject.snapshot(caller, context())));
+}
+
 void adoptsProjectRegisteredAfterContextConstruction()
 {
     const auto rootA = path("C:\\workspace\\alpha");
@@ -648,6 +732,7 @@ int main()
             Mcp::McpClientWorkspaceContext>);
         adoptsCanonicalRootAndIsolatesClients();
         usesAbsoluteKeyFileFallbackAndClearsOnNoMatch();
+        hostRecoveryRetainsRegisteredAliasAndRejectsRevokedOrForeignPaths();
         adoptsProjectRegisteredAfterContextConstruction();
         newerReservationSupersedesSlowerAdoption();
         dependenciesRunOutsideStateLockAndStateIsBounded();

@@ -1,10 +1,12 @@
 #include "ForgeConductor/Application/ManagedRunService.h"
+#include "ForgeConductor/Application/ManagedRunWorkerPolicy.h"
 
 #include "ForgeConductor/Domain/Utf8.h"
 
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <condition_variable>
 #include <map>
 #include <limits>
@@ -34,6 +36,21 @@ namespace {
         return Domain::Result<void>::failure(failure(
             Domain::ErrorCodes::Cancelled,
             "The managed run start was cancelled."));
+    }
+    if (context.isExpired(std::chrono::steady_clock::now()))
+        return Domain::Result<void>::failure(failure(Domain::ErrorCodes::DeadlineExceeded, "The managed run admission deadline expired."));
+    if (request.workerScope) {
+        const auto& scope = *request.workerScope;
+        if (scope.trustedRoots.empty() || scope.trustedRoots.size() > 64U || scope.grants.empty() || scope.grants.size() > 5U ||
+            scope.denials.size() > 5U || scope.allowedTools.size() > 256U || !scope.timeoutSeconds || scope.timeoutSeconds > 3600U ||
+            std::any_of(scope.allowedTools.begin(), scope.allowedTools.end(), [](const auto& name) {
+                return name.empty() || name.size() > 128U || !isManagedWorkerToolPermitted(name);
+            }))
+            return Domain::Result<void>::failure(failure(Domain::ErrorCodes::InvalidRequest, "The inherited worker scope is invalid or excessive."));
+        if (std::any_of(scope.grants.begin(), scope.grants.end(), [&](auto grant) {
+                return std::find(scope.denials.begin(), scope.denials.end(), grant) != scope.denials.end();
+            }))
+            return Domain::Result<void>::failure(failure(Domain::ErrorCodes::Unauthorized, "The inherited worker scope grants a denied mode."));
     }
     if (request.authorityGeneration == 0U) {
         return Domain::Result<void>::failure(failure(
@@ -68,6 +85,26 @@ namespace {
         true,
         cancellationRequested,
         pauseRequested};
+}
+
+[[nodiscard]] Domain::Result<Domain::ManagedFunctionCallOutput> managedFunctionOutput(
+    const std::string& callId, std::string output)
+{
+    auto payload = nlohmann::json::parse(output, nullptr, false);
+    if (!payload.is_object() || !payload.contains("image_base64"))
+        return Domain::Result<Domain::ManagedFunctionCallOutput>::success({callId, std::move(output)});
+    if (!payload.at("image_base64").is_string() || !payload.contains("image_mime_type") ||
+        !payload.at("image_mime_type").is_string())
+        return Domain::Result<Domain::ManagedFunctionCallOutput>::failure(failure(
+            Domain::ErrorCodes::InternalFailure, "The native image result lacks valid preview data or MIME type."));
+    Domain::ManagedImagePreview image{payload.at("image_mime_type").get<std::string>(),
+        payload.at("image_base64").get<std::string>()};
+    if (!Domain::isValidManagedImagePreview(image))
+        return Domain::Result<Domain::ManagedFunctionCallOutput>::failure(failure(
+            Domain::ErrorCodes::InternalFailure, "The native image result is invalid or exceeds its bounded preview limit."));
+    payload.erase("image_base64");
+    payload["image_content_block"] = true;
+    return Domain::Result<Domain::ManagedFunctionCallOutput>::success({callId, payload.dump(), std::move(image)});
 }
 
 } // namespace
@@ -110,6 +147,7 @@ public:
                 return Domain::Result<Domain::ManagedRunSnapshot>::failure(
                     std::move(valid).error());
             }
+            reapFinishedWorkers();
             {
                 std::lock_guard lock{mutex_};
                 if (shutdown_) {
@@ -148,6 +186,7 @@ public:
                         request.authorityGeneration &&
                     persisted.value()->allowTools == request.allowTools &&
                     persisted.value()->readOnlyTools == request.readOnlyTools &&
+                    persisted.value()->workerScope == request.workerScope &&
                     persisted.value()->providerReceiveTimeoutSeconds == request.providerReceiveTimeoutSeconds) {
                     return Domain::Result<Domain::ManagedRunSnapshot>::success(
                         snapshot(*persisted.value(), false));
@@ -178,9 +217,11 @@ public:
                 request.allowTools};
             record.readOnlyTools = request.readOnlyTools;
             record.providerReceiveTimeoutSeconds = request.providerReceiveTimeoutSeconds;
-            if (auto saved = store_.save(record, context); !saved) {
-                return Domain::Result<Domain::ManagedRunSnapshot>::failure(
-                    std::move(saved).error());
+            record.workerScope = request.workerScope;
+            if (!request.workerScope) {
+                if (auto saved = store_.save(record, context); !saved) {
+                    return Domain::Result<Domain::ManagedRunSnapshot>::failure(std::move(saved).error());
+                }
             }
 
             auto active = std::make_shared<ActiveRun>(request, record);
@@ -192,6 +233,19 @@ public:
                             Domain::ErrorCodes::TransportClosed,
                             "The managed run service shut down during admission."));
                 }
+                if (active_.contains(request.runId))
+                    return Domain::Result<Domain::ManagedRunSnapshot>::failure(failure(
+                        Domain::ErrorCodes::Conflict, "The managed run id was admitted concurrently."));
+                if (request.workerScope) {
+                    const auto running = static_cast<std::size_t>(std::count_if(active_.begin(), active_.end(), [](const auto& entry) {
+                        return entry.second->record.workerScope && !terminal(entry.second->record.state);
+                    }));
+                    if (running >= ManagedRunService::MaximumConcurrentWorkers)
+                        return Domain::Result<Domain::ManagedRunSnapshot>::failure(failure(
+                            Domain::ErrorCodes::LimitExceeded, "The independent worker concurrent limit is 16.", true));
+                    if (auto saved = store_.save(record, context); !saved)
+                        return Domain::Result<Domain::ManagedRunSnapshot>::failure(std::move(saved).error());
+                }
                 const auto [_, inserted] =
                     active_.emplace(request.runId, active);
                 if (!inserted) {
@@ -200,10 +254,23 @@ public:
                             Domain::ErrorCodes::Conflict,
                             "The managed run id was admitted concurrently."));
                 }
-                active->worker = std::jthread{
-                    [this, request](const std::stop_token token) {
-                        execute(request, token);
-                    }};
+                try {
+                    active->worker = std::jthread{
+                        [this, request, run = active.get()](const std::stop_token token) {
+                            execute(request, token);
+                            run->threadFinished.store(true);
+                        }};
+                } catch (...) {
+                    active_.erase(request.runId);
+                    record.state = Domain::ManagedRunState::Failed;
+                    record.lastError = failure(Domain::ErrorCodes::InternalFailure,
+                        "The managed run worker thread could not be created.");
+                    record.updatedAt = clock_.utcNow();
+                    const auto error = *record.lastError;
+                    if (auto saved = store_.save(record, context); !saved)
+                        return Domain::Result<Domain::ManagedRunSnapshot>::failure(std::move(saved).error());
+                    return Domain::Result<Domain::ManagedRunSnapshot>::failure(error);
+                }
             }
             return Domain::Result<Domain::ManagedRunSnapshot>::success(
                 snapshot(record, false));
@@ -219,16 +286,17 @@ public:
         const Domain::OperationContext& context) noexcept
     {
         try {
+            reapFinishedWorkers();
             {
                 std::lock_guard lock{mutex_};
                 const auto found = active_.find(runId);
                 if (found != active_.end()) {
-                    return Domain::Result<Domain::ManagedRunSnapshot>::success(
-                        snapshot(
-                            found->second->record,
-                            found->second->worker.get_stop_token()
-                                .stop_requested(),
-                            found->second->pauseRequested));
+                    const auto& record = found->second->record;
+                    const bool terminalWorker = record.workerScope &&
+                        (record.state == Domain::ManagedRunState::Completed || record.state == Domain::ManagedRunState::Failed ||
+                            record.state == Domain::ManagedRunState::Cancelled);
+                    if (!terminalWorker) return Domain::Result<Domain::ManagedRunSnapshot>::success(
+                        snapshot(record, found->second->worker.get_stop_token().stop_requested(), found->second->pauseRequested));
                 }
             }
             auto persisted = store_.load(runId, context);
@@ -380,6 +448,7 @@ public:
     {
         std::vector<std::shared_ptr<ActiveRun>> active;
         try {
+            reapFinishedWorkers();
             {
                 std::lock_guard lock{mutex_};
                 if (shutdown_) {
@@ -388,11 +457,15 @@ public:
                 shutdown_ = true;
                 active.reserve(active_.size());
                 for (const auto& entry : active_) {
+                    entry.second->pauseRequested = false;
                     active.push_back(entry.second);
                 }
             }
             for (const auto& run : active) {
-                run->pauseRequested = false;
+                {
+                    const std::lock_guard lock{mutex_};
+                    if (run->record.workerScope && terminal(run->record.state)) continue;
+                }
                 run->worker.request_stop();
                 run->boundaryChanged.notify_all();
                 transport_.cancel(
@@ -416,16 +489,75 @@ private:
         ActiveRun(
             Domain::ManagedRunStartRequest value,
             Domain::ManagedRunRecord initial)
-            : request{std::move(value)}, record{std::move(initial)}
+            : request{std::move(value)}, record{std::move(initial)},
+              deadline{request.workerScope ? std::chrono::steady_clock::now() + std::chrono::seconds{request.workerScope->timeoutSeconds}
+                  : Domain::MonotonicTimePoint::max()}
         {
         }
 
         Domain::ManagedRunStartRequest request;
         Domain::ManagedRunRecord record;
+        Domain::MonotonicTimePoint deadline;
         bool pauseRequested{};
         std::condition_variable_any boundaryChanged;
+        std::atomic_bool threadFinished{};
         std::jthread worker;
     };
+
+    [[nodiscard]] static bool terminal(const Domain::ManagedRunState state) noexcept
+    {
+        return state == Domain::ManagedRunState::Completed || state == Domain::ManagedRunState::Failed ||
+            state == Domain::ManagedRunState::Cancelled;
+    }
+
+    void reapFinishedWorkers()
+    {
+        std::vector<std::shared_ptr<ActiveRun>> retired;
+        {
+            const std::lock_guard lock{mutex_};
+            if (shutdown_) return;
+            for (auto current = active_.begin(); current != active_.end();) {
+                if (current->second->record.workerScope && current->second->threadFinished.load() &&
+                    terminal(current->second->record.state)) {
+                    retired.push_back(std::move(current->second));
+                    current = active_.erase(current);
+                } else ++current;
+            }
+        }
+        for (const auto& run : retired) if (run->worker.joinable()) run->worker.join();
+    }
+
+    [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> currentWorkerAuthority(
+        const Domain::ManagedRunStartRequest& request,
+        const Domain::OperationContext& context)
+    {
+        auto current = tools_.workspaceAuthority->authorityFor(request.projectId, context);
+        if (!current) return current;
+        if (current.value().projectId() != request.projectId || current.value().callerId() != request.clientId ||
+            current.value().generation() == (std::numeric_limits<std::uint64_t>::max)())
+            return Domain::Result<Contracts::WorkspaceAuthority>::failure(failure(
+                Domain::ErrorCodes::Unauthorized, "The independent worker owner binding is no longer valid."));
+        const auto& frozen = *request.workerScope;
+        auto roots = frozen.trustedRoots;
+        auto grants = frozen.grants;
+        std::erase_if(roots, [&](const auto& root) {
+            return std::find(current.value().trustedRoots().begin(), current.value().trustedRoots().end(), root) ==
+                current.value().trustedRoots().end();
+        });
+        std::erase_if(grants, [&](auto grant) {
+            return std::find(current.value().grants().begin(), current.value().grants().end(), grant) == current.value().grants().end() ||
+                std::find(current.value().denials().begin(), current.value().denials().end(), grant) != current.value().denials().end();
+        });
+        const bool shell = frozen.shellEnabled && current.value().shellEnabled() &&
+            std::find(grants.begin(), grants.end(), Domain::FileAccess::Execute) != grants.end();
+        // Revocation stops this attempt; a fresh, explicitly scoped attempt can
+        // use the remaining rights. The admitted receipt's frozen scope is immutable.
+        if (roots.empty() || grants.empty() || roots != frozen.trustedRoots || grants != frozen.grants || shell != frozen.shellEnabled)
+            return Domain::Result<Contracts::WorkspaceAuthority>::failure(failure(
+                Domain::ErrorCodes::Unauthorized, "Current owner policy revoked part of the independent worker's frozen scope."));
+        return tools_.workspaceAuthority->narrow(current.value(), roots, grants, shell,
+            current.value().generation() + 1U, context);
+    }
 
     [[nodiscard]] static bool sameRequest(
         const Domain::ManagedRunStartRequest& left,
@@ -439,6 +571,7 @@ private:
             left.task == right.task &&
             left.allowTools == right.allowTools &&
             left.readOnlyTools == right.readOnlyTools &&
+            left.workerScope == right.workerScope &&
             left.providerReceiveTimeoutSeconds == right.providerReceiveTimeoutSeconds;
     }
 
@@ -475,6 +608,12 @@ private:
                 active = found->second;
             }
             for (;;) {
+                if (token.stop_requested()) { record.state = Domain::ManagedRunState::Cancelled; return false; }
+                if (std::chrono::steady_clock::now() >= active->deadline) {
+                    record.state = Domain::ManagedRunState::Failed;
+                    record.lastError = failure(Domain::ErrorCodes::DeadlineExceeded, "The independent worker exceeded its total budget.", true);
+                    return false;
+                }
                 bool shouldPause{};
                 {
                     std::lock_guard lock{mutex_};
@@ -509,7 +648,7 @@ private:
                     }
                 }
                 std::unique_lock lock{mutex_};
-                active->boundaryChanged.wait(lock, token, [&] {
+                active->boundaryChanged.wait_until(lock, token, active->deadline, [&] {
                     return !active->pauseRequested;
                 });
                 if (token.stop_requested()) {
@@ -680,7 +819,7 @@ private:
     {
         const Domain::OperationContext providerContext{
             request.operationId,
-            Domain::MonotonicTimePoint::max(),
+            [&] { std::lock_guard lock{mutex_}; return active_.at(request.runId)->deadline; }(),
             token,
             request.correlationId};
         Domain::ManagedRunRecord record = [&] {
@@ -695,20 +834,22 @@ private:
 
         if (token.stop_requested()) {
             record.state = Domain::ManagedRunState::Cancelled;
+            record.lastError = failure(Domain::ErrorCodes::Cancelled, "The managed run was cancelled before authority resolution.");
             record.updatedAt = clock_.utcNow();
         }
 
         std::optional<Contracts::WorkspaceAuthority> authority;
         std::vector<Domain::McpToolDescriptor> descriptors;
-        if (tools_.workspaceAuthority &&
+        if (record.state == Domain::ManagedRunState::Running && tools_.workspaceAuthority &&
             (!request.allowTools || (tools_.catalog && tools_.router))) {
             auto resolved = tools_.workspaceAuthority->authorityFor(
                 request.projectId, providerContext);
             if (!resolved) {
                 record.lastError = resolved.error();
-                record.state = Domain::ManagedRunState::Failed;
-            } else if (resolved.value().generation() !=
-                           request.authorityGeneration ||
+                record.state = token.stop_requested() || resolved.error().code == Domain::ErrorCodes::Cancelled
+                    ? Domain::ManagedRunState::Cancelled : Domain::ManagedRunState::Failed;
+            } else if ((request.workerScope ? resolved.value().generation() > request.authorityGeneration
+                           : resolved.value().generation() != request.authorityGeneration) ||
                        resolved.value().callerId() != request.clientId) {
                 record.lastError = failure(
                     Domain::ErrorCodes::Unauthorized,
@@ -716,11 +857,27 @@ private:
                 record.state = Domain::ManagedRunState::Failed;
             } else {
                 if (request.allowTools) {
-                    authority.emplace(std::move(resolved).value());
+                    if (request.workerScope) {
+                        const auto& scope = *request.workerScope;
+                        if (resolved.value().generation() == (std::numeric_limits<std::uint64_t>::max)()) {
+                            record.lastError = failure(Domain::ErrorCodes::Unauthorized, "Worker authority generation cannot be narrowed.");
+                            record.state = Domain::ManagedRunState::Failed;
+                        } else {
+                            auto inherited = tools_.workspaceAuthority->narrow(resolved.value(), scope.trustedRoots, scope.grants,
+                                scope.shellEnabled, resolved.value().generation() + 1U, providerContext);
+                            if (!inherited) {
+                                record.lastError = inherited.error();
+                                record.state = token.stop_requested() || inherited.error().code == Domain::ErrorCodes::Cancelled
+                                    ? Domain::ManagedRunState::Cancelled : Domain::ManagedRunState::Failed;
+                            }
+                            else authority.emplace(std::move(inherited).value());
+                        }
+                    } else authority.emplace(std::move(resolved).value());
                     const auto available = tools_.catalog->tools();
                     for (const auto& descriptor : available) {
-                        if (!request.readOnlyTools ||
-                            descriptor.tool.effect == Domain::ToolEffect::Read) {
+                        if ((!request.readOnlyTools || descriptor.tool.effect == Domain::ToolEffect::Read) &&
+                            (!request.workerScope || (isManagedWorkerToolPermitted(descriptor.tool.name) &&
+                                std::find(request.workerScope->allowedTools.begin(), request.workerScope->allowedTools.end(), descriptor.tool.name) != request.workerScope->allowedTools.end()))) {
                             descriptors.push_back(descriptor);
                         }
                     }
@@ -832,27 +989,40 @@ private:
                     call.canonicalArguments};
                 // Enforce independently of advertisement: a provider can emit
                 // an unadvertised write tool, including through resumed state.
-                const bool permitted = !request.readOnlyTools ||
+                const bool permitted = (!request.readOnlyTools && !request.workerScope) ||
                     std::any_of(descriptors.begin(), descriptors.end(),
                         [&](const auto& descriptor) {
                             return descriptor.tool.name == call.name &&
-                                descriptor.tool.effect == Domain::ToolEffect::Read;
+                                (!request.readOnlyTools || descriptor.tool.effect == Domain::ToolEffect::Read);
                         });
+                if (permitted && request.workerScope) {
+                    auto refreshed = currentWorkerAuthority(request, providerContext);
+                    if (!refreshed) {
+                        record.lastError = refreshed.error();
+                        record.state = token.stop_requested() || refreshed.error().code == Domain::ErrorCodes::Cancelled
+                            ? Domain::ManagedRunState::Cancelled : Domain::ManagedRunState::Failed;
+                        break;
+                    }
+                    authority.emplace(std::move(refreshed).value());
+                }
                 auto invoked = permitted
                     ? tools_.router->invoke(toolRequest, *authority, providerContext)
                     : Domain::Result<Domain::ToolCallOutcome>::failure(failure(
                         Domain::ErrorCodes::Unauthorized,
-                        "The independent reviewer may invoke only read-only tools."));
-                if (invoked) {
-                    toolOutputs.push_back(
-                        {call.callId, std::move(invoked).value().canonicalPayload});
+                        request.workerScope ? "The worker may invoke only its inherited advertised tool set."
+                            : "The independent reviewer may invoke only read-only tools."));
+                auto output = invoked
+                    ? managedFunctionOutput(call.callId, std::move(invoked).value().canonicalPayload)
+                    : Domain::Result<Domain::ManagedFunctionCallOutput>::failure(invoked.error());
+                if (output) {
+                    toolOutputs.push_back(std::move(output).value());
                 } else {
                     nlohmann::json errorResult{
                         {"ok", false},
                         {"error",
-                         {{"code", invoked.error().code},
-                          {"message", invoked.error().message},
-                          {"retryable", invoked.error().retryable}}}};
+                         {{"code", output.error().code},
+                          {"message", output.error().message},
+                          {"retryable", output.error().retryable}}}};
                     toolOutputs.push_back({call.callId, errorResult.dump()});
                 }
                 auto summary = "Native tool " + call.name + " result: " +

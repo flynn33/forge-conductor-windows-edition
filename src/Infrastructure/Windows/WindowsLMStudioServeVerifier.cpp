@@ -39,14 +39,18 @@ constexpr std::size_t MaximumInitializeInstructionsBytes = 32U * 1024U;
 constexpr auto VerificationTimeout = 15s;
 constexpr std::size_t VerificationStdoutBytesMaximum = 80'000U;
 constexpr std::size_t VerificationStderrBytesMaximum = 20'000U;
-constexpr std::array<std::string_view, 80U> CanonicalToolNames{
+constexpr std::array<std::string_view, 103U> CanonicalToolNames{
+    "agent_cancel",
     "agent_context",
     "agent_get",
     "agent_list",
+    "agent_poll",
     "agent_recommend",
     "agent_run_complete",
     "agent_run_start",
     "agent_run_status",
+    "agent_spawn",
+    "browser_open",
     "clu.evaluate",
     "clu.export_log",
     "clu.findings",
@@ -60,6 +64,13 @@ constexpr std::array<std::string_view, 80U> CanonicalToolNames{
     "continuity.request_rollover",
     "continuity.resume",
     "continuity.status",
+    "desktop_capture",
+    "desktop_click",
+    "desktop_key",
+    "desktop_list",
+    "desktop_read",
+    "desktop_type",
+    "document_write",
     "evidence_digest",
     "evidence_log_read",
     "forge_status",
@@ -78,6 +89,10 @@ constexpr std::array<std::string_view, 80U> CanonicalToolNames{
     "git_log",
     "git_status",
     "github_read",
+    "host_capabilities",
+    "http_request",
+    "image_read",
+    "image_write",
     "instruction_package.read",
     "memory_delete",
     "memory_get",
@@ -86,6 +101,7 @@ constexpr std::array<std::string_view, 80U> CanonicalToolNames{
     "memory_set",
     "pdf_from_file",
     "pdf_write",
+    "presentation_write",
     "process_adopt",
     "process_kill",
     "process_launch",
@@ -109,6 +125,10 @@ constexpr std::array<std::string_view, 80U> CanonicalToolNames{
     "reviewer_cancel",
     "reviewer_start",
     "reviewer_status",
+    "schedule_cancel",
+    "schedule_create",
+    "schedule_list",
+    "schedule_run_now",
     "search_text",
     "session_checkpoint",
     "session_handoff",
@@ -117,8 +137,11 @@ constexpr std::array<std::string_view, 80U> CanonicalToolNames{
     "shell_job_list",
     "shell_job_start",
     "shell_job_status",
+    "spreadsheet_write",
     "verification_env_create",
     "verification_env_status",
+    "web_fetch",
+    "web_search",
     "workspace_authority_bind"};
 constexpr std::size_t ExpectedToolCount = CanonicalToolNames.size();
 // SHA-256 of the canonical compact `tools` array reviewed in
@@ -126,7 +149,7 @@ constexpr std::size_t ExpectedToolCount = CanonicalToolNames.size();
 // embeds the fingerprint and exact ordered names rather than loading a test
 // fixture at runtime.
 constexpr std::string_view CanonicalToolDescriptorSha256 =
-    "9ee42020e1c1e66fd28b71fcbd445d86eb602e1250c97f32381aa67bc821bd51";
+    "39015d55d6f3a88350cc98e087045e6eb22d58508c7d2cd506e0d308a48d1047";
 constexpr std::array<std::string_view, 5U> CluToolNames{
     "clu.evaluate", "clu.export_log", "clu.findings", "clu.resolve",
     "project_policy.read"};

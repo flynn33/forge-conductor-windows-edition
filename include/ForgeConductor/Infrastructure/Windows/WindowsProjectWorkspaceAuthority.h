@@ -5,9 +5,11 @@
 #include "ForgeConductor/Contracts/IProjectMemoryService.h"
 
 #include <cstddef>
+#include <atomic>
 #include <cstdint>
 #include <map>
 #include <mutex>
+#include <shared_mutex>
 #include <vector>
 
 namespace ForgeConductor::Infrastructure::Windows {
@@ -22,7 +24,17 @@ public:
         Contracts::IUuidGenerator& uuidGenerator,
         Domain::ClientId serveClientId,
         bool shellEnabled,
-        std::vector<Domain::PathText> configuredRoots = {}) noexcept;
+        std::vector<Domain::PathText> configuredRoots = {},
+        Domain::FileSystemAccessMode fileSystemAccess = Domain::FileSystemAccessMode::Workspace) noexcept;
+
+    [[nodiscard]] Domain::FileSystemAccessMode fileSystemAccessMode() const noexcept override
+    { return fileSystemAccess_.load(); }
+
+    [[nodiscard]] Domain::Result<void> updateOwnerPolicy(
+        bool shellEnabled,
+        std::vector<Domain::PathText> configuredRoots,
+        Domain::FileSystemAccessMode fileSystemAccess,
+        const Domain::OperationContext& context) noexcept;
 
     WindowsProjectWorkspaceAuthority(const WindowsProjectWorkspaceAuthority&) = delete;
     WindowsProjectWorkspaceAuthority& operator=(
@@ -36,6 +48,10 @@ public:
 
     [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> storedProjectAuthorityFor(
         const Domain::ProjectId& projectId,
+        const Domain::OperationContext& context) noexcept override;
+
+    [[nodiscard]] Domain::Result<Domain::PathText> defaultWorkspacePath(
+        const Contracts::WorkspaceAuthority& authority,
         const Domain::OperationContext& context) noexcept override;
 
     [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> narrow(
@@ -61,6 +77,13 @@ public:
         const Domain::OperationContext& context) noexcept override;
 
 private:
+    [[nodiscard]] Domain::Result<Contracts::WorkspaceAuthority> authorityForLocked(
+        const Domain::ProjectId& projectId,
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<std::vector<Domain::PathText>> configuredRootAllowlistLocked(
+        const Domain::OperationContext& context) noexcept;
+
     [[nodiscard]] Domain::Result<Domain::ProjectMemoryDescriptor> currentDescriptor(
         const Domain::ProjectId& projectId,
         const Domain::OperationContext& context) noexcept;
@@ -68,11 +91,17 @@ private:
     [[nodiscard]] Domain::Result<Domain::AuthorityId> cachedAuthorityId(
         const Contracts::WorkspaceAuthority& authority) noexcept;
 
+    [[nodiscard]] Domain::Result<Domain::ProjectMemoryDescriptor> policyDescriptor(
+        const Domain::ProjectId& projectId,
+        const Domain::OperationContext& context) noexcept;
+
     Contracts::IProjectRegistryRepository& projectRegistry_;
     Contracts::IUuidGenerator& uuidGenerator_;
     const Domain::ClientId serveClientId_;
-    const bool shellEnabled_;
-    const std::vector<Domain::PathText> configuredRoots_;
+    bool shellEnabled_;
+    std::vector<Domain::PathText> configuredRoots_;
+    std::atomic<Domain::FileSystemAccessMode> fileSystemAccess_;
+    mutable std::shared_mutex policyMutex_;
     std::map<Domain::ProjectId, std::vector<Domain::PathText>> boundRoots_;
     std::mutex authorityIdsMutex_;
     std::map<Domain::ProjectId, Domain::AuthorityId> authorityIds_;

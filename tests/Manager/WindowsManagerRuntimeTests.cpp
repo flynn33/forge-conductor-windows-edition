@@ -646,6 +646,55 @@ void invalidContextsAndConfigurationAreRejected()
             "context test shutdown did not release the loopback port");
 }
 
+void ownerPolicyApplicationIsRequiredForRuntimeSuccess()
+{
+    auto clock = std::make_shared<SystemClock>();
+    auto uuid = std::make_shared<SequenceUuidGenerator>();
+    auto factory = std::make_shared<RecordingApplicationFactory>();
+    std::vector<Domain::FileSystemAccessMode> appliedModes;
+    std::size_t policyCalls{};
+    bool failPolicy{};
+    auto runtime = take(Manager::WindowsManagerRuntime::create(clock, uuid, factory,
+        [&](const Domain::AppConfig& config, const Domain::OperationContext& operation) {
+            ++policyCalls;
+            require(!operation.isCancellationRequested(), "Cancelled runtime reached the owner policy callback.");
+            if (failPolicy) return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::Unauthorized, "owner policy application refused"));
+            appliedModes.push_back(config.fileSystemAccess);
+            return Domain::Result<void>::success();
+        }));
+    auto config = configuration(reserveUnusedIpv4Port());
+    static_cast<void>(take(runtime->start(config, context(*clock))));
+    require(policyCalls == 1U && appliedModes.back() == Domain::FileSystemAccessMode::Workspace,
+        "Runtime start omitted the current owner policy.");
+    config.fileSystemAccess = Domain::FileSystemAccessMode::Host;
+    const auto applied = take(runtime->applySettings(config, context(*clock)));
+    require(applied.listenerListening && policyCalls == 2U && appliedModes.back() == Domain::FileSystemAccessMode::Host,
+        "A filesystem settings update reported success without applying owner policy.");
+    std::stop_source cancelled;
+    cancelled.request_stop();
+    auto operation = context(*clock); operation.cancellation = cancelled.get_token();
+    requireError(runtime->applySettings(config, operation), Domain::ErrorCodes::Cancelled,
+        "Cancelled settings were applied.");
+    require(policyCalls == 2U, "Pre-cancelled settings reached the owner policy callback.");
+    failPolicy = true;
+    config.fileSystemAccess = Domain::FileSystemAccessMode::Workspace;
+    requireError(runtime->applySettings(config, context(*clock)), Domain::ErrorCodes::Unauthorized,
+        "Owner policy refusal was hidden behind a successful runtime snapshot.");
+    require(policyCalls == 3U && appliedModes.back() == Domain::FileSystemAccessMode::Host &&
+        take(runtime->snapshot(context(*clock))).lastError == "owner policy application refused",
+        "A failed owner policy application lost its actual error or changed the admitted mode.");
+    failPolicy = false;
+    static_cast<void>(take(runtime->rebind(config, true, context(*clock))));
+    require(policyCalls == 4U && appliedModes.back() == Domain::FileSystemAccessMode::Workspace,
+        "Explicit runtime restart did not apply the saved owner policy.");
+    config.fileSystemAccess = Domain::FileSystemAccessMode::Host;
+    static_cast<void>(take(runtime->reconcile(config, true, context(*clock))));
+    require(policyCalls == 5U && appliedModes.back() == Domain::FileSystemAccessMode::Host,
+        "Runtime reconciliation omitted current owner policy.");
+    runtime->shutdown();
+}
+
 static_assert(std::is_final_v<Manager::WindowsManagerRuntime>);
 static_assert(!std::is_copy_constructible_v<Manager::WindowsManagerRuntime>);
 static_assert(!std::is_move_constructible_v<Manager::WindowsManagerRuntime>);
@@ -664,6 +713,8 @@ int main()
         std::cout << "PASS manager_windows_runtime.lifecycle\n";
         invalidContextsAndConfigurationAreRejected();
         std::cout << "PASS manager_windows_runtime.validation\n";
+        ownerPolicyApplicationIsRequiredForRuntimeSuccess();
+        std::cout << "PASS manager_windows_runtime.owner_policy\n";
         std::cout << "SUMMARY assertions=" << assertions
                   << " failed=0\n";
         return 0;

@@ -9,6 +9,7 @@
 #include "ForgeConductor/Contracts/IToolServices.h"
 
 #include <cstdint>
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <string>
@@ -34,6 +35,8 @@ struct ManagedRunContinuityDependencies final {
 
 class ManagedRunService final : public Contracts::IManagedRunService {
 public:
+    static constexpr std::size_t MaximumConcurrentWorkers = 16U;
+
     ManagedRunService(
         Contracts::IManagedResponsesTransport& transport,
         Contracts::IManagedRunStore& store,

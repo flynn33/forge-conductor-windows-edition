@@ -54,6 +54,7 @@ struct PathAuthorizationRequest final {
     std::optional<PathText> basePath;
     FileAccess access{FileAccess::Read};
     bool protectAuthorityRoot{};
+    std::optional<PathText> excludedSubtree;
 };
 
 } // namespace ForgeConductor::Domain

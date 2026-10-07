@@ -2,6 +2,7 @@
 
 #include "Fakes/DeterministicWorkspaceAuthority.h"
 
+#include <array>
 #include <chrono>
 #include <cstdint>
 #include <iostream>
@@ -169,6 +170,111 @@ private:
         std::move(denials),
         true,
         7U};
+}
+
+class ModeWorkspaceAuthorityFake final : public Contracts::IWorkspaceAuthority {
+public:
+    ModeWorkspaceAuthorityFake(Domain::FileSystemAccessMode mode, std::vector<Domain::PathText> roots,
+        Domain::FileAccess intent, std::vector<Domain::FileAccess> grants, std::vector<Domain::FileAccess> denials = {})
+        : mode_{mode}, delegate_{id<Domain::AuthorityId>("33333333-3333-4333-8333-333333333333"), client(),
+            std::move(roots), intent, std::move(grants), std::move(denials), intent == Domain::FileAccess::Write, 7U}
+    {}
+    Domain::FileSystemAccessMode fileSystemAccessMode() const noexcept override { return mode_; }
+    Domain::Result<Contracts::WorkspaceAuthority> authorityFor(const Domain::ProjectId& project,
+        const Domain::OperationContext& active) noexcept override
+    { return delegate_.authorityFor(forcedProject.value_or(project), active); }
+    Domain::Result<Contracts::WorkspaceAuthority> narrow(const Contracts::WorkspaceAuthority& token,
+        const std::vector<Domain::PathText>& roots, const std::vector<Domain::FileAccess>& grants, bool shell,
+        std::uint64_t generation, const Domain::OperationContext& active) noexcept override
+    {
+        ++narrowCalls;
+        return delegate_.narrow(token, roots, grants, shell, generation, active);
+    }
+    Domain::Result<Contracts::AuthorizedPath> authorize(const Contracts::WorkspaceAuthority& token,
+        const Domain::PathAuthorizationRequest& path, const Domain::OperationContext& active) noexcept override
+    {
+        ++authorizeCalls;
+        lastAuthorizedAccess = path.access;
+        return delegate_.authorize(token, path, active);
+    }
+    std::optional<Domain::ProjectId> forcedProject;
+    std::size_t narrowCalls{};
+    std::size_t authorizeCalls{};
+    Domain::FileAccess lastAuthorizedAccess{Domain::FileAccess::Read};
+private:
+    Domain::FileSystemAccessMode mode_;
+    Fakes::DeterministicWorkspaceAuthority delegate_;
+};
+
+void recoveredHostProjectKeepsOnlyCurrentVolumeAuthority()
+{
+    FixedClock clock;
+    const auto systemVolume = take(Domain::PathText::create("C:\\"));
+    const auto dataVolume = take(Domain::PathText::create("D:\\"));
+    const auto projectRoot = take(Domain::PathText::create("C:\\workspace\\registered-project"));
+    const auto adoptedProject = id<Domain::ProjectId>("55555555-5555-4555-8555-555555555555");
+    ClientWorkspaceContextFake recovered;
+    recovered.setSnapshot(Domain::ClientWorkspaceSnapshot{client(), adoptedProject, projectRoot,
+        id<Domain::LegacyHandoffId>("host-recovered-project"), 17U, 9U});
+    ModeWorkspaceAuthorityFake issuer{Domain::FileSystemAccessMode::Host, {systemVolume, dataVolume},
+        Domain::FileAccess::Write, {Domain::FileAccess::Read, Domain::FileAccess::Write, Domain::FileAccess::Create,
+            Domain::FileAccess::Delete, Domain::FileAccess::Execute}};
+    Mcp::McpExecutionContextResolver resolver{issuer, defaultProject(), clock, &recovered};
+    for (const auto& [name, effect] : std::array<std::pair<std::string_view, Domain::ToolEffect>, 6>{{
+        {"fs_read", Domain::ToolEffect::Read}, {"fs_write", Domain::ToolEffect::Write},
+        {"forge_status", Domain::ToolEffect::Read}, {"shell_exec", Domain::ToolEffect::Write},
+        {"shell_job_start", Domain::ToolEffect::Write}, {"process_launch", Domain::ToolEffect::Write}}}) {
+        auto call = request(); call.toolName = name;
+        const auto token = take(resolver.resolve(call, effect, context()));
+        REQUIRE(token.projectId() == adoptedProject);
+        REQUIRE(token.trustedRoots() == (std::vector<Domain::PathText>{systemVolume, dataVolume}));
+        REQUIRE(token.generation() == 7U);
+        REQUIRE(issuer.lastAuthorizedAccess == (effect == Domain::ToolEffect::Read ? Domain::FileAccess::Read : Domain::FileAccess::Write));
+    }
+    REQUIRE(issuer.authorizeCalls == 6U);
+    REQUIRE(issuer.narrowCalls == 0U);
+
+    ModeWorkspaceAuthorityFake readOnly{Domain::FileSystemAccessMode::Host, {systemVolume}, Domain::FileAccess::Read,
+        {Domain::FileAccess::Read}, {Domain::FileAccess::Write, Domain::FileAccess::Execute}};
+    Mcp::McpExecutionContextResolver restricted{readOnly, defaultProject(), clock, &recovered};
+    const auto deniedWrite = restricted.resolve(request(), Domain::ToolEffect::Write, context());
+    REQUIRE(!deniedWrite && deniedWrite.error().code == Domain::ErrorCodes::Unauthorized);
+    const auto read = take(restricted.resolve(request(), Domain::ToolEffect::Read, context()));
+    REQUIRE(read.trustedRoots() == std::vector<Domain::PathText>{systemVolume});
+    REQUIRE(read.grants() == std::vector<Domain::FileAccess>{Domain::FileAccess::Read});
+    REQUIRE(!read.shellEnabled());
+
+    ModeWorkspaceAuthorityFake removedVolume{Domain::FileSystemAccessMode::Host, {dataVolume}, Domain::FileAccess::Read, {Domain::FileAccess::Read}};
+    Mcp::McpExecutionContextResolver revoked{removedVolume, defaultProject(), clock, &recovered};
+    const auto removed = revoked.resolve(request(), Domain::ToolEffect::Read, context());
+    REQUIRE(!removed && removed.error().code == Domain::ErrorCodes::Unauthorized);
+    recovered.setSnapshot(Domain::ClientWorkspaceSnapshot{client(), adoptedProject,
+        take(Domain::PathText::create("Z:\\foreign-project")), id<Domain::LegacyHandoffId>("foreign-host-project"), 17U, 9U});
+    const auto foreignRoot = resolver.resolve(request(), Domain::ToolEffect::Read, context());
+    REQUIRE(!foreignRoot && foreignRoot.error().code == Domain::ErrorCodes::Unauthorized);
+    recovered.setSnapshot(Domain::ClientWorkspaceSnapshot{client(), adoptedProject, projectRoot,
+        id<Domain::LegacyHandoffId>("host-recovered-project"), 17U, 9U});
+    const auto wrongCaller = resolver.resolve(request(std::nullopt, client("foreign-client")), Domain::ToolEffect::Read, context());
+    REQUIRE(!wrongCaller && wrongCaller.error().code == Domain::ErrorCodes::Unauthorized);
+    issuer.forcedProject = defaultProject();
+    const auto wrongProject = resolver.resolve(request(), Domain::ToolEffect::Read, context());
+    REQUIRE(!wrongProject && wrongProject.error().code == Domain::ErrorCodes::ProjectScopeMismatch);
+    issuer.forcedProject = adoptedProject;
+    const auto explicitWrongProject = resolver.resolve(request(defaultProject()), Domain::ToolEffect::Read, context());
+    REQUIRE(!explicitWrongProject && explicitWrongProject.error().code == Domain::ErrorCodes::ProjectScopeMismatch);
+
+    ModeWorkspaceAuthorityFake workspace{Domain::FileSystemAccessMode::Workspace, {systemVolume, dataVolume},
+        Domain::FileAccess::Write, {Domain::FileAccess::Read, Domain::FileAccess::Write}};
+    Mcp::McpExecutionContextResolver projectScoped{workspace, defaultProject(), clock, &recovered};
+    const auto child = projectScoped.resolve(request(), Domain::ToolEffect::Read, context());
+    REQUIRE(!child && child.error().code == Domain::ErrorCodes::Unauthorized);
+    recovered.setSnapshot(Domain::ClientWorkspaceSnapshot{client(), adoptedProject, systemVolume,
+        id<Domain::LegacyHandoffId>("workspace-exact-root"), 17U, 9U});
+    const auto exact = take(projectScoped.resolve(request(), Domain::ToolEffect::Read, context()));
+    REQUIRE(exact.trustedRoots() == std::vector<Domain::PathText>{systemVolume});
+    REQUIRE(exact.generation() == 10U);
+    REQUIRE(workspace.narrowCalls == 1U);
+    REQUIRE(workspace.authorizeCalls == 0U);
 }
 
 void resolvesDefaultAndExplicitProjectScopes()
@@ -428,6 +534,7 @@ int main()
         resolvesDefaultAndExplicitProjectScopes();
         resolverRejectsMismatchedOrInsufficientAuthority();
         explicitProjectPrecedesAdoptionWhichPrecedesStartupDefault();
+        recoveredHostProjectKeepsOnlyCurrentVolumeAuthority();
         recoveredWorkspaceRetainsOnlyExplicitBindingsAndOwnerActivationScope();
         cancellationDeadlineAndCorrelationFailClosed();
         authorizerIssuesOnlyBoundCapabilities();

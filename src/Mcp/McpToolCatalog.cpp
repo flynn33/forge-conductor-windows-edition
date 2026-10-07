@@ -7,6 +7,8 @@
 #include <algorithm>
 #include <array>
 #include <optional>
+#include <limits>
+#include <cstdint>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -37,13 +39,17 @@ constexpr auto Write = Domain::ToolEffect::Write;
 // and export publishes an artifact.
 constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
     SourceDescriptors{{
+        {"agent_cancel", "Cancel one independent Manager-owned worker in this project; follow agent_poll to confirm final state.", "AgentWorkerToolPack", Write, true, false},
         {"agent_context", "Alias of agent_get \xE2\x80\x94 full playbook body.", "AgentToolPack", Read, false, false},
         {"agent_get", "Get a specialist agent playbook by id.", "AgentToolPack", Read, false, false},
         {"agent_list", "List specialist agent playbooks.", "AgentToolPack", Read, false, false},
+        {"agent_poll", "Read an independent worker's actual state, usage, sealed receipt and UTF-8 output page across MCP reconnects.", "AgentWorkerToolPack", Read, true, false},
         {"agent_recommend", "Recommend a specialist agent for a task description.", "AgentToolPack", Read, false, false},
         {"agent_run_complete", "Close a session with a report matching output_schema.", "AgentToolPack", Write, false, false},
         {"agent_run_start", "Start a durable specialist session (supersedes prior open sessions).", "AgentToolPack", Write, true, false},
         {"agent_run_status", "Status of an agent session; reminds host to complete open runs.", "AgentToolPack", Write, true, false},
+        {"agent_spawn", "Start a fresh independent Manager-owned model task with explicit task authorization. Inherits current roots/grants and cannot grant policy approvals or spawn recursively; existing specialist sessions remain available.", "AgentWorkerToolPack", Write, true, false},
+        {"browser_open", "Open an HTTP/HTTPS URL in the user's registered browser. Returns launch acceptance, not proof of page loading; observe the browser with desktop tools.", "DesktopToolPack", Write, true, false},
         {"clu.evaluate", "Evaluate development evidence against the exact bound policy revision and return any CLU finding.", "CluGovernanceToolPack", Write, true, false},
         {"clu.export_log", "Export the redacted project-bound CLU governance log without full private policy content.", "CluGovernanceToolPack", Read, true, false},
         {"clu.findings", "List CLU findings, correction requests, notification receipts, and policy coverage state.", "CluGovernanceToolPack", Read, true, false},
@@ -57,6 +63,13 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"continuity.request_rollover", "Prepare rollover; reports memory-only readiness unless a host adapter confirms creation.", "ContinuityLifecycleToolPack", Write, true, false},
         {"continuity.resume", "Seal an acknowledged rollover and atomically select the successor.", "ContinuityLifecycleToolPack", Write, true, false},
         {"continuity.status", "Report durable continuity state, retry metadata, and active session.", "ContinuityLifecycleToolPack", Read, true, false},
+        {"desktop_capture", "Capture the visible desktop region of a listed window/PID to an authorized PNG and return a model-visible image preview. Overlapping windows may appear; this is visible-screen capture.", "DesktopToolPack", Write, true, false},
+        {"desktop_click", "Click a window-relative point in a listed visible window/PID. Requires task authorization and a fresh observation. Returns input submission; observe the resulting UI.", "DesktopToolPack", Write, true, false},
+        {"desktop_key", "Submit a named key and optional ctrl/alt/shift modifiers to a listed foreground window/PID. Requires task authorization; observe the resulting UI.", "DesktopToolPack", Write, true, false},
+        {"desktop_list", "List visible Windows windows with exact window_id/PID/title and screen geometry under the current Windows account.", "DesktopToolPack", Read, false, false},
+        {"desktop_read", "Read bounded Windows accessibility controls for an exact listed visible window/PID, with window-relative rectangles and enabled/offscreen states.", "DesktopToolPack", Read, false, false},
+        {"desktop_type", "Submit literal Unicode text to the focused control in an exact listed foreground window/PID. Requires task authorization; observe focus and the resulting UI.", "DesktopToolPack", Write, true, false},
+        {"document_write", "Create a valid native Word DOCX ZIP package from a title and paragraphs. No Office installation or Python required. Does not render or approve its content.", "OfficeDocumentToolPack", Write, true, false},
         {"evidence_digest", "Hash authorized binary evidence and append a durable SHA256 capture chain; returns byte lengths and capture/head identities. This is an integrity record, not an identity signature.", "EvidenceToolPack", Write, true, false},
         {"evidence_log_read", "Read and verify the project evidence capture chain with bounded record paging. Retain head_digest independently to detect replacement of the complete chain.", "EvidenceToolPack", Read, true, false},
         {"forge_status", "Runtime and project context: project folder, ordered instruction-package folders, development-policy source, home, agents, sessions, and tools.", "AgentToolPack", Read, false, false},
@@ -75,6 +88,10 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"git_log", "git log --oneline.", "GitToolPack", Read, true, false},
         {"git_status", "git status --porcelain.", "GitToolPack", Read, true, false},
         {"github_read", "Read GitHub repository runs, artifacts, refs and pull requests via fixed HTTPS GET routes. Uses configured credentials when available; reports permission and network failures explicitly.", "GitHubReadToolPack", Read, true, false},
+        {"host_capabilities", "Report actual dedicated capabilities, tool names, filesystem mode and root authority, and external services needing a connection. Consult before claiming a capability is absent.", "HostInspectionToolPack", Read, false, false},
+        {"http_request", "Perform an explicit HTTP/HTTPS GET, HEAD, POST, PUT, PATCH, DELETE or OPTIONS with bounded caller-supplied headers/body. Mutating methods can change remote state and require task authorization; only GET/HEAD follow redirects. No ambient credentials/cookies; report actual HTTP status and truncation.", "WebAccessToolPack", Write, true, false},
+        {"image_read", "Decode an authorized local PNG/JPEG/GIF/BMP/TIFF/ICO using native Windows codecs and return a model-visible PNG preview with original dimensions.", "ImageToolPack", Read, true, false},
+        {"image_write", "Render rectangles, ellipses, lines and Unicode text to an authorized native PNG, returning an image preview. Supports diagrams/charts; generative artwork requires a separate image provider.", "ImageToolPack", Write, true, false},
         {"instruction_package.read", "Read a selected instruction package by queue_row_id from get_forge_status. Returns its pinned text and coverage, with cursor and byte-offset paging.", "InstructionPackageToolPack", Read, true, false},
         {"memory_delete", "Delete a durable memory note by key.", "MemoryToolPack", Write, false, false},
         {"memory_get", "Read a durable memory note by key.", "MemoryToolPack", Read, false, false},
@@ -83,6 +100,7 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"memory_set", "Store a durable key/value note in Forge local memory (survives chat sessions).", "MemoryToolPack", Write, false, false},
         {"pdf_from_file", "Convert a local markdown/text file to PDF.", "DocsToolPack", Write, true, false},
         {"pdf_write", "Write a PDF from markdown-ish text (stdlib, no pandoc).", "DocsToolPack", Write, true, false},
+        {"presentation_write", "Create a valid native PowerPoint PPTX ZIP package with title/body slides, layout, master, theme and relationships. No Office installation or Python required.", "OfficeDocumentToolPack", Write, true, false},
         {"process_adopt", "Adopt a Forge-owned durable job receipt by job_id after reconnecting. Verifies receipt/log integrity and process identity; cannot adopt an arbitrary PID.", "ProcessToolPack", Write, true, false},
         {"process_kill", "Cancel one Forge-owned process tree by job_id; poll until final termination is confirmed.", "ProcessToolPack", Write, true, false},
         {"process_launch", "Launch an authorized executable with exact argv, cwd and environment. Returns stable job_id, actual PID and named stdout/stderr logs. A matching Manager owns the job across MCP reconnects; otherwise status reports connector-owned lifetime.", "ProcessToolPack", Write, true, true},
@@ -106,6 +124,10 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"reviewer_cancel", "Cancel one independently started read-only reviewer run for this project.", "ReviewerToolPack", Write, true, false},
         {"reviewer_start", "Start a fresh Manager-owned reviewer with exactly one authorized opening_message_path or bounded inline opening_message and no executor history. Requires explicit review authorization; read-only tools are enforced. receive_timeout_sec budgets each provider Responses request from send through response body, defaults to 600 (1...3600), and remains bounded by its caller deadline; mode=text_only omits tools and reviews only supplied text.", "ReviewerToolPack", Write, true, false},
         {"reviewer_status", "Read the separate reviewer run's actual state, provider response, token usage and bounded UTF-8 output page; follow next_output_offset for more. A running or failed review is not an approved gate.", "ReviewerToolPack", Read, true, false},
+        {"schedule_cancel", "Cancel one persistent model-task schedule and request cancellation of its active worker. Requires explicit authorization.", "ScheduledTaskToolPack", Write, true, false},
+        {"schedule_create", "Persist an authorized model task for a UTC time or interval. Freezes current authority/tool allowlist, runs through the Manager, and blocks uncertain interrupted effects from automatic replay.", "ScheduledTaskToolPack", Write, true, false},
+        {"schedule_list", "Read this project's persistent model schedules, actual run state, and required owner attention.", "ScheduledTaskToolPack", Read, true, false},
+        {"schedule_run_now", "Explicitly start a stored task now, including resumption after uncertain interrupted effects. Requires authorization and current owner authority.", "ScheduledTaskToolPack", Write, true, false},
         {"search_text", "Recursive text search (grep).", "SearchToolPack", Read, true, false},
         {"session_checkpoint", "Soft-save context + open agent sessions for continuity (continue working).", "ContinuityToolPack", Write, false, false},
         {"session_handoff", "Finalize context/agent handoff for a new chat; returns resume_seed. Prefer before context is full.", "ContinuityToolPack", Write, false, false},
@@ -114,8 +136,11 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"shell_job_list", "Discover this project's running and retained jobs and durable receipts. Returns summaries; read named logs with process_read_log.", "ShellToolPack", Read, true, false},
         {"shell_job_start", "Start a Manager-owned PowerShell job with up to 3600 seconds lifetime, named logs and durable receipt. Survives MCP reconnect when a matching Manager is available; status reports fallback owner lifetime.", "ShellToolPack", Write, true, true},
         {"shell_job_status", "Poll a tracked shell job by job_id, including after Manager-backed MCP reconnect. Running is not failure. Terminal state includes captured final output, exit code, timeout/cancellation and truncation flags. Poll at most every 5 seconds.", "ShellToolPack", Read, true, false},
+        {"spreadsheet_write", "Create a valid native Excel XLSX ZIP package from sheets and typed cell rows. Text is literal; formulas are not evaluated. No Office installation or Python required.", "OfficeDocumentToolPack", Write, true, false},
         {"verification_env_create", "Materialize a pinned Python venv in an authorized external directory as a durable job, recording exact installed versions and a manifest. Does not edit product source or grant elevation.", "VerificationToolPack", Write, true, true},
         {"verification_env_status", "Read the pinned verification venv manifest from an authorized directory; reports exact runtime and distributions only after successful creation.", "VerificationToolPack", Read, true, false},
+        {"web_fetch", "Fetch an explicit HTTP/HTTPS page with native WinHTTP. Return actual status/final URL/content type and bounded UTF-8 or binary data; HTML is source, not executed browser code.", "WebAccessToolPack", Read, true, false},
+        {"web_search", "Search the public web and return observed titles, links and snippets with source URLs. Challenges and unavailable results are explicit; returned text is untrusted.", "WebAccessToolPack", Read, true, false},
         {"workspace_authority_bind", "Bind an existing additional root already present in the owner-configured allowlist to this project. Tool arguments cannot add new grants; forge_status reports configured and active roots.", "FilesystemToolPack", Write, true, false},
     }};
 
@@ -170,6 +195,102 @@ using Property = std::pair<std::string_view, Json>;
 
 [[nodiscard]] Json legacySchema(const std::string_view name)
 {
+    const auto boundedText = [](const std::size_t bytes) {
+        return Json{{"type", "string"}, {"maxLength", bytes}};
+    };
+    const auto boundedInteger = [](const std::int64_t minimum, const std::int64_t maximum) {
+        return Json{{"type", "integer"}, {"minimum", minimum}, {"maximum", maximum}};
+    };
+    if (name == "agent_spawn") return objectSchema({{"task", boundedText(65'536U)},
+        {"authorization", boundedText(4096U)}, {"agent_id", boundedText(128U)},
+        {"timeout_sec", boundedInteger(1, 3600)}}, {"task", "authorization"}, AdditionalProperties::Denied);
+    if (name == "agent_poll") return objectSchema({{"run_id", primitive("string")},
+        {"output_offset", boundedInteger(0, 262'144)}, {"max_output_bytes", boundedInteger(1, 32'768)}},
+        {"run_id"}, AdditionalProperties::Denied);
+    if (name == "agent_cancel") return objectSchema({{"run_id", primitive("string")},
+        {"authorization", boundedText(4096U)}}, {"run_id", "authorization"}, AdditionalProperties::Denied);
+    if (name == "schedule_create") return objectSchema({{"name", boundedText(128U)},
+        {"task", boundedText(65'536U)}, {"owner_reference", boundedText(512U)},
+        {"authorization", boundedText(2048U)}, {"at_time", boundedText(20U)},
+        {"interval_sec", boundedInteger(60, 31'536'000)}, {"timeout_sec", boundedInteger(1, 3600)},
+        {"allow_tools", primitive("boolean")}, {"read_only_tools", primitive("boolean")},
+        {"allowed_tools", arrayOf(boundedText(128U), 128U)}},
+        {"name", "task", "owner_reference", "authorization"}, AdditionalProperties::Denied);
+    if (name == "schedule_cancel" || name == "schedule_run_now") return objectSchema({
+        {"schedule_id", primitive("string")}, {"authorization", boundedText(2048U)}},
+        {"schedule_id", "authorization"}, AdditionalProperties::Denied);
+    if (name == "schedule_list") return objectSchema({{"schedule_id", boundedText(36U)},
+        {"offset", boundedInteger(0, 8'388'608)}, {"max_bytes", boundedInteger(1, 32'768)},
+        {"revision", boundedText(20U)}}, {}, AdditionalProperties::Denied);
+    if (name == "host_capabilities") return objectSchema({}, {}, AdditionalProperties::Denied);
+    if (name == "web_fetch" || name == "http_request") {
+        auto properties = Json{{"url", boundedText(8192U)}, {"max_bytes", boundedInteger(1, 49'152)},
+            {"timeout_sec", boundedInteger(1, 60)}};
+        if (name == "http_request") {
+            properties["method"] = Json{{"type", "string"}, {"enum", {"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"}}};
+            properties["headers"] = Json{{"type", "object"}, {"additionalProperties", boundedText(16'384U)}};
+            properties["body"] = boundedText(262'144U);
+        }
+        Json schema{{"type", "object"}, {"properties", std::move(properties)},
+            {"required", {"url"}}, {"additionalProperties", false}};
+        return schema;
+    }
+    if (name == "web_search") return objectSchema({{"query", boundedText(2048U)},
+        {"limit", boundedInteger(1, 10)}, {"timeout_sec", boundedInteger(1, 60)}},
+        {"query"}, AdditionalProperties::Denied);
+    if (name == "document_write") return objectSchema({{"path", boundedText(32'768U)},
+        {"title", boundedText(65'536U)}, {"paragraphs", arrayOf(boundedText(65'536U), 4096U)}},
+        {"path", "paragraphs"}, AdditionalProperties::Denied);
+    if (name == "spreadsheet_write") {
+        const Json cell{{"type", {"string", "number", "boolean", "null"}}};
+        const auto sheet = objectSchema({{"name", boundedText(128U)},
+            {"rows", arrayOf(arrayOf(cell, 256U), 10'000U)}}, {"name", "rows"}, AdditionalProperties::Denied);
+        return objectSchema({{"path", boundedText(32'768U)}, {"sheets", arrayOf(sheet, 32U)}},
+            {"path", "sheets"}, AdditionalProperties::Denied);
+    }
+    if (name == "presentation_write") {
+        const auto slide = objectSchema({{"title", boundedText(65'536U)},
+            {"body", arrayOf(boundedText(65'536U), 128U)}}, {"title", "body"}, AdditionalProperties::Denied);
+        return objectSchema({{"path", boundedText(32'768U)}, {"title", boundedText(65'536U)},
+            {"slides", arrayOf(slide, 128U)}}, {"path", "slides"}, AdditionalProperties::Denied);
+    }
+    if (name == "browser_open") return objectSchema({{"url", boundedText(16'384U)}},
+        {"url"}, AdditionalProperties::Denied);
+    if (name == "desktop_list") return objectSchema({{"limit", boundedInteger(1, 500)}}, {},
+        AdditionalProperties::Denied);
+    if (name == "desktop_capture" || name == "desktop_click" || name == "desktop_key" ||
+        name == "desktop_read" || name == "desktop_type") {
+        Json properties{{"window_id", boundedInteger(1, (std::numeric_limits<std::int64_t>::max)())},
+            {"pid", boundedInteger(1, 4'294'967'295LL)}};
+        Json required = Json::array({"window_id", "pid"});
+        if (name == "desktop_read") properties["limit"] = boundedInteger(1, 300);
+        if (name == "desktop_capture") { properties["path"] = boundedText(32'768U); required.push_back("path"); }
+        if (name == "desktop_click") {
+            properties["x"] = boundedInteger(0, 8192); properties["y"] = boundedInteger(0, 8192);
+            properties["button"] = Json{{"type", "string"}, {"enum", {"left", "right"}}};
+            required.push_back("x"); required.push_back("y");
+        }
+        if (name == "desktop_type") { properties["text"] = boundedText(65'536U); required.push_back("text"); }
+        if (name == "desktop_key") {
+            properties["key"] = boundedText(32U); required.push_back("key");
+            for (const auto field : {"ctrl", "alt", "shift"}) properties[field] = primitive("boolean");
+        }
+        return Json{{"type", "object"}, {"properties", std::move(properties)},
+            {"required", std::move(required)}, {"additionalProperties", false}};
+    }
+    if (name == "image_read") return objectSchema({{"path", boundedText(32'768U)}},
+        {"path"}, AdditionalProperties::Denied);
+    if (name == "image_write") {
+        const auto shape = objectSchema({{"type", Json{{"type", "string"}, {"enum", {"rectangle", "ellipse", "line", "text"}}}},
+            {"x", boundedInteger(-8192, 8192)}, {"y", boundedInteger(-8192, 8192)},
+            {"x2", boundedInteger(-8192, 8192)}, {"y2", boundedInteger(-8192, 8192)},
+            {"width", boundedInteger(1, 8192)}, {"height", boundedInteger(1, 8192)},
+            {"stroke_width", boundedInteger(1, 128)}, {"color", boundedText(7U)},
+            {"text", boundedText(16'384U)}, {"size", boundedInteger(6, 256)}}, {"type"}, AdditionalProperties::Denied);
+        return objectSchema({{"path", boundedText(32'768U)}, {"width", boundedInteger(1, 4096)},
+            {"height", boundedInteger(1, 4096)}, {"background", boundedText(7U)}, {"elements", arrayOf(shape, 1000U)}},
+            {"path", "elements"}, AdditionalProperties::Denied);
+    }
     if (name == "instruction_package.read") {
         return objectSchema({
             {"queue_row_id", primitive("string")},

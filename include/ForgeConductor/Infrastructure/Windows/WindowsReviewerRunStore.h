@@ -6,6 +6,7 @@
 #include <memory>
 
 namespace ForgeConductor::Infrastructure::Windows {
+enum class ManagedReceiptPurpose { ReadOnlyReviewer, IndependentWorker };
 struct ReviewerRunStoragePaths final {
     Contracts::AuthorizedPath read;
     Contracts::AuthorizedPath write;
@@ -20,7 +21,8 @@ public:
     // The owner creates the private directory before construction; atomic writes
     // may create a receipt leaf but cannot grant or create its parent directories.
     WindowsReviewerRunStore(Contracts::IAtomicFileStore&, Contracts::IHasher&, Contracts::IClock&,
-        Contracts::AuthorizedPath storageDirectoryRead, ReviewerRunStorageResolver);
+        Contracts::AuthorizedPath storageDirectoryRead, ReviewerRunStorageResolver,
+        ManagedReceiptPurpose purpose = ManagedReceiptPurpose::ReadOnlyReviewer);
     ~WindowsReviewerRunStore() override;
     [[nodiscard]] Domain::Result<std::optional<Domain::ManagedRunRecord>> load(
         const Domain::SessionId&, const Domain::OperationContext&) noexcept override;

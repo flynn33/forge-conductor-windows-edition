@@ -208,6 +208,12 @@ void rejectSecretFields(const Json& value)
     if (const auto value = optionalString(document, "log_level")) {
         configuration.logLevel = parseLogLevel(*value);
     }
+    if (const auto value = optionalString(document, "filesystem_access")) {
+        if (*value == "workspace") configuration.fileSystemAccess = Domain::FileSystemAccessMode::Workspace;
+        else if (*value == "host") configuration.fileSystemAccess = Domain::FileSystemAccessMode::Host;
+        else reject(Domain::ErrorCodes::InvalidRequest,
+            "Configuration filesystem_access must be workspace or host.");
+    }
 
     if (const auto* roots = optionalMember(document, "allowed_roots")) {
         if (!roots->is_array()) {
@@ -342,6 +348,7 @@ void writeKnownConfiguration(Json& document, const Domain::AppConfig& configurat
 {
     document["schema_version"] = WindowsConfigurationStore::SchemaVersion;
     document["log_level"] = Domain::wireName(configuration.logLevel);
+    document["filesystem_access"] = Domain::wireName(configuration.fileSystemAccess);
 
     Json roots = Json::array();
     for (const auto& root : configuration.allowedRoots) {

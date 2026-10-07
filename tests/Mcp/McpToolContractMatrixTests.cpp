@@ -406,6 +406,18 @@ void runMatrix(const Json& fixture)
         require(std::erase(catalogNames, name) == 1U,
             "Workflow extension must be registered once: " + name);
     }
+    const std::vector<std::string> hostCapabilityExtensions{
+        "agent_cancel", "agent_poll", "agent_spawn", "browser_open",
+        "desktop_capture", "desktop_click", "desktop_key", "desktop_list", "desktop_read", "desktop_type",
+        "document_write", "host_capabilities", "http_request", "image_read", "image_write", "presentation_write",
+        "schedule_cancel", "schedule_create", "schedule_list", "schedule_run_now", "spreadsheet_write", "web_fetch", "web_search"};
+    require(fixture.at("lineage").at("windows_host_extensions")
+            .at("host_capability_workflow_tools").at("names") == hostCapabilityExtensions,
+        "The fixture must bind the exact independently tested native host capability extensions.");
+    for (const auto& name : hostCapabilityExtensions) {
+        require(std::erase(catalogNames, name) == 1U,
+            "Host capability extension must be registered once: " + name);
+    }
     std::sort(catalogNames.begin(), catalogNames.end());
 
     std::vector<std::string> fixtureNames;

@@ -4,6 +4,15 @@
 #include <winsock2.h>
 #include <Windows.h>
 
+#include "ForgeConductor/Domain/ProductIdentity.h"
+#include "ForgeConductor/Infrastructure/Windows/DpapiSecureStorage.h"
+#include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsAlphaManagerProfile.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsCurrentUserIdentity.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsManagerAuthentication.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsManagerInstanceLease.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsManagerNamedPipeClient.h"
+
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -38,9 +47,10 @@ constexpr auto ChildTimeout = 30s;
 constexpr auto ForcedCleanupTimeout = 5s;
 constexpr auto DrainCancelRetryInterval = 25ms;
 constexpr std::size_t MaximumCapturedBytes = 2U * 1024U * 1024U;
-constexpr std::size_t ExpectedToolCount = 80U;
+constexpr std::size_t ExpectedToolCount = 103U;
 
 std::size_t assertions{};
+std::vector<std::filesystem::path> isolatedManagerHomes;
 
 void require(const bool condition, const std::string_view expression)
 {
@@ -271,6 +281,110 @@ struct ChildProcess final {
     UniqueHandle errorReader;
 };
 
+namespace Domain = ForgeConductor::Domain;
+namespace Infrastructure = ForgeConductor::Infrastructure::Windows;
+
+[[nodiscard]] Domain::OperationContext managerContext()
+{
+    return {Domain::OperationId::parse("00000000-0000-4000-8000-000000000071").value(),
+        std::chrono::steady_clock::now() + 3s, {},
+        Domain::CorrelationId::parse("isolated-mcp-manager-cleanup").value()};
+}
+
+struct ManagerProbe final {
+    std::unique_ptr<Infrastructure::WindowsManagerNamedPipeClient> client;
+    Domain::ManagerStatus status;
+};
+
+[[nodiscard]] std::optional<ManagerProbe> probeIsolatedManager(
+    const std::filesystem::path& home)
+{
+    auto identity = Infrastructure::WindowsCurrentUserIdentity::load();
+    auto profile = Infrastructure::WindowsAlphaManagerProfile::create(home.native());
+    if (!identity || !profile) return std::nullopt;
+    Infrastructure::WindowsManagerInstanceLeaseOptions options;
+    options.purposeSuffix = profile.value().purposeSuffix();
+    auto names = Infrastructure::WindowsManagerInstanceLease::namesFor(identity.value(), options);
+    if (!names) return std::nullopt;
+    Infrastructure::DpapiSecureStorage secure{std::wstring{profile.value().secureStorageRegistrySubkey()}};
+    Infrastructure::WindowsManagerAuthenticationTokenGenerator generator;
+    Infrastructure::WindowsManagerAuthenticationTokenStore tokens{secure, generator};
+    const auto context = managerContext();
+    auto token = tokens.load(context);
+    if (!token || !token.value()) return std::nullopt;
+    auto client = Infrastructure::WindowsManagerNamedPipeClient::create(
+        std::make_shared<Infrastructure::SystemClock>(), std::wstring{names.value().pipeName()}, *token.value());
+    if (!client) return std::nullopt;
+    auto status = client.value()->status(context);
+    if (!status || !status.value().isManager || status.value().version != Domain::ProductVersion ||
+        status.value().home != profile.value().dataRoot()) return std::nullopt;
+    return ManagerProbe{std::move(client).value(), std::move(status).value()};
+}
+
+[[nodiscard]] bool stopIsolatedManager(const std::filesystem::path& home) noexcept
+{
+    try {
+        auto probe = probeIsolatedManager(home);
+        if (!probe) return true;
+        UniqueHandle process{::OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION |
+            PROCESS_TERMINATE, FALSE, probe->status.processId)};
+        if (!process) return false;
+        const auto stopped = probe->client->requestShutdown(managerContext());
+        probe->client->shutdown();
+        if (stopped && ::WaitForSingleObject(process.get(), 10'000U) == WAIT_OBJECT_0) return true;
+        // Only this authenticated disposable profile is eligible for fallback
+        // cleanup; failed cooperative shutdown still fails the test.
+        static_cast<void>(::TerminateProcess(process.get(), 124U));
+        static_cast<void>(::WaitForSingleObject(process.get(), 5'000U));
+        return false;
+    } catch (...) { return false; }
+}
+
+struct IsolatedManagersCleanup final {
+    ~IsolatedManagersCleanup() noexcept
+    {
+        for (const auto& home : isolatedManagerHomes) static_cast<void>(stopIsolatedManager(home));
+        isolatedManagerHomes.clear();
+    }
+};
+
+[[nodiscard]] std::uint16_t unusedLoopbackPort()
+{
+    WSADATA data{};
+    REQUIRE(::WSAStartup(MAKEWORD(2, 2), &data) == 0);
+    struct WinsockCleanup final { ~WinsockCleanup() { static_cast<void>(::WSACleanup()); } } cleanup;
+    const SOCKET socket = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    REQUIRE(socket != INVALID_SOCKET);
+    struct SocketCleanup final { SOCKET value; ~SocketCleanup() { static_cast<void>(::closesocket(value)); } } close{socket};
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    REQUIRE(::bind(socket, reinterpret_cast<const sockaddr*>(&address), sizeof(address)) == 0);
+    int size = sizeof(address);
+    REQUIRE(::getsockname(socket, reinterpret_cast<sockaddr*>(&address), &size) == 0);
+    return ntohs(address.sin_port);
+}
+
+void prepareIsolatedProfile(const std::filesystem::path& home)
+{
+    auto persistent = Infrastructure::WindowsAlphaManagerProfile::persistentDataRoot();
+    REQUIRE(persistent);
+    REQUIRE(std::filesystem::weakly_canonical(home) != std::filesystem::path{persistent.value()});
+    if (std::ranges::find(isolatedManagerHomes, home) == isolatedManagerHomes.end()) {
+        isolatedManagerHomes.push_back(home);
+    }
+    const auto configuration = home / L"config" / L"config.json";
+    if (!std::filesystem::exists(configuration)) {
+        std::filesystem::create_directories(configuration.parent_path());
+        std::ofstream output{configuration};
+        REQUIRE(output.is_open());
+        output << Json{{"schema_version", 1}, {"dashboard", {{"port", unusedLoopbackPort()}}},
+            {"manager", {{"auto_restart", false}, {"open_browser_on_start", false}}},
+            {"local_model", {{"port", 1}, {"model", "isolated-regression-model"}}}}.dump();
+        REQUIRE(output.good());
+    }
+}
+
 [[nodiscard]] ChildProcess launch(
     const std::filesystem::path& executable,
     const std::filesystem::path& home,
@@ -279,6 +393,7 @@ struct ChildProcess final {
     const std::wstring_view deploymentId,
     const bool homeFromEnvironment)
 {
+    prepareIsolatedProfile(home);
     auto input = createPipe(false);
     auto output = createPipe(true);
     auto error = createPipe(true);
@@ -983,7 +1098,7 @@ struct RoleObservation final {
     REQUIRE(!initialize.contains("error"));
     const auto& initializeResult = initialize.at("result");
     REQUIRE(initializeResult.at("protocolVersion") == "2025-11-25");
-    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.13");
+    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.14");
     REQUIRE(initializeResult.at("capabilities").at("tools").at("listChanged") == false);
     const auto& instructions =
         initializeResult.at("instructions").get_ref<const std::string&>();
@@ -1416,64 +1531,37 @@ void runIsolatedManagerReviewerRegression(
             {"model", "isolated-regression-model"}}}}.dump();
     }
     const auto handshake = handshakeStream();
-    {
-        McpProcessSession bootstrap{executable, home, workspace, L"fallback", L"isolated-reviewer-bootstrap"};
-        bootstrap.send(handshake);
-        static_cast<void>(bootstrap.awaitFrames(2U));
-        bootstrap.finish(2U);
-    }
+    REQUIRE(!probeIsolatedManager(home));
     const auto managerExecutable = executable.parent_path() / L"ForgeConductor.Manager.exe";
     REQUIRE(std::filesystem::is_regular_file(managerExecutable));
-    auto command = quoteWindowsArgument(managerExecutable.native()) + L" --alpha-root " + quoteWindowsArgument(home.native());
-    std::vector<wchar_t> mutableCommand{command.begin(), command.end()};
-    mutableCommand.push_back(L'\0');
-    STARTUPINFOW startup{};
-    startup.cb = sizeof(startup);
-    SECURITY_ATTRIBUTES attributes{sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
-    const auto managerLogPath = root / L"manager-process.log";
-    UniqueHandle managerLog{::CreateFileW(managerLogPath.native().c_str(), GENERIC_WRITE,
-        FILE_SHARE_READ | FILE_SHARE_WRITE, &attributes, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr)};
-    UniqueHandle managerInput{::CreateFileW(L"NUL", GENERIC_READ,
-        FILE_SHARE_READ | FILE_SHARE_WRITE, &attributes, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
-    REQUIRE(managerLog && managerInput);
-    startup.dwFlags = STARTF_USESTDHANDLES;
-    startup.hStdInput = managerInput.get();
-    startup.hStdOutput = managerLog.get();
-    startup.hStdError = managerLog.get();
-    PROCESS_INFORMATION process{};
-    REQUIRE(::CreateProcessW(managerExecutable.native().c_str(), mutableCommand.data(), nullptr,
-        nullptr, TRUE, CREATE_NO_WINDOW, nullptr, workspace.native().c_str(), &startup, &process));
-    UniqueHandle managerProcess{process.hProcess};
-    UniqueHandle managerThread{process.hThread};
-    struct ManagerCleanup final {
-        HANDLE process;
-        ~ManagerCleanup() { static_cast<void>(terminateAndWait(process,
-            std::chrono::duration_cast<std::chrono::milliseconds>(ForcedCleanupTimeout))); }
-    } cleanup{managerProcess.get()};
-    const auto deadline = std::chrono::steady_clock::now() + 25s;
-    std::unique_ptr<McpProcessSession> connected;
-    while (std::chrono::steady_clock::now() < deadline) {
-        DWORD exitCode{};
-        REQUIRE(::GetExitCodeProcess(managerProcess.get(), &exitCode));
-        if (exitCode != STILL_ACTIVE) {
-            std::ifstream log{managerLogPath, std::ios::binary};
-            const std::string details{std::istreambuf_iterator<char>{log}, std::istreambuf_iterator<char>{}};
-            throw std::runtime_error{"The isolated Manager exited with " + std::to_string(exitCode) + ": " + details};
-        }
-        auto candidate = std::make_unique<McpProcessSession>(executable, home, workspace,
-            L"fallback", L"isolated-reviewer-connect");
-        candidate->send(handshake);
-        static_cast<void>(candidate->awaitFrames(2U));
-        candidate->send(statusRequest(3));
-        const auto status = successfulToolPayload(candidate->awaitFrames(3U), 3);
-        if (status.at("shell_execution").at("durable_across_mcp_reconnect").get<bool>()) {
-            connected = std::move(candidate);
-            break;
-        }
-        candidate->finish(3U);
-        std::this_thread::sleep_for(100ms);
+    std::vector<std::unique_ptr<McpProcessSession>> racing;
+    for (const auto role : {L"primary", L"fallback", L"fallback"}) {
+        racing.push_back(std::make_unique<McpProcessSession>(executable, home, workspace,
+            role, L"isolated-manager-cold-start-race"));
+        racing.back()->send(handshake);
     }
-    REQUIRE(connected);
+    for (const auto& connector : racing) {
+        static_cast<void>(connector->awaitFrames(2U));
+        connector->send(statusRequest(3));
+        const auto status = successfulToolPayload(connector->awaitFrames(3U), 3);
+        REQUIRE(status.at("shell_execution").at("durable_across_mcp_reconnect") == true);
+        REQUIRE(status.at("durable_manager").at("available") == true);
+        REQUIRE(status.at("durable_manager").at("startup_error").is_null());
+    }
+    auto manager = probeIsolatedManager(home);
+    REQUIRE(manager);
+    const auto managerPid = manager->status.processId;
+    UniqueHandle managerProcess{::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE,
+        FALSE, managerPid)};
+    REQUIRE(managerProcess);
+    std::array<wchar_t, 32'768U> servingImage{};
+    DWORD servingLength = static_cast<DWORD>(servingImage.size());
+    REQUIRE(::QueryFullProcessImageNameW(managerProcess.get(), 0U, servingImage.data(), &servingLength));
+    REQUIRE((std::filesystem::path{std::wstring{servingImage.data(), servingLength}} == managerExecutable));
+    manager->client->shutdown();
+    racing[1]->finish(3U);
+    racing[2]->finish(3U);
+    auto connected = std::move(racing[0]);
     connected->send(toolRequest(4, "reviewer_start", Json{
         {"opening_message", "Review only this disposable process regression text."},
         {"authorization", "Authorized isolated process regression"}, {"mode", "text_only"},
@@ -1497,6 +1585,80 @@ void runIsolatedManagerReviewerRegression(
     resumed.send(toolRequest(4, "reviewer_cancel", Json{{"run_id", runId}}));
     REQUIRE(successfulToolPayload(resumed.awaitFrames(4U), 4).at("manager_owned") == true);
     resumed.finish(4U);
+    auto reconnected = probeIsolatedManager(home);
+    REQUIRE(reconnected);
+    REQUIRE(reconnected->status.processId == managerPid);
+    reconnected->client->shutdown();
+    REQUIRE(::WaitForSingleObject(managerProcess.get(), 0U) == WAIT_TIMEOUT);
+
+    // A second package has the same product version and profile but cannot
+    // take over the existing owner or route durable work into its binary.
+    const auto differentPackage = root / L"other-package";
+    std::filesystem::create_directory(differentPackage);
+    for (const auto& filename : {executable.filename(), managerExecutable.filename(),
+            std::filesystem::path{L"ForgeConductor.SessionHost.exe"}}) {
+        std::filesystem::copy_file(executable.parent_path() / filename, differentPackage / filename);
+    }
+    McpProcessSession refused{differentPackage / executable.filename(), home, workspace,
+        L"fallback", L"isolated-manager-other-package"};
+    refused.send(handshake);
+    static_cast<void>(refused.awaitFrames(2U));
+    refused.send(statusRequest(3));
+    const auto unavailable = successfulToolPayload(refused.awaitFrames(3U), 3);
+    REQUIRE(unavailable.at("durable_manager").at("available") == false);
+    REQUIRE(!unavailable.at("durable_manager").at("startup_error").get<std::string>().empty());
+    REQUIRE(unavailable.at("shell_execution").at("durable_across_mcp_reconnect") == false);
+    refused.send(toolRequest(4, "host_capabilities", Json::object()));
+    const auto capabilities = successfulToolPayload(refused.awaitFrames(4U), 4);
+    REQUIRE(capabilities.at("independent_mutable_workers") == false);
+    REQUIRE(capabilities.at("persistent_model_schedules") == false);
+    refused.finish(4U);
+    auto retained = probeIsolatedManager(home);
+    REQUIRE(retained);
+    REQUIRE(retained->status.processId == managerPid);
+    retained->client->shutdown();
+
+    // Preserve one already-connected caller across a broker replacement. A
+    // startup-only check would incorrectly route this request to the new path.
+    McpProcessSession bound{executable, home, workspace, L"fallback", L"isolated-manager-bound-before-replacement"};
+    bound.send(handshake);
+    static_cast<void>(bound.awaitFrames(2U));
+    bound.send(toolRequest(3, "reviewer_status", Json{{"run_id", runId}}));
+    REQUIRE(successfulToolPayload(bound.awaitFrames(3U), 3).at("manager_owned") == true);
+    REQUIRE(stopIsolatedManager(home));
+    auto replacementCommand = quoteWindowsArgument((differentPackage / managerExecutable.filename()).native()) +
+        L" --alpha-root " + quoteWindowsArgument(home.native());
+    STARTUPINFOW replacementStartup{};
+    replacementStartup.cb = sizeof(replacementStartup);
+    PROCESS_INFORMATION replacement{};
+    REQUIRE(::CreateProcessW((differentPackage / managerExecutable.filename()).c_str(), replacementCommand.data(),
+        nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, differentPackage.c_str(), &replacementStartup, &replacement));
+    UniqueHandle replacementProcess{replacement.hProcess};
+    UniqueHandle replacementThread{replacement.hThread};
+    struct ReplacementCleanup final {
+        HANDLE process;
+        ~ReplacementCleanup() { static_cast<void>(terminateAndWait(process, 5s)); }
+    } replacementCleanup{replacementProcess.get()};
+    const auto replacementDeadline = std::chrono::steady_clock::now() + 10s;
+    std::optional<ManagerProbe> replacementProbe;
+    while (std::chrono::steady_clock::now() < replacementDeadline) {
+        replacementProbe = probeIsolatedManager(home);
+        if (replacementProbe && replacementProbe->status.processId == replacement.dwProcessId) break;
+        REQUIRE(::WaitForSingleObject(replacementProcess.get(), 0U) == WAIT_TIMEOUT);
+        std::this_thread::sleep_for(50ms);
+    }
+    REQUIRE(replacementProbe);
+    REQUIRE(replacementProbe->status.processId == replacement.dwProcessId);
+    replacementProbe->client->shutdown();
+    bound.send(toolRequest(4, "reviewer_status", Json{{"run_id", runId}}));
+    const auto rejectedFrames = bound.awaitFrames(4U);
+    const auto& rejected = responseFor(rejectedFrames, 4).at("result");
+    REQUIRE(rejected.at("isError") == true);
+    REQUIRE(rejected.at("structuredContent").at("code") == "host_capability_unavailable");
+    REQUIRE(rejected.at("structuredContent").at("message").get<std::string>()
+        .find("different executable package") != std::string::npos);
+    bound.finish(4U);
+    REQUIRE(stopIsolatedManager(home));
 }
 
 void runPolicyPagingRegression(
@@ -2136,6 +2298,7 @@ void run(
     const auto golden = loadGolden(goldenPath);
 
     TemporaryDirectory temporary;
+    IsolatedManagersCleanup managerCleanup;
     const auto sharedRoot = temporary.root() / L"shared-\u5171\u6709";
     const auto home = sharedRoot / L"home-\u4e3b";
     const auto workspace = sharedRoot / L"workspace-\u4f5c\u696d";
@@ -2323,6 +2486,7 @@ void run(
         std::filesystem::path path;
         ~IsolatedHomeCleanup() noexcept
         {
+            static_cast<void>(stopIsolatedManager(path));
             std::error_code ignored;
             static_cast<void>(std::filesystem::remove_all(path, ignored));
         }
@@ -2349,6 +2513,8 @@ void run(
     runPolicyPagingRegression(executable, sharedRoot / L"policy-paging");
     runFragmentedToolResultRegression(executable, sharedRoot / L"fragmented-result");
     runIsolatedManagerReviewerRegression(executable, sharedRoot / L"isolated-manager-reviewer");
+    for (const auto& ownedHome : isolatedManagerHomes) REQUIRE(stopIsolatedManager(ownedHome));
+    isolatedManagerHomes.clear();
 }
 
 } // namespace

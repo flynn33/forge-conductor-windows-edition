@@ -1,6 +1,6 @@
 # Windows package inputs
 
-`scripts/package.ps1` creates the Forge Conductor 1.3.13 / Windows package 1.3.13.0 x64 distribution from a clean, source-bound Release staging manifest.
+`scripts/package.ps1` creates the Forge Conductor 1.3.14 / Windows package 1.3.14.0 x64 distribution from a clean, source-bound Release staging manifest.
 
 The stable package identity is `ForgeConductor.Windows`. The package contains the self-contained WinUI application, CLI, Manager, SessionHost, Windows App SDK runtime, release Visual C++ runtime, resources, Forsetti manifest, third-party notices, embedded provenance, and a complete payload hash manifest.
 

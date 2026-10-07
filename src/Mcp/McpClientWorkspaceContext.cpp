@@ -97,8 +97,8 @@ template <typename T>
     return value;
 }
 
-// This is only a bounded prefilter. IWorkspaceAuthority performs the actual
-// canonical containment and reparse-point validation before a root is retained.
+// Prefilters hostile input and checks authorized canonical paths below. The
+// issuer still performs canonicalization and reparse-point validation.
 [[nodiscard]] bool canBeWithinAlias(
     const std::string_view candidate,
     const std::string_view alias) noexcept
@@ -197,11 +197,29 @@ struct WorkspaceResolution final {
                     }
                     authority.emplace(std::move(issued).value());
                 }
+                const bool hostAccess = workspaceAuthority.fileSystemAccessMode() ==
+                    Domain::FileSystemAccessMode::Host;
+                std::optional<Domain::PathText> registeredRoot;
+                if (hostAccess) {
+                    auto authorizedAlias = workspaceAuthority.authorize(
+                        *authority,
+                        Domain::PathAuthorizationRequest{
+                            alias, std::nullopt, Domain::FileAccess::Read, false},
+                        context);
+                    if (!authorizedAlias) {
+                        if (isExpectedNonMatch(authorizedAlias.error().code)) {
+                            continue;
+                        }
+                        return Domain::Result<CandidateResolution>::failure(
+                            std::move(authorizedAlias).error());
+                    }
+                    registeredRoot = authorizedAlias.value().canonicalPath();
+                }
                 auto authorized = workspaceAuthority.authorize(
                     *authority,
                     Domain::PathAuthorizationRequest{
                         candidate,
-                        alias,
+                        hostAccess ? std::nullopt : std::optional{alias},
                         Domain::FileAccess::Read,
                         false},
                     context);
@@ -213,9 +231,27 @@ struct WorkspaceResolution final {
                         std::move(authorized).error());
                 }
 
+                if (registeredRoot) {
+                    const auto canonicalComparisonBytes = (std::min)(
+                        authorized.value().canonicalPath().value().size(),
+                        registeredRoot->value().size());
+                    if (canonicalComparisonBytes > remainingComparisonBytes) {
+                        return failure<CandidateResolution>(
+                            Domain::ErrorCodes::LimitExceeded,
+                            "Recovered workspace matching exceeded its bounded comparison budget.",
+                            true);
+                    }
+                    remainingComparisonBytes -= canonicalComparisonBytes;
+                    if (!canBeWithinAlias(
+                            authorized.value().canonicalPath().value(),
+                            registeredRoot->value())) {
+                        continue;
+                    }
+                }
+
                 WorkspaceMatch match{
                     project.id,
-                    authorized.value().authorityRoot()};
+                    registeredRoot ? *registeredRoot : authorized.value().authorityRoot()};
                 if (!selected) {
                     selected.emplace(std::move(match));
                     continue;

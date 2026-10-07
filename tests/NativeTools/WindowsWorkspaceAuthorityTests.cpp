@@ -1,6 +1,7 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsWorkspaceAuthority.h"
 #include "Infrastructure/Windows/Detail/UniqueHandle.h"
 #include "Infrastructure/Windows/Detail/UtfConversion.h"
+#include "Infrastructure/Windows/Detail/WindowsPathResolver.h"
 
 #include <Windows.h>
 #include <winioctl.h>
@@ -451,6 +452,75 @@ void narrowsOnlyWithinTheConfiguredBaseline()
         "narrow reused the current generation");
 }
 
+void downgradesWriteIntentOnlyToRetainedReadAccess()
+{
+    Fixture fixture;
+    auto fullPolicy = policy({fixture.root, fixture.secondRoot});
+    fullPolicy.intent = Domain::FileAccess::Write;
+    fullPolicy.grants.push_back(Domain::FileAccess::Execute);
+    fullPolicy.denials.clear();
+    fullPolicy.shellEnabled = true;
+    Infrastructure::WindowsWorkspaceAuthority issuer{{fullPolicy}};
+    const auto original = take(issuer.authorityFor(projectId(), context()));
+    const auto narrowed = take(issuer.narrow(original, {fixture.root}, {Domain::FileAccess::Read}, false, 8U, context()));
+    require(narrowed.intent() == Domain::FileAccess::Read && narrowed.grants() == std::vector<Domain::FileAccess>{Domain::FileAccess::Read} &&
+        !narrowed.shellEnabled(), "Write intent was retained by restoring a removed Write grant.");
+    const auto target = pathText(fixture.tree.root() / L"nested");
+    require(static_cast<bool>(issuer.authorize(narrowed, {target, std::nullopt, Domain::FileAccess::Read, false}, context())),
+        "Read intent downgrade was rejected by the current issuer.");
+    for (const auto denied : {Domain::FileAccess::Write, Domain::FileAccess::Create, Domain::FileAccess::Delete, Domain::FileAccess::Execute})
+        requireError(issuer.authorize(narrowed, {target, std::nullopt, denied, false}, context()), Domain::ErrorCodes::Unauthorized,
+            "Read-only intent downgrade regained a removed grant.");
+    requireError(issuer.authorize(narrowed, {fixture.secondRoot, std::nullopt, Domain::FileAccess::Read, false}, context()),
+        Domain::ErrorCodes::PathOutsideAuthority, "Read-only downgrade retained a removed root.");
+    requireError(issuer.narrow(original, {fixture.root}, {Domain::FileAccess::Create}, false, 8U, context()),
+        Domain::ErrorCodes::InvalidRequest, "Intent narrowing selected Create instead of retained Read.");
+    requireError(issuer.narrow(original, {fixture.root}, {}, false, 8U, context()),
+        Domain::ErrorCodes::InvalidRequest, "Empty grants yielded an intent downgrade.");
+    auto revokedPolicy = fullPolicy;
+    std::erase(revokedPolicy.grants, Domain::FileAccess::Read);
+    revokedPolicy.denials.push_back(Domain::FileAccess::Read);
+    Infrastructure::WindowsWorkspaceAuthority revoked{{revokedPolicy}};
+    requireError(revoked.authorize(narrowed, {target, std::nullopt, Domain::FileAccess::Read, false}, context()),
+        Domain::ErrorCodes::Unauthorized, "Read downgrade survived current policy Read revocation.");
+    requireError(revoked.narrow(narrowed, {fixture.root}, {Domain::FileAccess::Read}, false, 9U, context()),
+        Domain::ErrorCodes::Unauthorized, "Revoked Read capability was narrowed into a new valid issuer token.");
+    const auto foreign = CapabilityIssuer::issue(parse<Domain::AuthorityId>("eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"),
+        projectId(), callerId(), {fixture.root}, 7U);
+    requireError(issuer.narrow(foreign, {fixture.root}, {Domain::FileAccess::Read}, false, 8U, context()),
+        Domain::ErrorCodes::Unauthorized, "Read downgrade admitted a foreign authority identifier.");
+}
+
+void rejectsExcludedSourceSubtreeUnderNativeVolumeGrant()
+{
+    Fixture fixture;
+    const auto source = fixture.tree.root() / L"source-\u00e5";
+    const auto prefixPeer = fixture.tree.root() / L"source-\u00e5-other";
+    std::filesystem::create_directories(source);
+    std::filesystem::create_directories(prefixPeer);
+    auto volumePolicy = policy({pathText(source.root_path())});
+    volumePolicy.intent = Domain::FileAccess::Write;
+    Infrastructure::WindowsWorkspaceAuthority issuer{{volumePolicy}};
+    const auto token = take(issuer.authorityFor(projectId(), context()));
+    const auto excluded = pathText(source);
+    for (const auto& requested : {source, source / L"verification-env", fixture.tree.root() / L"SOURCE-\u00c5" / L"verification-env"}) {
+        requireError(issuer.authorize(token, {pathText(requested), std::nullopt, Domain::FileAccess::Create, false, excluded}, context()),
+            Domain::ErrorCodes::Unauthorized, "Volume authority admitted the excluded source tree or its Unicode case-equivalent child.");
+    }
+    const auto outside = take(issuer.authorize(token, {pathText(prefixPeer / L"verification-env"), std::nullopt,
+        Domain::FileAccess::Create, false, excluded}, context()));
+    require(outside.access() == Domain::FileAccess::Create && outside.authorityRoot() == token.trustedRoots().front(),
+        "Source exclusion rejected an outside path with a shared name prefix or removed the volume grant.");
+    require(take(WindowsDetail::WindowsPathResolver::resolveAuthorizedPath(outside, Domain::FileAccess::Create,
+        WindowsDetail::MissingPathPolicy::AllowDescendants)) == (prefixPeer / L"verification-env").native(),
+        "A volume-issued path failed the native filesystem capability-consumption boundary.");
+    require(static_cast<bool>(issuer.authorize(token, {pathText(source / L"ordinary-file"), std::nullopt,
+        Domain::FileAccess::Create, false}, context())), "An omitted exclusion changed ordinary host filesystem authorization.");
+    requireError(issuer.authorize(token, {pathText(prefixPeer / L"verification-env"), std::nullopt, Domain::FileAccess::Create,
+        false, pathText(fixture.tree.root() / L"missing-source")}, context()), Domain::ErrorCodes::RecordNotFound,
+        "An unavailable exclusion root was silently ignored.");
+}
+
 void rejectsOutsideTraversalAndWindowsNamespaceForms()
 {
     Fixture fixture;
@@ -695,6 +765,10 @@ int main()
         std::cout << "PASS workspace_authority.identity_scope_generation\n";
         narrowsOnlyWithinTheConfiguredBaseline();
         std::cout << "PASS workspace_authority.narrowing\n";
+        downgradesWriteIntentOnlyToRetainedReadAccess();
+        std::cout << "PASS workspace_authority.read_intent_downgrade\n";
+        rejectsExcludedSourceSubtreeUnderNativeVolumeGrant();
+        std::cout << "PASS workspace_authority.excluded_source_subtree\n";
         rejectsOutsideTraversalAndWindowsNamespaceForms();
         std::cout << "PASS workspace_authority.hostile_paths\n";
         protectsTheAuthorityRootFromDestructiveRequests();
@@ -703,7 +777,7 @@ int main()
         std::cout << "PASS workspace_authority.reparse_case_overlap\n";
         honorsCancellationAndDeadlineOnEveryCall();
         std::cout << "PASS workspace_authority.context\n";
-        std::cout << "SUMMARY passed=9 failed=0 assertions="
+        std::cout << "SUMMARY passed=11 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {
