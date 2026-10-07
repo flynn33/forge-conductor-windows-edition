@@ -1,6 +1,6 @@
 # Tool catalog
 
-Version 1.3.15 provides **104 descriptors** in Primary and Fallback while retaining every original tool, ten specialist playbooks and five CLU governance tools. `host_capabilities` reports actual dedicated capabilities, tool names, filesystem mode and external connection requirements; `get_forge_status` adds the selected project/default directory, active roots, process/shell limits and reviewer defaults.
+Version 1.3.16 provides **104 descriptors** in Primary and Fallback while retaining every original tool, ten specialist playbooks and five CLU governance tools. `host_capabilities` reports actual dedicated capabilities, tool names, filesystem mode and external connection requirements; `get_forge_status` adds the selected project/default directory, active roots, process/shell limits and reviewer defaults.
 
 - `agent_cancel`
 - `agent_context`
@@ -107,4 +107,4 @@ Version 1.3.15 provides **104 descriptors** in Primary and Fallback while retain
 - `web_search`
 - `workspace_authority_bind`
 
-The inventory above comes from the native literal catalog. Dedicated web, Office, desktop/browser, image, independent-worker and schedule workflows join retained process/shell jobs, specialist sessions, read-only reviews, evidence, memory, policy and continuity. Native image drawing is structured PNG output; generative image models and cloud accounts require separately configured providers/accounts or explicit authorized APIs. Manager-backed workers/schedules retain actual state and frozen/current-policy checks, and local Windows notification receipts distinguish submission from display. See [Native Tools](Native-Tools), [Windows Workflow Capabilities](Windows-workflow-capabilities), and [Release 1.3.15](Release-1.3.15) for bounds and actual verification.
+The inventory above comes from the native literal catalog. Dedicated web, Office, desktop/browser, image, independent-worker and schedule workflows join retained process/shell jobs, specialist sessions, read-only reviews, evidence, memory, policy and continuity. Native image drawing is structured PNG output; generative image models and cloud accounts require separately configured providers/accounts or explicit authorized APIs. Manager-backed workers/schedules retain actual state and frozen/current-policy checks, and local Windows notification receipts distinguish submission from display. See [Native Tools](Native-Tools), [Windows Workflow Capabilities](Windows-workflow-capabilities), and [Release 1.3.16](Release-1.3.16) for bounds and actual verification.

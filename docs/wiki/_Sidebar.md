@@ -4,7 +4,7 @@
 
 **Forge Conductor**
 
-<sub>Windows · 1.3.15</sub>
+<sub>Windows · 1.3.16</sub>
 
 ---
 
@@ -12,7 +12,7 @@
 * [Home](Home)
 * [Workspace Guide](Guided-Setup)
 * [CLU Governance](Setup-and-Governance)
-* [Release 1.3.15](Release-1.3.15)
+* [Release 1.3.16](Release-1.3.16)
 * [1.3.14 engineering candidates](Release-1.3.14)
 * [Historical Release 1.3.13](Release-1.3.13)
 * [Historical Release 1.3.11](Release-1.3.11)

@@ -1,10 +1,14 @@
-# Current candidate 1.3.15
+# Current candidate 1.3.16
 
-Product/package identities are 1.3.15 / 1.3.15.0. Final source/build, signed payload, installed App, current-chat qualification and publication remain pending until their actual checks execute. See [Release 1.3.15](Release-1.3.15) and the [verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.15.md). Historical checks below apply only to the named earlier binaries; no result is reassigned.
+Product/package identities are 1.3.16 / 1.3.16.0. Final source/build, signed payload, installed App, current-chat qualification and publication remain pending until their actual checks execute. See [Release 1.3.16](Release-1.3.16) and the [verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.16.md). Historical checks below apply only to the named earlier binaries; no result is reassigned.
+
+## Unpublished 1.3.15 investigation
+
+The superseded 1.3.15.0 candidate from source `ce72c4fc8828864ba0af3f833198b620360cd34c`, tree `482d636a3884444f51599268574e19acf7dd16f7`, passed source/build/package checks and installed at 2026-10-07 13:51:43Z. Its MSIX SHA-256 is `fbbe559fc68d2a2432f654bd9f0bf7c66ed9904a9e527f4586aa3c1149028254`; ZIP SHA-256 is `49ce530db2ef1b1d36878b87b1e78538556c801409772a726e67c165a16b76fd`. Complete preservation was refused because an isolated test Manager changed production MCP routes before installation. It was not tagged or published and has no complete current-chat workflow qualification. See [the historical investigation](Release-1.3.15); none of these hashes identify the pending 1.3.16 package.
 
 ## Historical 1.3.14 engineering evidence
 
-The unpublished 1.3.14 engineering candidates retain product version 1.3.14 and MSIX version 1.3.14.0. Their [investigation record](Release-1.3.14) identifies the actual source, package checksums and qualification scope. They were not tagged or published as a release, and their installed evidence does not qualify the final 1.3.15 package.
+The unpublished 1.3.14 engineering candidates retain product version 1.3.14 and MSIX version 1.3.14.0. Their [investigation record](Release-1.3.14) identifies the actual source, package checksums and qualification scope. They were not tagged or published as a release, and their installed evidence does not qualify the final 1.3.16 package.
 
 Candidate `release-1.3.14.0-20261007-123639` is development-signed with signature status Valid and clean product source `7b3e154d58a2cc21d074541341e9ad4aaa0df914`, tree `0358d85e8281fb3b81032f1348b6fe789da41a20`. Product All and extracted-payload/provenance checks passed. MSIX SHA-256 is `a7019c34e88aeddbf6615fc0f8823ed9cb336e386700d06ea985a63a2c6160c6`; ZIP SHA-256 is `c6b555268c9d435a89107ba7b8e05912cecbcfe6a1a13e4348048b7308c95b37`. The App hash changed for the honest continuity wording; CLI, Manager and SessionHost hashes match the earlier source-767284a candidate. Installation/readback of the new App is pending, and earlier backend acceptance is kept separate from final package/UI qualification.
 

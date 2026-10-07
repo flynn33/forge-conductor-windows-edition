@@ -2,7 +2,7 @@
 
 Forge Conductor is a native Windows 11 workspace and MCP tool server for project work with local models in LM Studio.
 
-Version **1.3.15** expands Primary and Fallback to **104 tools**, while retaining ten specialist playbooks and CLU's five governance tools. LM Studio models can use dedicated web search/fetch/HTTP, native DOCX/XLSX/PPTX creation, Windows desktop observation and input, PNG drawing, image previews and independent image analysis, independent model workers, and persistent model-task schedules. Owner-selected host filesystem access covers ordinary local volumes while relative paths keep the selected project as their default. The narrower workspace mode remains selectable. See the [capability guide](docs/HOST-CAPABILITIES.md), [1.3.15 release notes](docs/releases/1.3.15.md), and [download 1.3.15](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.15).
+The current candidate is **1.3.16**, with **104 tools** in Primary and Fallback, ten specialist playbooks and CLU's five governance tools. LM Studio models can use dedicated web search/fetch/HTTP, native DOCX/XLSX/PPTX creation, Windows desktop observation and input, PNG drawing, image previews and independent image analysis, independent model workers, and persistent model-task schedules. Owner-selected host filesystem access covers ordinary local volumes while relative paths keep the selected project as their default. The narrower workspace mode remains selectable. See the [capability guide](docs/HOST-CAPABILITIES.md) and [1.3.16 candidate notes](docs/releases/1.3.16.md). Publication is pending.
 
 Native Office files and PNG drawings require neither Office nor Python. Scheduled model tasks require Manager to stay running; future schedules restore after restart, while interrupted runs with uncertain effects require explicit authorization before another attempt. Generative artwork and cloud email, calendar, or chat accounts require separately configured providers or authorized APIs. `host_capabilities` reports the implemented tools, current filesystem policy, and these connection requirements.
 
@@ -41,9 +41,9 @@ Requirements and commands are in [Build](docs/BUILD.md) and [Testing](docs/TESTI
 ./scripts/Run-Static-Gates.ps1
 ```
 
-Release verification and its limits are recorded in the [1.3.15 release notes](docs/releases/1.3.15.md) and [capability verification record](docs/validation/HOST-CAPABILITIES-1.3.15.md). Each distribution records its exact commit, tree, MSIX hash and payload-manifest hash. Historical installed and native-chat evidence applies to the artifact named in each report.
+Release verification and its limits are recorded in the [1.3.16 release notes](docs/releases/1.3.16.md) and [capability verification record](docs/validation/HOST-CAPABILITIES-1.3.16.md). Each distribution records its exact commit, tree, MSIX hash and payload-manifest hash. Historical installed and native-chat evidence applies to the artifact named in each report.
 
-Final 1.3.15 build, installation and current-chat acceptance are in progress. The earlier 1.3.14 source, package and current-chat results retain their exact identities in the [investigation record](docs/validation/HOST-CAPABILITIES-1.3.14.md). The new release is qualified separately; a tool catalog or a previous package does not establish its installed behavior.
+Final 1.3.16 source/build, installation and current-chat acceptance are pending. The unpublished [1.3.15 investigation](docs/validation/HOST-CAPABILITIES-1.3.15.md) records its actual source tests, signed installation and a preservation refusal: an isolated test Manager changed production LM Studio routing before installation. The earlier [1.3.14 investigation](docs/validation/HOST-CAPABILITIES-1.3.14.md) retains its own source, package and current-chat results. Neither candidate has a qualified 1.3.16 current-chat result.
 
 Create the engineering distribution from committed release inputs with `./scripts/package.ps1 -DevelopmentSigning`. See [Install](docs/INSTALL.md), [Product status](docs/STATUS.md), [User guide](docs/USER-GUIDE.md), [Architecture](docs/ARCHITECTURE.md), and [Roadmap](docs/ROADMAP.md).
 

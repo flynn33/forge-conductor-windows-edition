@@ -1,6 +1,6 @@
 # Install Forge Conductor
 
-Forge Conductor 1.3.15 (Windows package 1.3.15.0) targets Windows 11 x64. A distribution contains:
+Forge Conductor 1.3.16 (Windows package 1.3.16.0) targets Windows 11 x64. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
 - `distribution.json` and payload hashes;
@@ -30,9 +30,11 @@ Before upgrading or restarting the owning Manager, wait for tracked work to fini
 
 For upgrades, install a higher package version with the same stable identity and publisher. The optional `.appinstaller` file checks for updates on launch and in the background.
 
-## Current 1.3.15 distribution
+## Current 1.3.16 distribution
 
-Download the complete ZIP from [v1.3.15](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.15), extract it, and run the preflight above. The distribution includes the signed 1.3.15.0 MSIX, public publisher certificate, installer, metadata, and checksums. The local engineering release uses the existing development publisher. Inspect the release verification and provenance for its exact committed source, executable hashes, signature, and qualification scope. See [release notes](releases/1.3.15.md).
+The 1.3.16 candidate distribution and publication are pending. Its complete ZIP must contain the signed 1.3.16.0 MSIX, public publisher certificate, installer, metadata and checksums before installation is qualified. The local engineering packages use the existing development publisher. Inspect actual verification and provenance for the committed source, executable hashes, signature and qualification scope. See [candidate notes](releases/1.3.16.md).
+
+The unpublished 1.3.15.0 candidate installed successfully, but its MCP preservation guard refused a routing change written before installation by an isolated test Manager. It is superseded without a qualified current-chat acceptance or release tag. See [the investigation](validation/HOST-CAPABILITIES-1.3.15.md). A higher 1.3.16.0 package keeps the ordinary Windows upgrade path; previous checks do not qualify its new binaries.
 
 ## Historical 1.3.11 publication and installed qualification
 

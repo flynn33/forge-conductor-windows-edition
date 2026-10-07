@@ -1441,6 +1441,10 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
     const Domain::OperationContext& context)
 {
     const auto& process = snapshot();
+    InfrastructureWindows::WindowsApplicationPaths persistentPaths{
+        InfrastructureWindows::WindowsApplicationPathsOptions{std::nullopt, false}};
+    const bool automaticLmStudioDeployment = equalWindowsPath(
+        take(persistentPaths.dataRoot(context)), process.dataRoot());
     if (!options_.enableExternalHostMaintenance) {
         initializeUnavailableLmStudio(
             context,
@@ -1451,7 +1455,7 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
             *maintenanceToolAuthorizer_, *uuidGenerator_, *clock_,
             CompositionWindows::ManagerMaintenanceServiceConfiguration{
                 process.cliExecutable(), *lmStudioReadAuthority_,
-                *lmStudioWriteAuthority_});
+                *lmStudioWriteAuthority_, automaticLmStudioDeployment});
         return;
     }
 
@@ -1643,7 +1647,7 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
         *maintenanceToolAuthorizer_, *uuidGenerator_, *clock_,
         CompositionWindows::ManagerMaintenanceServiceConfiguration{
             process.cliExecutable(), *lmStudioReadAuthority_,
-            *lmStudioWriteAuthority_});
+            *lmStudioWriteAuthority_, automaticLmStudioDeployment});
 }
 
 void ManagerCompositionRoot::Impl::initializeDashboard(

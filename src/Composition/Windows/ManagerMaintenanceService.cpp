@@ -168,6 +168,9 @@ Domain::Result<void> ManagerMaintenanceService::reconcileLmStudio(
     if (!current) {
         return current;
     }
+    if (!configuration_.automaticLmStudioDeployment) {
+        return Domain::Result<void>::success();
+    }
     auto requestUuid = uuidGenerator_.next();
     if (!requestUuid) {
         return Domain::Result<void>::failure(

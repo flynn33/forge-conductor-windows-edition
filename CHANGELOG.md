@@ -1,6 +1,16 @@
 # Changelog
 
-## 1.3.15 - Image analysis from the existing LM Studio integrations
+## 1.3.16 - Isolated Manager deployment boundary (candidate)
+
+- Align active product, package, dependency-manifest and documentation identities to 1.3.16 / 1.3.16.0 for a higher Windows upgrade after the installed, unpublished 1.3.15.0 candidate.
+- Retain all 104 Primary/Fallback tools, ten specialist playbooks and five CLU tools, including independent image analysis, completed sealed reviewer receipts, workers, schedules, Office, web, desktop, filesystem, shell/process, governance and continuity workflows.
+- Preserve the verified 1.3.15 test-isolation failure: an isolated Manager committed automatic deployment into production LM Studio during the source suite, changing only the three Forge routes and their generated bridge files before installation. Foreign MCP configuration remained semantically identical. Final qualification must verify the corrected external-maintenance boundary and production routing preservation.
+- Enable automatic background LM Studio deployment only for the ordinary persistent owner data root. Alternate isolated profiles skip automatic reconciliation before deployment admission; explicit authorized repair and read-only status retain their existing routes. Source and production-preservation checks remain pending.
+- Keep final 1.3.16 source/build/package/install/current-chat and publication results pending until execution. The 1.3.14 and 1.3.15 candidates were not tagged or published, and their recorded results are not reassigned to this version.
+
+## 1.3.15 - Image analysis from the existing LM Studio integrations (unpublished, superseded)
+
+The signed candidate was installed, but preservation verification refused the MCP routing change caused earlier by an isolated test Manager. Its source test and package evidence are retained in `docs/validation/HOST-CAPABILITIES-1.3.15.md`; it has no complete current-chat workflow qualification or public release.
 
 - Retain completed sealed reviewer receipts without a lifetime count limit while bounding concurrent independent reviewers to sixteen. Terminal status reloads the durable receipt and reports its seal and integrity state.
 

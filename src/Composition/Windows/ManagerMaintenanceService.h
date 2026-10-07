@@ -24,6 +24,8 @@ struct ManagerMaintenanceServiceConfiguration final {
     Domain::PathText preferredForgeBinary;
     Contracts::WorkspaceAuthority lmStudioReadAuthority;
     Contracts::WorkspaceAuthority lmStudioWriteAuthority;
+    // Disposable profiles retain manual deployment but cannot repair the host automatically.
+    bool automaticLmStudioDeployment{true};
 };
 
 // One platform-neutral maintenance pass borrowed by the process-owned worker.

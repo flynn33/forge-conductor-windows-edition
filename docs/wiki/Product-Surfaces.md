@@ -1,6 +1,6 @@
 # Product surfaces
 
-Version 1.3.15 retains the native app design and the 1.3.5 run/action/maintenance removals. The shared Manager diagnostic remains collapsed during 500 ms telemetry observations, so its single-line and multiline status updates no longer move the visible page. Settings adds the owner's host/workspace filesystem selection; dedicated model workflows retain explicit native receipts through the MCP tools.
+Version 1.3.16 retains the native app design and the 1.3.5 run/action/maintenance removals. The shared Manager diagnostic remains collapsed during 500 ms telemetry observations, so its single-line and multiline status updates no longer move the visible page. Settings adds the owner's host/workspace filesystem selection; dedicated model workflows retain explicit native receipts through the MCP tools.
 
 | Destination | Actions |
 |---|---|

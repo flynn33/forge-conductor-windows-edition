@@ -495,7 +495,7 @@ private:
 };
 
 struct Fixture final {
-    Fixture()
+    explicit Fixture(const bool automaticLmStudioDeployment = true)
         : clock{Domain::UtcTimePoint{} + 100s, now},
           agentSessions{
               Fakes::DefaultBoundaryCaptureItemsMaximum,
@@ -530,7 +530,8 @@ struct Fixture final {
               uuidGenerator,
               clock,
               Composition::ManagerMaintenanceServiceConfiguration{
-                  preferredBinary(), readAuthority, writeAuthority}}
+                  preferredBinary(), readAuthority, writeAuthority,
+                  automaticLmStudioDeployment}}
     {
         continuity.setNow(now);
         agentSessions.pruneStaleResult.set(success<std::size_t>(3U));
@@ -675,6 +676,40 @@ void exactDriftAuthorizationDeploysThreePlugins()
     require(
         completeInstallResult().pluginsWritten.size() == 3U,
         "the scripted successful deployment did not contain exactly three plugins");
+}
+
+void disposableProfileInspectsDriftWithoutAutomaticDeployment()
+{
+    Fixture fixture{false};
+    fixture.lmStudio.statusResult.set(success(driftedPluginStatus()));
+    for (std::size_t pass{}; pass < 2U; ++pass) {
+        require(fixture.service.reconcile(fixture.activeContext()).hasValue(),
+            "disposable maintenance must inspect drift without repairing the host");
+    }
+    require(fixture.agentSessions.calls() == 2U &&
+        fixture.continuity.callCount(
+            Fakes::ContinuityCall::RecoverIncompleteOperations) == 2U,
+        "disposable maintenance must retain session pruning and continuity recovery");
+    require(fixture.lmStudio.statusCalls() == 2U &&
+        fixture.lmStudio.deployCalls() == 0U &&
+        fixture.lmStudio.activateCalls() == 0U &&
+        fixture.toolAuthorizer.calls() == 0U &&
+        fixture.uuidGenerator.consumed() == 0U,
+        "disposable drift must not mint deployment authorization or mutate LM Studio");
+    const auto inspected = fixture.lmStudio.lastStatusRequest();
+    require(inspected && inspected->preferredBinary == preferredBinary() &&
+        inspected->preserveForeignEntries,
+        "disposable policy must retain the ordinary read-only health inspection");
+    std::stop_source cancellation;
+    fixture.lmStudio.cancelOnNextStatus(cancellation);
+    requireError(fixture.service.reconcile(context(
+        "cccccccc-cccc-4ccc-8ccc-cccccccccccc", "disposable-mid-cancelled",
+        fixture.now + 1min, cancellation.get_token())),
+        Domain::ErrorCodes::Cancelled,
+        "disposable policy must not hide cancellation during health inspection");
+    require(fixture.lmStudio.deployCalls() == 0U &&
+        fixture.toolAuthorizer.calls() == 0U && fixture.uuidGenerator.consumed() == 0U,
+        "cancelled disposable maintenance must not authorize a deployment");
 }
 
 void absentLmStudioDoesNotDeploy()
@@ -1028,6 +1063,7 @@ int main()
     try {
         healthyPassPrunesRecoversAndInspectsWithoutDeployment();
         exactDriftAuthorizationDeploysThreePlugins();
+        disposableProfileInspectsDriftWithoutAutomaticDeployment();
         absentLmStudioDoesNotDeploy();
         earlierFailureDoesNotSuppressLaterIndependentStages();
         partialContinuityFailureIsRetryableAndLmStillRuns();

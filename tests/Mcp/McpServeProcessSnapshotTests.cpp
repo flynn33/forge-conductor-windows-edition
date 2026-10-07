@@ -27,6 +27,7 @@
 #include <iostream>
 #include <iterator>
 #include <limits>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
@@ -1098,7 +1099,7 @@ struct RoleObservation final {
     REQUIRE(!initialize.contains("error"));
     const auto& initializeResult = initialize.at("result");
     REQUIRE(initializeResult.at("protocolVersion") == "2025-11-25");
-    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.15");
+    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.16");
     REQUIRE(initializeResult.at("capabilities").at("tools").at("listChanged") == false);
     const auto& instructions =
         initializeResult.at("instructions").get_ref<const std::string&>();
@@ -1206,6 +1207,111 @@ void validateStatus(
         value.pop_back();
     }
     return value;
+}
+
+using LmStudioProfileSnapshot =
+    std::map<std::filesystem::path, std::optional<std::string>>;
+
+[[nodiscard]] DWORD regularSnapshotAttributes(const std::filesystem::path& path)
+{
+    const auto attributes = ::GetFileAttributesW(path.c_str());
+    if (attributes == INVALID_FILE_ATTRIBUTES) {
+        const auto error = ::GetLastError();
+        REQUIRE(error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND);
+        return attributes;
+    }
+    REQUIRE((attributes & FILE_ATTRIBUTE_REPARSE_POINT) == 0U);
+    return attributes;
+}
+
+[[nodiscard]] LmStudioProfileSnapshot snapshotLmStudioProfile(
+    const std::filesystem::path& profile)
+{
+    constexpr std::size_t MaximumFiles = 512U;
+    constexpr std::uintmax_t MaximumFileBytes = 8U * 1024U * 1024U;
+    constexpr std::uintmax_t MaximumTotalBytes = 32U * 1024U * 1024U;
+    const auto root = profile / L".lmstudio";
+    for (const auto& parent : {root, root / L"extensions", root / L"extensions" / L"plugins",
+            root / L"extensions" / L"plugins" / L"mcp"}) {
+        const auto attributes = regularSnapshotAttributes(parent);
+        if (attributes != INVALID_FILE_ATTRIBUTES) {
+            REQUIRE((attributes & FILE_ATTRIBUTE_DIRECTORY) != 0U);
+        }
+    }
+    LmStudioProfileSnapshot snapshot;
+    std::uintmax_t totalBytes{};
+    const auto capture = [&](const std::filesystem::path& path) {
+        const auto attributes = regularSnapshotAttributes(path);
+        if (attributes == INVALID_FILE_ATTRIBUTES) return false;
+        REQUIRE(snapshot.size() < MaximumFiles);
+        const auto relative = path.lexically_relative(root);
+        if ((attributes & FILE_ATTRIBUTE_DIRECTORY) != 0U) {
+            snapshot.emplace(relative, std::nullopt);
+        } else {
+            const auto size = std::filesystem::file_size(path);
+            REQUIRE(size <= MaximumFileBytes);
+            totalBytes += size;
+            REQUIRE(totalBytes <= MaximumTotalBytes);
+            std::ifstream input{path, std::ios::binary};
+            REQUIRE(input.is_open());
+            std::string bytes(static_cast<std::size_t>(size), '\0');
+            input.read(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+            REQUIRE(input.gcount() == static_cast<std::streamsize>(bytes.size()));
+            char extra{};
+            REQUIRE(!input.get(extra));
+            REQUIRE(input.eof() && !input.bad());
+            snapshot.emplace(relative, std::move(bytes));
+        }
+        return true;
+    };
+    static_cast<void>(capture(root / L"mcp.json"));
+    for (const auto* role : {L"forge-conductor", L"forge-conductor-fallback", L"forge-conductor-clu"}) {
+        const auto directory = root / L"extensions" / L"plugins" / L"mcp" / role;
+        if (!capture(directory)) continue;
+        REQUIRE(std::filesystem::is_directory(directory));
+        for (const auto& entry : std::filesystem::recursive_directory_iterator{directory}) {
+            static_cast<void>(capture(entry.path()));
+        }
+    }
+    return snapshot;
+}
+
+void prepareLmStudioProfileFixture(
+    const std::filesystem::path& profile,
+    const std::filesystem::path& localData,
+    const std::filesystem::path& executable)
+{
+    const auto root = profile / L".lmstudio";
+    const auto previousHome = profile / L"previous-forge-home";
+    const auto canonicalBinary = std::filesystem::canonical(executable);
+    std::filesystem::create_directories(previousHome);
+    Json servers{{"foreign-fixture", {{"command", "unrelated-sentinel"},
+        {"unknown", Json::array({"preserve", 17})}}}};
+    for (const auto& [name, role] : std::array{
+            std::pair{"forge-conductor", "primary"},
+            std::pair{"forge-conductor-fallback", "fallback"},
+            std::pair{"forge-conductor-clu", "clu"}}) {
+        servers[name] = Json{{"command", utf8Path(canonicalBinary)}, {"args", Json::array({"serve"})},
+            {"timeout", 180000},
+            {"env", {{"FORGE_CONDUCTOR_HOME", utf8Path(previousHome)},
+                {"FORGE_MCP_ROLE", role},
+                {"FORGE_DEPLOYMENT_ID", "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"}}}};
+        const auto directory = root / L"extensions" / L"plugins" / L"mcp" / name;
+        std::filesystem::create_directories(directory);
+        std::ofstream sentinel{directory / "sentinel.bin", std::ios::binary};
+        std::string bytes{"retain this exact bridge sentinel"};
+        bytes.push_back('\0');
+        bytes.append("\xCE\xA9\xE2\x82\xAC");
+        sentinel.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+        REQUIRE(sentinel.good());
+    }
+    std::ofstream configuration{root / L"mcp.json", std::ios::binary};
+    configuration << Json{{"unknown_owner_setting", "preserve whitespace and content"},
+        {"mcpServers", std::move(servers)}}.dump(2) << '\n';
+    REQUIRE(configuration.good());
+    const auto application = localData / L"Programs" / L"LM Studio" / L"LM Studio.exe";
+    std::filesystem::create_directories(application.parent_path());
+    std::filesystem::copy_file(executable, application);
 }
 
 [[nodiscard]] Json loadRegistry(const std::filesystem::path& home)
@@ -1501,7 +1607,8 @@ void runPopulatedWorkspaceRegression(
 
 void runIsolatedManagerReviewerRegression(
     const std::filesystem::path& executable,
-    const std::filesystem::path& root)
+    const std::filesystem::path& root,
+    const std::filesystem::path& externalProfile)
 {
     const auto home = root / L"home";
     const auto workspace = root / L"workspace";
@@ -1558,6 +1665,27 @@ void runIsolatedManagerReviewerRegression(
     DWORD servingLength = static_cast<DWORD>(servingImage.size());
     REQUIRE(::QueryFullProcessImageNameW(managerProcess.get(), 0U, servingImage.data(), &servingLength));
     REQUIRE((std::filesystem::path{std::wstring{servingImage.data(), servingLength}} == managerExecutable));
+    std::optional<ForgeConductor::Manager::ManagerLmStudioSnapshot> inspected;
+    const auto inspectionDeadline = std::chrono::steady_clock::now() + 5s;
+    while (std::chrono::steady_clock::now() < inspectionDeadline) {
+        auto health = manager->client->lmStudioStatus(managerContext());
+        if (health) {
+            inspected.emplace(std::move(health).value());
+            break;
+        }
+        REQUIRE(health.error().code == Domain::ErrorCodes::LimitExceeded);
+        std::this_thread::sleep_for(25ms);
+    }
+    REQUIRE(inspected.has_value());
+    REQUIRE(inspected->lmStudioPresent);
+    REQUIRE(normalizedPathKey(inspected->mcpConfigurationPath) ==
+        normalizedPathKey(utf8Path(externalProfile / L".lmstudio" / L"mcp.json")));
+    REQUIRE(!inspected->mcpConfigurationRegistered);
+    if (inspected->detail.find("wrong FORGE_CONDUCTOR_HOME") == std::string::npos) {
+        throw std::runtime_error{"The isolated registration must reach the home-mismatch check; actual detail: " +
+            inspected->detail + "; selected binary: " + inspected->binaryPath};
+    }
+    REQUIRE(inspected->detail.find("wrong FORGE_CONDUCTOR_HOME") != std::string::npos);
     manager->client->shutdown();
     racing[1]->finish(3U);
     racing[2]->finish(3U);
@@ -2290,7 +2418,7 @@ void runAgentLifecycleRegression(
     }
 }
 
-void run(
+void runWithIsolatedExternalProfile(
     const std::filesystem::path& executable,
     const std::filesystem::path& goldenPath)
 {
@@ -2298,6 +2426,12 @@ void run(
     const auto golden = loadGolden(goldenPath);
 
     TemporaryDirectory temporary;
+    const auto externalProfile = temporary.root() / L"external-user-profile";
+    const auto externalLocalData = externalProfile / L"AppData" / L"Local";
+    prepareLmStudioProfileFixture(externalProfile, externalLocalData, executable);
+    const auto fixtureBefore = snapshotLmStudioProfile(externalProfile);
+    const ScopedEnvironmentVariable userProfile{L"USERPROFILE", externalProfile.native()};
+    const ScopedEnvironmentVariable localData{L"LOCALAPPDATA", externalLocalData.native()};
     IsolatedManagersCleanup managerCleanup;
     const auto sharedRoot = temporary.root() / L"shared-\u5171\u6709";
     const auto home = sharedRoot / L"home-\u4e3b";
@@ -2512,9 +2646,26 @@ void run(
     runAgentLifecycleRegression(executable, sharedRoot / L"agent-lifecycle");
     runPolicyPagingRegression(executable, sharedRoot / L"policy-paging");
     runFragmentedToolResultRegression(executable, sharedRoot / L"fragmented-result");
-    runIsolatedManagerReviewerRegression(executable, sharedRoot / L"isolated-manager-reviewer");
+    runIsolatedManagerReviewerRegression(executable, sharedRoot / L"isolated-manager-reviewer", externalProfile);
     for (const auto& ownedHome : isolatedManagerHomes) REQUIRE(stopIsolatedManager(ownedHome));
     isolatedManagerHomes.clear();
+    REQUIRE(snapshotLmStudioProfile(externalProfile) == fixtureBefore);
+}
+
+void run(
+    const std::filesystem::path& executable,
+    const std::filesystem::path& goldenPath)
+{
+    const auto profile = environmentValue(L"USERPROFILE");
+    REQUIRE(profile && !profile->empty());
+    const auto ownerBefore = snapshotLmStudioProfile(std::filesystem::path{*profile});
+    try {
+        runWithIsolatedExternalProfile(executable, goldenPath);
+    } catch (...) {
+        REQUIRE(snapshotLmStudioProfile(std::filesystem::path{*profile}) == ownerBefore);
+        throw;
+    }
+    REQUIRE(snapshotLmStudioProfile(std::filesystem::path{*profile}) == ownerBefore);
 }
 
 } // namespace

@@ -2153,6 +2153,100 @@ void testLmStudioBindingUsesRegisteredAuthorizedProject()
         "Legacy projectless clients retain their current registration behavior");
 }
 
+void testExplicitLmStudioRepairAndActivationRemainAuthorized()
+{
+    auto clock = std::make_shared<FakeClock>();
+    const auto project = Domain::ProjectId::parse(uuidText(850U)).value();
+    const auto root = Domain::PathText::create("D:\\Projects\\ExplicitRepair").value();
+    const auto binary = Domain::PathText::create("D:\\Forge\\forge-conductor.exe").value();
+    const auto caller = Domain::ClientId::parse(uuidText(851U)).value();
+    TestFakes::ProjectRegistryRepositoryFake registry{8U, clock->monotonic};
+    require(static_cast<bool>(registry.seedDescriptor(Domain::ProjectMemoryDescriptor{
+        project, "Explicit repair", std::nullopt, {root}})), "seed explicit repair project");
+    TestFakes::DeterministicWorkspaceAuthority readIssuer{
+        Domain::AuthorityId::parse(uuidText(852U)).value(), caller, {root},
+        Domain::FileAccess::Read, {Domain::FileAccess::Read}, {}, false, 1U};
+    TestFakes::DeterministicWorkspaceAuthority writeIssuer{
+        Domain::AuthorityId::parse(uuidText(853U)).value(), caller, {root},
+        Domain::FileAccess::Write, {Domain::FileAccess::Read, Domain::FileAccess::Write,
+            Domain::FileAccess::Create, Domain::FileAccess::Delete, Domain::FileAccess::Execute}, {}, true, 1U};
+    TestFakes::DeterministicWorkspaceAuthority executionIssuer{
+        Domain::AuthorityId::parse(uuidText(854U)).value(), caller, {root},
+        Domain::FileAccess::Execute, {Domain::FileAccess::Read, Domain::FileAccess::Execute}, {}, true, 1U};
+    const Domain::OperationContext context{operationId(855U), clock->monotonic + 1min,
+        {}, correlationId(855U)};
+    auto readAuthority = readIssuer.authorityFor(project, context).value();
+    auto writeAuthority = writeIssuer.authorityFor(project, context).value();
+    auto executionAuthority = executionIssuer.authorityFor(project, context).value();
+    const auto primary = Domain::PathText::create("D:\\LMStudio\\primary").value();
+    const auto fallback = Domain::PathText::create("D:\\LMStudio\\fallback").value();
+    const auto clu = Domain::PathText::create("D:\\LMStudio\\clu").value();
+    const auto configuration = Domain::PathText::create("D:\\LMStudio\\mcp.json").value();
+    const auto deploymentId = Domain::DeploymentId::parse("explicit-owner-deployment").value();
+    TestFakes::RecordingLMStudioDeploymentServiceFake deployment;
+    deployment.setNow(clock->monotonic);
+    deployment.statusResult.set(Domain::Result<Domain::LMStudioPluginStatus>::success({
+        true, true, true, true, binary, true, true, primary, fallback, clu,
+        configuration, deploymentId, "Registered"}));
+    deployment.deployResult.set(Domain::Result<Domain::LMStudioInstallResult>::success({
+        true, binary, {primary, fallback, clu}, configuration, deploymentId,
+        "Explicit owner repair completed"}));
+    deployment.activateResult.set(Domain::Result<Domain::LMStudioHostActivationResult>::success({
+        deploymentId, true, false, false, true,
+        {Domain::LMStudioConnectorRole::Primary, Domain::LMStudioConnectorRole::Fallback,
+            Domain::LMStudioConnectorRole::Clu}, "Explicit owner activation completed"}));
+    TestFakes::DeterministicToolAuthorizerFake writeAuthorizer{
+        "install-lmstudio-plugin", Domain::ToolEffect::Write, clock->monotonic};
+    Manager::ManagerTelemetrySources sources;
+    sources.projects = &registry;
+    sources.projectWorkspaceAuthority = &readIssuer;
+    sources.preferredForgeBinary = binary;
+    sources.lmStudioDeployment = &deployment;
+    sources.lmStudioReadAuthority = &readAuthority;
+    sources.lmStudioWriteAuthority = &writeAuthority;
+    sources.lmStudioActivationAuthority = &executionAuthority;
+    sources.toolAuthorizer = &writeAuthorizer;
+    {
+        Manager::ManagerRequestDispatcher dispatcher{std::make_shared<FakeController>(), clock,
+            Manager::ManagerTransportLimits{}, {}, sources};
+        const auto response = dispatcher.dispatch(request(*clock, 856U,
+            Manager::ManagerLmStudioRepairRequest{project}));
+        const auto* repaired = responseValue<Manager::ManagerLmStudioSnapshot>(response);
+        require(repaired && repaired->mcpConfigurationRegistered &&
+            repaired->actionDetail == "Explicit owner repair completed" &&
+            deployment.statusCalls() == 2U && deployment.deployCalls() == 1U &&
+            deployment.activateCalls() == 0U,
+            "explicit manual repair must still deploy and reinspect the complete registration");
+        require(deployment.lastDeploymentRequest() &&
+            deployment.lastDeploymentRequest()->projectId == project &&
+            deployment.lastDeploymentRequest()->projectRoot == root &&
+            deployment.lastDeploymentRequest()->preferredBinary == binary &&
+            deployment.lastDeploymentRequest()->preserveForeignEntries &&
+            writeAuthorizer.lastRequest() &&
+            writeAuthorizer.lastRequest()->effect == Domain::ToolEffect::Write &&
+            writeAuthorizer.lastRequest()->authority.authorityId == writeAuthority.authorityId(),
+            "manual repair must retain exact project binding and Write authorization");
+    }
+    TestFakes::DeterministicToolAuthorizerFake executionAuthorizer{
+        "install-lmstudio-plugin", Domain::ToolEffect::Execute, clock->monotonic};
+    sources.toolAuthorizer = &executionAuthorizer;
+    Manager::ManagerRequestDispatcher dispatcher{std::make_shared<FakeController>(), clock,
+        Manager::ManagerTransportLimits{}, {}, sources};
+    const auto response = dispatcher.dispatch(request(*clock, 857U,
+        Manager::ManagerLmStudioActivateRequest{project}));
+    const auto* activated = responseValue<Manager::ManagerLmStudioSnapshot>(response);
+    require(activated && activated->connectionCheckPerformed &&
+        activated->primaryConnectorReady && activated->fallbackConnectorReady &&
+        activated->continuityConnectorReady &&
+        activated->actionDetail == "Explicit owner activation completed" &&
+        deployment.deployCalls() == 1U && deployment.activateCalls() == 1U &&
+        executionAuthorizer.lastRequest() &&
+        executionAuthorizer.lastRequest()->effect == Domain::ToolEffect::Execute &&
+        deployment.lastAuthorization() &&
+        deployment.lastAuthorization()->effect() == Domain::ToolEffect::Execute,
+        "explicit manual activation must retain Execute authorization and all three role checks");
+}
+
 void testLegacyInstructionManifestMigratesToStableQueue()
 {
     auto clock = std::make_shared<FakeClock>();
@@ -2788,6 +2882,7 @@ int main()
         testInstructionPackagePreviewAndActivationStayProjectBound();
         testLegacyInstructionManifestMigratesToStableQueue();
         testLmStudioBindingUsesRegisteredAuthorizedProject();
+        testExplicitLmStudioRepairAndActivationRemainAuthorized();
         testMaintenanceRequiresExactScopeAndCoordinatesStores();
         testTelemetryCannotReadRemovedManagedRuns();
         testDuplicateCapacityAndCancellationBypass();
