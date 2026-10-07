@@ -1,12 +1,20 @@
 # Changelog
 
-## 1.3.18 - Managed context-recovery completion (candidate)
+## 1.3.19 - Provider timeout diagnostic consistency (candidate)
 
-- Align active product/package/dependency-manifest and current documentation identities to 1.3.18 / 1.3.18.0 for an ordinary higher Windows upgrade after the installed, unpublished 1.3.17.0 candidate.
-- Restrict recovered-context legacy bookkeeping and its lease requirement to legacy-protocol calls. Managed-run `context_get` retains the actual recovered packet without clearing or annotating unrelated pending legacy state; client ownership and canonical request/receipt validation remain unconditional. Final committed-source/full-suite, installed and model qualification remain pending.
-- Reproduce the original missing-lease failure before the one-condition completion fix; the existing focused InvocationGuard CTest entry then passed 1/1 in 0.09 seconds. Final committed-source/full-suite, installed and model qualification remain pending.
-- Retain all 104 Primary/Fallback tools, ten specialist playbooks and five CLU tools, all original features, frozen/current authority, read-only reviewer policy and separate worker/reviewer concurrency bounds. No catalog or permission expansion is required by this completion fix.
-- Preserve historical 1.3.14–1.3.17 source/install/model successes and failures with their original identities. Final 1.3.18 source, packaging, installation, current-chat acceptance and publication remain pending.
+- Align active product/package/dependency-manifest and current documentation identities to 1.3.19 / 1.3.19.0 for an ordinary higher Windows upgrade after the installed, unpublished 1.3.18.0 candidate.
+- Report the selected provider receive budget consistently in the two native WinHTTP timeout messages. They previously recalculated remaining operation time under the `receive_timeout_ms` label; request-budget enforcement, clipping to the operation deadline, cancellation and shutdown behavior remain unchanged.
+- Retain the failed 1.3.18 CI assertion and its missing returned-message evidence. The existing header-timeout assertion now prints its actual message on failure, and partial-body timeout coverage checks the same selected-budget diagnostic. Fresh 1.3.19 source/full-suite/CI, package, installation and model outcomes remain pending.
+- Retain the managed context-recovery completion fix, all 104 Primary/Fallback tools, ten specialist playbooks, five CLU tools, frozen/current authority, original features and separate sixteen-concurrent worker/reviewer bounds. No tool or permission expansion is required by this diagnostic repair.
+- Preserve every earlier candidate's successful and failed evidence with its original source and artifact identity; no earlier result qualifies 1.3.19.
+
+## 1.3.18 - Managed context-recovery completion (unpublished, superseded)
+
+- Restrict recovered-context legacy bookkeeping and its lease requirement to legacy-protocol calls. Managed-run `context_get` retains the recovered packet without clearing or annotating unrelated pending legacy state; client ownership and canonical request/receipt validation remain unconditional.
+- The original missing-lease regression failed before the one-condition completion fix; the existing InvocationGuard CTest entry then passed 1/1 in 0.09 seconds (0.10 seconds total).
+- Source `ffd10dce9125bf700ad5efbfd1228475704cc792` / tree `2781ec95847694ff4225471a8655fa64632bb11e` passed 162/162 local Release tests in 78.61 seconds, Product All, all three static gates and package persistence. Windows CI 37657943054 failed 161/162 in 115.37 seconds on the selected timeout-message assertion; its actual returned message was not printed. Twenty unchanged-source isolated repetitions passed without reproducing that CI mismatch.
+- Signed 1.3.18.0 installation matched all four payloads and preserved 8,256 profile files / 401,730,716 bytes. Eleven current-chat native calls succeeded, but complete nine-case acceptance remained unfinished. The first independent managed-recovery probe returned the actual packet and file contents, then failed its final narrative-format assertion and remains unqualified.
+- Final preservation verified the 1,199-file original workspace, prior conversation prefix, owner configuration/selection, foreign MCP semantics and all 730 foreign plugin files; only verified policy evaluation history appended. The original project gate was not executed or approved. No final release qualification, tag or publication followed.
 
 ## 1.3.17 - Cold Manager startup reporting (unpublished, superseded)
 

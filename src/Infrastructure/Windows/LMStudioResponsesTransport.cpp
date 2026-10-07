@@ -1306,7 +1306,7 @@ private:
                     Domain::ErrorCodes::DeadlineExceeded,
                     "The LM Studio Responses " + stage +
                         " timed out before a provider response (WinHTTP 12002; receive_timeout_ms=" +
-                        std::to_string(bounded(receiveTimeout)) + ").",
+                        std::to_string(receiveTimeout.count()) + ").",
                     true);
             }
             return failure<HttpResponse>(
@@ -1337,7 +1337,7 @@ private:
                 return failure<HttpResponse>(Domain::ErrorCodes::DeadlineExceeded,
                     std::string{"The LM Studio Responses "} + stage +
                         " timed out (WinHTTP " + std::to_string(error) + "; receive_timeout_ms=" +
-                        std::to_string(bounded(receiveTimeout)) + ").", true);
+                        std::to_string(receiveTimeout.count()) + ").", true);
             return failure<HttpResponse>(Domain::ErrorCodes::InternalFailure,
                 std::string{"The LM Studio Responses "} + stage +
                     " failed (WinHTTP " + std::to_string(error) + ").", true);

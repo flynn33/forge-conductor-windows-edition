@@ -24,9 +24,19 @@ Production publication replaces `-DevelopmentSigning` with an approved PFX and p
 - Simulated lifecycle tests use disposable roots and copied fixtures. Tests and packaging must never mutate the operator's live `%LOCALAPPDATA%\Forge Conductor` store.
 - Provider-dependent productive inference is reported separately when LM Studio and a loaded model are available; provider absence must produce an actionable disconnected state rather than fabricated success.
 
-## Current 1.3.18 verification
+## Current 1.3.19 verification
 
-The current candidate retains dedicated independent image analysis and the existing 104-tool catalog and workflows. Source/build/package/install/current-chat checks are pending in the [1.3.18 qualification record](validation/HOST-CAPABILITIES-1.3.18.md). Required regression coverage includes isolated Manager startup without production LM Studio routing changes. Earlier candidate results below retain their own source/artifact identity.
+The candidate retains all 104 tools and the existing managed context-recovery fix. Final committed-source/full-suite/CI, package, installation and current-chat checks are pending in the [1.3.19 qualification record](validation/HOST-CAPABILITIES-1.3.19.md). Required timeout coverage checks the selected provider budget during header and partial-body expiry, while retaining deadline, cancellation and shutdown assertions. Isolated Manager startup must preserve production routing. Earlier sections retain stage-local wording and apply only to their named artifacts.
+
+## Historical unpublished 1.3.18 source and installed investigation
+
+Source `ffd10dce9125bf700ad5efbfd1228475704cc792`, tree `2781ec95847694ff4225471a8655fa64632bb11e`, passed **162/162 local Release tests in 78.61 seconds**, Product All, all three static gates and package persistence. [Windows CI 37657943054](https://github.com/flynn33/forge-conductor-windows-edition/actions/runs/37657943054) failed **161/162 in 115.37 seconds**: the sole failing WinHttp transport assertion required `receive_timeout_ms=1000`. CI did not print the returned timeout message, so its exact error branch remains unknown. Twenty unchanged-source isolated repetitions passed locally and do not override the CI failure.
+
+The signed 1.3.18.0 upgrade matched all four installed/staging/MSIX payloads and preserved the complete **8,256-file, 401,730,716-byte** owner profile and protected snapshots. Eleven actual current-chat native calls succeeded across status, Host read, owned directory/write/readback, native Office and desktop observation/capture. The complete nine-case acceptance remained unfinished. A separate actual managed recovery returned the exact `found:true` packet and file contents, but the first probe failed its final narrative-format assertion and remains unqualified.
+
+A final preservation readback verified all **1,199 original workspace files / 12,663,710 bytes**, Git status, the complete prior conversation prefix, owner configuration and selection, foreign MCP semantics and all **730 foreign plugin files**. Project-policy differences were limited to verified appended evaluation history; no project gate was executed or approved. The incomplete observations and failed assertions remain retained. No final release qualification, tag or publication followed.
+
+See [the historical record](validation/HOST-CAPABILITIES-1.3.18.md). These checks do not qualify 1.3.19.
 
 ## Historical unpublished 1.3.17 source and installed investigation
 

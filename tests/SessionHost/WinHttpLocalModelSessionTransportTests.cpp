@@ -1343,7 +1343,10 @@ void managedReceiveTimeoutOverridesConfiguredWaitAndHonorsCancellation()
     REQUIRE(!timedOut);
     REQUIRE(timedOut.error().code == Domain::ErrorCodes::DeadlineExceeded);
     REQUIRE(std::chrono::steady_clock::now() - timeoutBegan < 2s);
-    REQUIRE(timedOut.error().message.find("receive_timeout_ms=1000") != std::string::npos);
+    require(
+        timedOut.error().message.find("receive_timeout_ms=1000") != std::string::npos,
+        std::string{"timedOut.error().message.find(\"receive_timeout_ms=1000\") != std::string::npos; actual: "} +
+            timedOut.error().message);
     request.providerReceiveTimeoutSeconds = 6U;
     const auto completed = take(transport.complete(request,
         operationContext("34343434-3434-4434-8434-343434343432", 10s)));
@@ -1416,6 +1419,10 @@ void managedReceiveTimeoutOverridesConfiguredWaitAndHonorsCancellation()
     REQUIRE(!bodyTimedOut);
     REQUIRE(bodyTimedOut.error().code == Domain::ErrorCodes::DeadlineExceeded);
     REQUIRE(std::chrono::steady_clock::now() - bodyBegan < 2s);
+    require(
+        bodyTimedOut.error().message.find("receive_timeout_ms=1000") != std::string::npos,
+        std::string{"bodyTimedOut.error().message.find(\"receive_timeout_ms=1000\") != std::string::npos; actual: "} +
+            bodyTimedOut.error().message);
     REQUIRE(bodyTimeoutServer.waitForBodyResponses(1U, 2s));
     bodyTimeoutServer.requireHealthy();
 

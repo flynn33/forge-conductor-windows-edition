@@ -1,6 +1,6 @@
 # Install Forge Conductor
 
-Forge Conductor 1.3.18 (Windows package 1.3.18.0) targets Windows 11 x64. A distribution contains:
+Forge Conductor 1.3.19 (Windows package 1.3.19.0) targets Windows 11 x64. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
 - `distribution.json` and payload hashes;
@@ -30,9 +30,15 @@ Before upgrading or restarting the owning Manager, wait for tracked work to fini
 
 For upgrades, install a higher package version with the same stable identity and publisher. The optional `.appinstaller` file checks for updates on launch and in the background.
 
-## Current 1.3.18 distribution
+## Current 1.3.19 distribution
 
-The 1.3.18 candidate distribution and publication are pending. Its complete ZIP must contain the signed 1.3.18.0 MSIX, public publisher certificate, installer, metadata and checksums before installation is qualified. The local engineering packages use the existing development publisher. Inspect actual verification and provenance for the committed source, executable hashes, signature and qualification scope. See [candidate notes](releases/1.3.18.md).
+The 1.3.19 candidate distribution and publication are pending. Its complete ZIP must contain the signed 1.3.19.0 MSIX, public publisher certificate, installer, metadata and checksums before installation is qualified. The local engineering packages use the existing development publisher. Inspect actual verification and provenance for the committed source, executable hashes, signature and qualification scope. See [candidate notes](releases/1.3.19.md).
+
+The installed, unpublished [1.3.18 investigation](validation/HOST-CAPABILITIES-1.3.18.md) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact. Its exact installed identity is historical; the higher 1.3.19.0 candidate requires fresh package and acceptance checks.
+
+## Earlier unpublished upgrade investigations
+
+The paragraphs below retain their stage-local candidate references. Their earlier hashes do not identify the current package.
 
 The installed, unpublished [1.3.17.0 investigation](validation/HOST-CAPABILITIES-1.3.17.md) passed its signed upgrade, exact four-payload/profile preservation and automatic three-route repair. It was superseded after the managed-run context-recovery lease defect was observed during current-chat testing. The new 1.3.18.0 candidate requires its own higher-version upgrade and exact source/payload/current-chat checks; previous successes are not reassigned.
 

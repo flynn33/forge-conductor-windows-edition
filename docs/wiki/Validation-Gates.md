@@ -1,6 +1,16 @@
-# Current candidate 1.3.18
+# Current candidate 1.3.19
 
-Product/package identities are 1.3.18 / 1.3.18.0. Final source/build, signed payload, installed App, current-chat qualification and publication remain pending until their actual checks execute. See [Release 1.3.18](Release-1.3.18) and the [verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.18.md). Historical checks below apply only to the named earlier binaries; no result is reassigned.
+Product/package identities are 1.3.19 / 1.3.19.0. Final committed-source/build/CI, signed payload, installed App, current-chat qualification and publication remain pending. See [Release 1.3.19](Release-1.3.19) and the [verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.19.md). Historical sections retain their stage-local wording and identify their own artifacts; no result is reassigned.
+
+## Historical unpublished 1.3.18 candidate
+
+Source `ffd10dce9125bf700ad5efbfd1228475704cc792`, tree `2781ec95847694ff4225471a8655fa64632bb11e`, passed **162/162 local Release tests in 78.61 seconds**, Product All, all three static gates and package persistence. [Windows CI 37657943054](https://github.com/flynn33/forge-conductor-windows-edition/actions/runs/37657943054) failed **161/162 in 115.37 seconds**: the sole failing WinHttp transport assertion required `receive_timeout_ms=1000`. CI did not print the returned timeout message, so its exact error branch remains unknown. Twenty unchanged-source isolated repetitions passed locally and do not override the CI failure.
+
+The signed 1.3.18.0 upgrade matched all four installed/staging/MSIX payloads and preserved the complete **8,256-file, 401,730,716-byte** owner profile and protected snapshots. Eleven actual current-chat native calls succeeded across status, Host read, owned directory/write/readback, native Office and desktop observation/capture. The complete nine-case acceptance remained unfinished. A separate actual managed recovery returned the exact `found:true` packet and file contents, but the first probe failed its final narrative-format assertion and remains unqualified.
+
+A final preservation readback verified all **1,199 original workspace files / 12,663,710 bytes**, Git status, the complete prior conversation prefix, owner configuration and selection, foreign MCP semantics and all **730 foreign plugin files**. Project-policy differences were limited to verified appended evaluation history; no project gate was executed or approved. The incomplete observations and failed assertions remain retained. No final release qualification, tag or publication followed.
+
+See [the historical investigation](Release-1.3.18). These results do not qualify 1.3.19.
 
 ## Historical unpublished 1.3.17 candidate
 
