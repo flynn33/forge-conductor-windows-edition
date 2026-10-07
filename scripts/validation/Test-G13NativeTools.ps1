@@ -509,8 +509,8 @@ Assert-Match $shellHeader 'DefaultTimeout\{30''000\}' `
     'shell 30-second default timeout' -CaseSensitive
 Assert-Match $shellHeader 'MaximumTimeout\{120''000\}' `
     'shell 120-second maximum timeout' -CaseSensitive
-Assert-Match $shellHeader 'MaximumCommandBytes\s*=\s*4U\s*[*]\s*1024U' `
-    'shell 4 KiB command bound' -CaseSensitive
+Assert-Match $shellHeader 'MaximumCommandBytes\s*=\s*64U\s*[*]\s*1024U' `
+    'shell 64 KiB command bound' -CaseSensitive
 Assert-Match $shellHeader 'MaximumOutputBytes\s*=\s*80''000U' `
     'shell 80000-byte stdout bound' -CaseSensitive
 Assert-Match $shellHeader 'MaximumErrorBytes\s*=\s*20''000U' `

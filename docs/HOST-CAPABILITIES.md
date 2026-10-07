@@ -2,6 +2,8 @@
 
 Primary and Fallback advertise 103 tools; CLU retains five governance tools, and all ten specialist playbooks remain. Call `host_capabilities` before deciding that a category is unavailable: it reports actual tool names, filesystem mode, Manager-backed capabilities, and external connection requirements. `get_forge_status` also reports the selected project's directory and detailed active authority. The full catalog remains available through the existing MCP protocol.
 
+Rig's corrected source display shows the native conversation observed by the App and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. The preference does not establish live rollover availability. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for the native worker's actual state; its `available` flag becomes true after a successor conversation and handed message are verified. This App-only wording correction is source-only until its rebuilt package is checked. Earlier tests and package evidence retain their recorded source identities.
+
 ## Filesystem and project defaults
 
 The owner selects `filesystem_access` in Settings/configuration. `host` grants ordinary local fixed, removable and RAM-disk volumes available to the current Windows account. `workspace` limits native file tools to registered workspace roots and explicitly bound owner-configured roots. A model tool cannot change this owner setting or invent a new grant. Existing workspace-only profiles remain supported.

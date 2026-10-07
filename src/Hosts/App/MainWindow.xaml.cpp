@@ -1931,7 +1931,11 @@ void MainWindow::ApplyTelemetryPresentation(
             ? Windows::UI::Color{255, 61, 220, 151}
             : Windows::UI::Color{255, 43, 168, 255}});
     StoreHealth().Text(winrt::to_hstring(presentation.storeStatus));
-    ContinuityHealth().Text(winrt::to_hstring(presentation.continuityStatus));
+    ContinuityHealth().Text(winrt::to_hstring(
+        nativeChatContext_.conversationId.empty()
+            ? "Native LM Studio chat · " + nativeChatContext_.state
+            : "Observed LM Studio chat · " +
+                nativeChatContext_.conversationId));
     SystemStrip().Text(winrt::to_hstring(snapshot.resources.host));
     HeroOsText().Text(winrt::to_hstring(
         snapshot.resources.platform + " · " + snapshot.resources.architecture));
@@ -4211,9 +4215,13 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 AutomaticContinuityToggle().IsOn(preference.enabled);
                 updatingAutomaticContinuity_ = false;
                 AutomaticContinuityState().Text(winrt::to_hstring(
-                    std::string{preference.enabled ? "Enabled" : "Disabled"} +
+                    std::string{"Automatic continuity preference: "} +
+                    (preference.enabled ? "Enabled" : "Disabled") +
                     " for " + preference.providerId +
-                    ". Preference saved. Automatic handoff of the visible LM Studio chat is unavailable; tools and agents remain available."));
+                    (action == Action::ContinuitySave
+                        ? ". Saved by the Manager."
+                        : ". Read from the Manager.") +
+                    " Inspect get_forge_status through Primary MCP for the native chat rollover state."));
             } else {
                 AutomaticContinuityState().Text(winrt::to_hstring(
                     "Manager preference readback unavailable · " + message));

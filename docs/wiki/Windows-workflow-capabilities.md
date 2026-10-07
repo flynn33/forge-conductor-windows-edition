@@ -2,6 +2,8 @@
 
 Forge adds dedicated web search/fetch/HTTP, native DOCX/XLSX/PPTX creation, visible desktop/accessibility/browser/input/capture, native PNG drawing and image previews, independent model workers and persistent model-task schedules. These join the existing tools, specialists, read-only reviewers, evidence, process jobs, memory, policy and continuity.
 
+Rig's corrected source display shows the App's observed native conversation and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. The preference does not establish live rollover availability. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for the native worker's actual state; `available` becomes true after a successor conversation and handed message are verified. This App-only correction is source-only until the rebuilt package is checked; earlier evidence retains its recorded source identity.
+
 Explicit HTTP supports GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS, with bodies for POST/PUT/PATCH/DELETE. Only GET/HEAD follow redirects; use mutating methods within the user's authorized task and inspect the observed response. Remote accounts and credentials must come from an authorized existing connection or explicit API input.
 
 The owner selects host filesystem access for ordinary available local volumes or workspace mode for registered/configured roots. Relative artifacts keep the selected project's directory. Native ACL, namespace, reparse and authority checks remain; a model tool does not grant new filesystem mode or administrator rights.
