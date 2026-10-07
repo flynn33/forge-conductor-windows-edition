@@ -1,12 +1,21 @@
 # Changelog
 
-## 1.3.16 - Isolated Manager deployment boundary (candidate)
+## 1.3.17 - Cold Manager startup reporting (candidate)
+
+- Align active product, package, dependency-manifest and documentation identities to 1.3.17 / 1.3.17.0 for an ordinary higher Windows upgrade after the installed, unpublished 1.3.16.0 candidate.
+- Retain all 104 Primary/Fallback tools, ten specialist playbooks and five CLU tools, including existing image analysis, web, Office, desktop, workers, schedules, filesystem, shell/process, review, memory, governance and continuity.
+- Retain the exact owned Manager startup process handle in the CLI and inspect its exit while attempting authentication. An exited child with no competing profile owner returns its actual exit-code diagnostic instead of waiting through the remaining startup window; a competing owner still requires authenticated connection and exact sibling/profile checks. Regression and final-source qualification remain pending.
+- Preserve the corrected isolated-profile automatic-deployment boundary and all earlier candidate evidence with its original source and package identity. The 1.3.16 source suite/CI, signed upgrade and explicit repair did not establish original/current-chat workflow qualification or a published release.
+- Keep final 1.3.17 source/build/static/package/install/current-chat and publication results pending until actual execution.
+
+## 1.3.16 - Isolated Manager deployment boundary (unpublished, superseded)
 
 - Align active product, package, dependency-manifest and documentation identities to 1.3.16 / 1.3.16.0 for a higher Windows upgrade after the installed, unpublished 1.3.15.0 candidate.
 - Retain all 104 Primary/Fallback tools, ten specialist playbooks and five CLU tools, including independent image analysis, completed sealed reviewer receipts, workers, schedules, Office, web, desktop, filesystem, shell/process, governance and continuity workflows.
 - Preserve the verified 1.3.15 test-isolation failure: an isolated Manager committed automatic deployment into production LM Studio during the source suite, changing only the three Forge routes and their generated bridge files before installation. Foreign MCP configuration remained semantically identical. Final qualification must verify the corrected external-maintenance boundary and production routing preservation.
-- Enable automatic background LM Studio deployment only for the ordinary persistent owner data root. Alternate isolated profiles skip automatic reconciliation before deployment admission; explicit authorized repair and read-only status retain their existing routes. Source and production-preservation checks remain pending.
-- Keep final 1.3.16 source/build/package/install/current-chat and publication results pending until execution. The 1.3.14 and 1.3.15 candidates were not tagged or published, and their recorded results are not reassigned to this version.
+- Enable automatic background LM Studio deployment only for the ordinary persistent owner data root. Alternate isolated profiles skip automatic reconciliation before deployment admission; explicit authorized repair and read-only status retain their existing routes. The source suite and production-preservation checks passed for the exact 1.3.16 artifact recorded below.
+- Source `25d15f922744c464fdf660fd991f1cdfe1542323` / tree `1b23dfa072ea60e7da0f02dd4bd20f7028ac4dc9` passed 162/162 local tests in 78.19 seconds; Windows CI run 37640187548 passed 162/162 in 92.20 seconds. Static gates, package persistence, Product All and signed packaging passed. The installed 1.3.16.0 upgrade preserved all four payload hashes and 7,991 owner-profile files.
+- Explicit repair completed in 62.857 seconds, registered all three 1.3.16 routes and preserved foreign MCP semantics plus 730 foreign plugin files. A subsequent observed cold Manager child exited while the CLI kept waiting for startup; the candidate is superseded for that reporting fix before original/current-chat workflow qualification, a release tag or publication.
 
 ## 1.3.15 - Image analysis from the existing LM Studio integrations (unpublished, superseded)
 

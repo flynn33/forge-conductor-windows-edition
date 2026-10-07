@@ -1,6 +1,6 @@
 # Forge Conductor 1.3.14 engineering candidates
 
-These candidates were superseded without a release tag or publication. The subsequent [1.3.15 investigation](Release-1.3.15) was also superseded; current [1.3.16 qualification](Release-1.3.16) remains pending. All measurements below retain their original source, artifact and execution scope.
+These candidates were superseded without a release tag or publication. The subsequent [1.3.15 investigation](Release-1.3.15) was also superseded; current [1.3.17 qualification](Release-1.3.17) remains pending. All measurements below retain their original source, artifact and execution scope.
 
 Product/package identities are **1.3.14 / 1.3.14.0**. The Primary/Fallback catalog grows from 80 to 103 tools while preserving ten specialist playbooks and the five-tool CLU role. Dedicated web, Office, desktop/browser, image, independent-worker, schedule and host-capability workflows expand local-model support. Owner-selected host filesystem mode retains project defaults and workspace mode.
 

@@ -1,6 +1,6 @@
 # Unpublished 1.3.15 source/install investigation
 
-This record is for the superseded product **1.3.15** / Windows MSIX **1.3.15.0** candidate, with 104 Primary/Fallback tools and five CLU tools. It was installed but was not tagged or published, and complete preservation/current-chat acceptance was not qualified. The current candidate is [1.3.16](HOST-CAPABILITIES-1.3.16.md), whose checks remain pending. Earlier [1.3.14 evidence](HOST-CAPABILITIES-1.3.14.md) retains its original source and installed identities.
+This record is for the superseded product **1.3.15** / Windows MSIX **1.3.15.0** candidate, with 104 Primary/Fallback tools and five CLU tools. It was installed but was not tagged or published, and complete preservation/current-chat acceptance was not qualified. The current candidate is [1.3.17](HOST-CAPABILITIES-1.3.17.md), whose checks remain pending. The subsequent [1.3.16 candidate](HOST-CAPABILITIES-1.3.16.md) retains its separate source/CI/install/repair evidence. Earlier [1.3.14 evidence](HOST-CAPABILITIES-1.3.14.md) retains its original source and installed identities.
 
 ## Executed source and package checks
 
@@ -25,13 +25,13 @@ The retry reached the protected-snapshot checks and refused: `Protected current/
 
 The MCP file's modification time is **13:47:14Z**, before installation. A surviving disposable Manager profile log records `lmstudio_deploy_begin` at **13:47:10.647Z** and `lmstudio_deploy_complete` at **13:47:19.592Z**, with the exact new deployment revision found in those registrations. All nine files in the three generated Forge bridge directories were recreated at **13:47:25Z**, with bridge entries matching the changed MCP routes. These observations establish the isolated test Manager's production deployment during the suite; they do not attribute the change to the later MSIX installation. The previous native continuity and foreign plugin file timestamps showed no recent changes, but an exact previous bridge-tree byte inventory was unavailable.
 
-The failure is retained rather than overridden by a passed installation or source suite. Correction of isolated Manager external-maintenance behavior and fresh production routing preservation are required for 1.3.16. Complete 1.3.15 current-chat workflow acceptance, blind-image analysis and release publication were not qualified.
+The failure is retained rather than overridden by a passed installation or source suite. The subsequent 1.3.16 source corrected isolated Manager external-maintenance behavior and retained its own source and preservation evidence. Final 1.3.17 original/current-chat workflow qualification remains pending. Complete 1.3.15 current-chat workflow acceptance, blind-image analysis and release publication were not qualified.
 
 ## Subsequent authorized routing repair and limited status readback
 
 The installed 1.3.15 App's ordinary repair-all-three action reported Committed at approximately 14:15:56Z. Actual before/after snapshots in `routing-repair-1315-retry1` retained identical conversation, selection and owner configuration bytes, all 730 foreign plugin file hashes and foreign MCP semantics. The before/after record SHA-256 values are `25f06a80bce2cccc87ab10eb8bf9a7460981cc6a8b5fddd5fce707e0e55e4ac2` and `373af49a5dd6458cd633707575a568818dff089eefec20810815a37778009a0b`. This explicit production repair is separate from the earlier unintended isolated deployment and does not erase that failure.
 
-The existing Qwen chat subsequently returned actual Primary `get_forge_status` for version 1.3.15, 104 tools, the registered project, Host filesystem mode and an available durable Manager. Its transient CLI process was observed while alive at the installed path with the exact installed CLI hash and LM Studio Node parent. This single status read demonstrates restored routing; it does not establish the remaining workflow groups, blind-image recognition or qualification of the future 1.3.16 binaries.
+The existing Qwen chat subsequently returned actual Primary `get_forge_status` for version 1.3.15, 104 tools, the registered project, Host filesystem mode and an available durable Manager. Its transient CLI process was observed while alive at the installed path with the exact installed CLI hash and LM Studio Node parent. This single status read demonstrates restored routing; it does not establish the remaining workflow groups, blind-image recognition or qualification of the current 1.3.17 binaries.
 
 ## Earlier chat and preservation preparation
 

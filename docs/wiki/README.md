@@ -4,4 +4,4 @@ These Markdown files are the updated publication sources for the [Forge Conducto
 
 Update the corresponding files in the existing wiki checkout, preserving unchanged historical release/evidence pages and image assets. Publish only after recording actual final verification and release identity. The current capability and release pages distinguish native checks, Windows toast submission, banner display, live-model acceptance and package qualification.
 
-Current content is in [Home](Home.md), [capabilities](Windows-workflow-capabilities.md), [the catalog](Tool-Catalog.md), and [release 1.3.16](Release-1.3.16.md).
+Current content is in [Home](Home.md), [capabilities](Windows-workflow-capabilities.md), [the catalog](Tool-Catalog.md), and [release 1.3.17](Release-1.3.17.md).

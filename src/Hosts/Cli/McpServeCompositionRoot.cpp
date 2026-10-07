@@ -554,6 +554,13 @@ ensureDurableManager(const Domain::PathText& home, const Domain::OperationContex
     std::string& startupError) noexcept
 {
     try {
+        struct StartupProcess final {
+            HANDLE handle{};
+            ~StartupProcess() noexcept
+            {
+                if (handle) static_cast<void>(::CloseHandle(handle));
+            }
+        } startupProcess;
         startupError = "The matching durable Manager could not be started or authenticated.";
         auto identity = InfrastructureWindows::WindowsCurrentUserIdentity::load();
         if (!identity) return {};
@@ -632,7 +639,7 @@ ensureDurableManager(const Domain::PathText& home, const Domain::OperationContex
                     return {};
                 }
                 ::CloseHandle(process.hThread);
-                ::CloseHandle(process.hProcess);
+                startupProcess.handle = process.hProcess;
             } else {
                 startupError = "The Manager profile ownership could not be checked safely.";
                 return {};
@@ -643,6 +650,37 @@ ensureDurableManager(const Domain::PathText& home, const Domain::OperationContex
         }
         while (active()) {
             if (auto existing = connect()) return existing;
+            if (startupProcess.handle) {
+                const auto state = ::WaitForSingleObject(startupProcess.handle, 0U);
+                if (state == WAIT_OBJECT_0) {
+                    DWORD exitCode{};
+                    if (!::GetExitCodeProcess(startupProcess.handle, &exitCode)) {
+                        startupError = "The Manager startup process exit could not be read (error " +
+                            std::to_string(::GetLastError()) + ").";
+                        return {};
+                    }
+                    // A separately launched Manager may have won the profile
+                    // lease. Only that observed owner justifies waiting after
+                    // this connector's child has already exited.
+                    const HANDLE owner = ::OpenMutexW(SYNCHRONIZE, FALSE,
+                        std::wstring{names.value().mutexName()}.c_str());
+                    if (owner) {
+                        ::CloseHandle(owner);
+                    } else {
+                        const auto nativeError = ::GetLastError();
+                        startupError = nativeError == ERROR_FILE_NOT_FOUND
+                            ? "The matching durable Manager exited during startup with code " +
+                                std::to_string(exitCode) + "."
+                            : "The Manager profile owner could not be checked after startup exit (error " +
+                                std::to_string(nativeError) + ").";
+                        return {};
+                    }
+                } else if (state == WAIT_FAILED) {
+                    startupError = "The Manager startup process could not be observed (error " +
+                        std::to_string(::GetLastError()) + ").";
+                    return {};
+                }
+            }
             std::this_thread::sleep_for(std::chrono::milliseconds{50});
         }
         if (parent.isCancellationRequested()) startupError = "Manager startup was cancelled; the independent process was left unchanged.";

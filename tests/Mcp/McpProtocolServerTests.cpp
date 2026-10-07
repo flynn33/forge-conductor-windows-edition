@@ -672,7 +672,7 @@ void testInitializeNegotiationAndRoles(Contracts::IToolCatalog& catalog)
         const auto response = parse(session.output.front());
         REQUIRE(response.at("result").at("instructions").get<std::string>().find(
                     "Project folder: D:\\workspace") != std::string::npos);
-        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.3.16");
+        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.3.17");
         REQUIRE(response.at("result").at("serverInfo").at("name") ==
             (role == Domain::McpRole::Primary
                  ? "forge-conductor"

@@ -14,7 +14,7 @@ Forge Conductor speaks newline-delimited JSON-RPC 2.0 over stdio for LM Studio. 
 | Fallback | `forge-conductor-fallback` | Independent general catalog and health |
 | CLU | `forge-conductor-clu` | Governance-only `clu.evaluate`, `clu.export_log`, `clu.findings`, `clu.resolve`, and `project_policy.read` |
 
-All three registrations share an exact deployment revision while retaining distinct role, health, process, and presence evidence. Version 1.3.16 retains the exact integer `timeout: 180000` contract for every role.
+All three registrations share an exact deployment revision while retaining distinct role, health, process, and presence evidence. Version 1.3.17 retains the exact integer `timeout: 180000` contract for every role.
 
 ## Project context contract
 

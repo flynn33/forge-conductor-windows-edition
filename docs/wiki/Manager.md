@@ -2,13 +2,13 @@
 
 The Manager owns the existing per-user project, tool, memory, policy, settings, deployment, telemetry, and persistence services. WinUI sends typed commands through ManagerConnection and ManagerRequestDispatcher rather than editing databases or LM Studio configuration itself.
 
-Sessions are LM Studio chats. The historical Managed Run/readback UI remains removed. The primary stdio MCP composition owns native chat Auto Continuity, whose in-flight UI handoff phase is not recoverable after idle-worker eviction. Version 1.3.16 retains independent Manager-owned model workers and persistent schedules through dedicated MCP routes; these use fresh histories and separate receipts and do not replace the user's native chat.
+Sessions are LM Studio chats. The historical Managed Run/readback UI remains removed. The primary stdio MCP composition owns native chat Auto Continuity, whose in-flight UI handoff phase is not recoverable after idle-worker eviction. Version 1.3.17 retains independent Manager-owned model workers and persistent schedules through dedicated MCP routes; these use fresh histories and separate receipts and do not replace the user's native chat.
 
 ## Product actions
 
 Workspace selects/registers projects, manages ordered packages, and binds a selected policy repository directly from the folder picker. Settings retains Load effective settings, Save and read back, Revert pending edits, Test LM Studio, and Restart Manager. Saved record actions remain selection plus buttons; the old scope-maintenance scheme is removed.
 
-Rig's Runtime configuration card exposes Ensure manager, Restart service and Stop service through the existing handlers. Wait for owned work to finish or confirm terminal cancellation before restarting/stopping Manager. Scheduled triggers need Manager to remain running. The controls are present in the 1.3.16 App source; installed UI acceptance requires its separate executed record.
+Rig's Runtime configuration card exposes Ensure manager, Restart service and Stop service through the existing handlers. Wait for owned work to finish or confirm terminal cancellation before restarting/stopping Manager. Scheduled triggers need Manager to remain running. The controls are present in the 1.3.17 App source; installed UI acceptance requires its separate executed record.
 
 Independent worker scopes exclude legacy `session_checkpoint` and `session_handoff` continuity mutations while retaining their authorized Primary/Fallback tools. Managed worker/reviewer Responses outputs add bounded PNG image content with text metadata and original call identity; text-only outputs keep their existing form. Fresh native/loopback-provider exclusion and image cases passed. The complete disposable-profile schedule lifecycle and reconnect probe also passed; current installed Qwen vision support and final package acceptance remain separately pending.
 

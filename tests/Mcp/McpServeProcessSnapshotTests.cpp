@@ -1099,7 +1099,7 @@ struct RoleObservation final {
     REQUIRE(!initialize.contains("error"));
     const auto& initializeResult = initialize.at("result");
     REQUIRE(initializeResult.at("protocolVersion") == "2025-11-25");
-    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.16");
+    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.17");
     REQUIRE(initializeResult.at("capabilities").at("tools").at("listChanged") == false);
     const auto& instructions =
         initializeResult.at("instructions").get_ref<const std::string&>();
@@ -1603,6 +1603,72 @@ void runPopulatedWorkspaceRegression(
     REQUIRE(otherStatus.at("instruction_packages").at("count") == 0U);
     REQUIRE(otherStatus.at("development_policy").at("active") == false);
     unrelated.finish(3U);
+}
+
+void runExitedManagerStartupRegression(
+    const std::filesystem::path& executable,
+    const std::filesystem::path& root,
+    const std::filesystem::path& externalProfile,
+    const Json& golden)
+{
+    const auto home = root / L"home";
+    const auto workspace = root / L"workspace";
+    std::filesystem::create_directories(home / L"config");
+    std::filesystem::create_directories(workspace);
+    const auto before = snapshotLmStudioProfile(externalProfile);
+    WSADATA data{};
+    REQUIRE(::WSAStartup(MAKEWORD(2, 2), &data) == 0);
+    struct WinsockCleanup final {
+        ~WinsockCleanup() { static_cast<void>(::WSACleanup()); }
+    } winsockCleanup;
+    const SOCKET listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    REQUIRE(listener != INVALID_SOCKET);
+    struct SocketCleanup final {
+        SOCKET value;
+        ~SocketCleanup() { static_cast<void>(::closesocket(value)); }
+    } socketCleanup{listener};
+    const BOOL exclusive = TRUE;
+    REQUIRE(::setsockopt(listener, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
+        reinterpret_cast<const char*>(&exclusive), sizeof(exclusive)) == 0);
+    sockaddr_in address{};
+    address.sin_family = AF_INET;
+    address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    REQUIRE(::bind(listener, reinterpret_cast<const sockaddr*>(&address),
+        sizeof(address)) == 0);
+    REQUIRE(::listen(listener, SOMAXCONN) == 0);
+    int addressSize = sizeof(address);
+    REQUIRE(::getsockname(listener, reinterpret_cast<sockaddr*>(&address),
+        &addressSize) == 0);
+    {
+        std::ofstream config{home / L"config" / L"config.json"};
+        REQUIRE(config.is_open());
+        config << Json{{"schema_version", 1},
+            {"dashboard", {{"host", "127.0.0.1"}, {"port", ntohs(address.sin_port)}}},
+            {"manager", {{"auto_restart", false}, {"open_browser_on_start", false}}},
+            {"local_model", {{"port", 1}, {"model", "isolated-regression-model"}}}}.dump();
+        REQUIRE(config.good());
+    }
+    REQUIRE(!probeIsolatedManager(home));
+    const auto started = std::chrono::steady_clock::now();
+    McpProcessSession connector{
+        executable, home, workspace, L"primary", L"manager-exited-startup"};
+    connector.send(handshakeStream());
+    const auto observed = observeRole(connector);
+    REQUIRE(observed.tools == golden.at("tools"));
+    connector.send(statusRequest(3));
+    const auto status = successfulToolPayload(connector.awaitFrames(3U), 3);
+    REQUIRE(status.at("durable_manager").at("available") == false);
+    REQUIRE(status.at("durable_manager").at("startup_error") ==
+        "The matching durable Manager exited during startup with code 1.");
+    REQUIRE(status.at("shell_execution").at("durable_across_mcp_reconnect") == false);
+    REQUIRE(std::chrono::steady_clock::now() - started < 8s);
+    connector.send(toolRequest(4, "host_capabilities", Json::object()));
+    const auto capabilities = successfulToolPayload(connector.awaitFrames(4U), 4);
+    REQUIRE(capabilities.at("independent_mutable_workers") == false);
+    REQUIRE(capabilities.at("persistent_model_schedules") == false);
+    connector.finish(4U);
+    REQUIRE(!probeIsolatedManager(home));
+    REQUIRE(snapshotLmStudioProfile(externalProfile) == before);
 }
 
 void runIsolatedManagerReviewerRegression(
@@ -2647,6 +2713,8 @@ void runWithIsolatedExternalProfile(
     runPolicyPagingRegression(executable, sharedRoot / L"policy-paging");
     runFragmentedToolResultRegression(executable, sharedRoot / L"fragmented-result");
     runIsolatedManagerReviewerRegression(executable, sharedRoot / L"isolated-manager-reviewer", externalProfile);
+    runExitedManagerStartupRegression(executable,
+        sharedRoot / L"manager-exited-startup", externalProfile, golden);
     for (const auto& ownedHome : isolatedManagerHomes) REQUIRE(stopIsolatedManager(ownedHome));
     isolatedManagerHomes.clear();
     REQUIRE(snapshotLmStudioProfile(externalProfile) == fixtureBefore);

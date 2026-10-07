@@ -1,6 +1,6 @@
 # Install Forge Conductor
 
-Forge Conductor 1.3.16 (Windows package 1.3.16.0) targets Windows 11 x64. A distribution contains:
+Forge Conductor 1.3.17 (Windows package 1.3.17.0) targets Windows 11 x64. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
 - `distribution.json` and payload hashes;
@@ -30,11 +30,13 @@ Before upgrading or restarting the owning Manager, wait for tracked work to fini
 
 For upgrades, install a higher package version with the same stable identity and publisher. The optional `.appinstaller` file checks for updates on launch and in the background.
 
-## Current 1.3.16 distribution
+## Current 1.3.17 distribution
 
-The 1.3.16 candidate distribution and publication are pending. Its complete ZIP must contain the signed 1.3.16.0 MSIX, public publisher certificate, installer, metadata and checksums before installation is qualified. The local engineering packages use the existing development publisher. Inspect actual verification and provenance for the committed source, executable hashes, signature and qualification scope. See [candidate notes](releases/1.3.16.md).
+The 1.3.17 candidate distribution and publication are pending. Its complete ZIP must contain the signed 1.3.17.0 MSIX, public publisher certificate, installer, metadata and checksums before installation is qualified. The local engineering packages use the existing development publisher. Inspect actual verification and provenance for the committed source, executable hashes, signature and qualification scope. See [candidate notes](releases/1.3.17.md).
 
-The unpublished 1.3.15.0 candidate installed successfully, but its MCP preservation guard refused a routing change written before installation by an isolated test Manager. It is superseded without a qualified current-chat acceptance or release tag. See [the investigation](validation/HOST-CAPABILITIES-1.3.15.md). A higher 1.3.16.0 package keeps the ordinary Windows upgrade path; previous checks do not qualify its new binaries.
+The unpublished [1.3.16.0 candidate](validation/HOST-CAPABILITIES-1.3.16.md) installed successfully with exact four-executable and offline owner-profile preservation. Its subsequent explicit repair registered the three routes while preserving foreign MCP semantics and all 730 foreign plugin files. It was superseded before original/current-chat qualification or publication; the new 1.3.17.0 candidate requires its own higher-version upgrade and exact payload checks.
+
+The unpublished 1.3.15.0 candidate installed successfully, but its MCP preservation guard refused a routing change written before installation by an isolated test Manager. It is superseded without a qualified current-chat acceptance or release tag. See [the investigation](validation/HOST-CAPABILITIES-1.3.15.md). A higher 1.3.17.0 package keeps the ordinary Windows upgrade path; previous checks do not qualify its new binaries.
 
 ## Historical 1.3.11 publication and installed qualification
 

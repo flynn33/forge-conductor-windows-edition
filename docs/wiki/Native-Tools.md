@@ -6,7 +6,7 @@
 
 Forge Conductor's project tools are native Windows implementations behind application contracts and workspace authority.
 
-Version 1.3.16 retains the original tools and expands Primary/Fallback to 104 descriptors. Dedicated WinHTTP search/fetch/HTTP, native DOCX/XLSX/PPTX writers, desktop/browser observation/input/capture, PNG drawing/image previews, independent model workers and persistent schedules have explicit native contracts. See [Windows Workflow Capabilities](Windows-workflow-capabilities) for current bounds and [Release 1.3.16](Release-1.3.16) for executed verification.
+Version 1.3.17 retains the original tools and expands Primary/Fallback to 104 descriptors. Dedicated WinHTTP search/fetch/HTTP, native DOCX/XLSX/PPTX writers, desktop/browser observation/input/capture, PNG drawing/image previews, independent model workers and persistent schedules have explicit native contracts. See [Windows Workflow Capabilities](Windows-workflow-capabilities) for current bounds and [Release 1.3.17](Release-1.3.17) for executed verification.
 
 Host filesystem mode covers ordinary available local volumes using existing native ACL/path/reparse checks; workspace mode retains registered/configured roots. Both keep the selected project directory as the default for relative artifact paths. Models cannot change the owner's filesystem mode. Generative image models and cloud accounts require separately configured providers/accounts or authorized APIs.
 
