@@ -24,9 +24,13 @@ Production publication replaces `-DevelopmentSigning` with an approved PFX and p
 - Simulated lifecycle tests use disposable roots and copied fixtures. Tests and packaging must never mutate the operator's live `%LOCALAPPDATA%\Forge Conductor` store.
 - Provider-dependent productive inference is reported separately when LM Studio and a loaded model are available; provider absence must produce an actionable disconnected state rather than fabricated success.
 
-## Current 1.3.17 verification
+## Current 1.3.18 verification
 
-The current candidate retains dedicated independent image analysis and the existing 104-tool catalog and workflows. Source/build/package/install/current-chat checks are pending in the [1.3.17 qualification record](validation/HOST-CAPABILITIES-1.3.17.md). Required regression coverage includes isolated Manager startup without production LM Studio routing changes. Earlier candidate results below retain their own source/artifact identity.
+The current candidate retains dedicated independent image analysis and the existing 104-tool catalog and workflows. Source/build/package/install/current-chat checks are pending in the [1.3.18 qualification record](validation/HOST-CAPABILITIES-1.3.18.md). Required regression coverage includes isolated Manager startup without production LM Studio routing changes. Earlier candidate results below retain their own source/artifact identity.
+
+## Historical unpublished 1.3.17 source and installed investigation
+
+Source `34e6e4c3f418c52522e4db33bf1d1dbb917abc46`, tree `c9a899ed0318af0d25d87c35f5c984c5b13eaa17`, passed **162/162 local Release CTest entries in 84.41 seconds**, Product All, all three static gates and package persistence. [Windows CI 37646332085](https://github.com/flynn33/forge-conductor-windows-edition/actions/runs/37646332085) separately passed **162/162 in 91.69 seconds**, the complete Release build, static gates and staged upload. The higher-version signed installation matched all four payloads and preserved the complete 8,206-file owner profile. Automatic three-role repair completed in 8.019 seconds with protected state and 730 foreign plugin files preserved. The candidate was superseded after managed-run `context_get` exposed a missing continuity-state lease. Its current-chat attempts, including a completed image run refused by the literal property check, remain retained; no final release qualification, tag or publication is asserted. See [the historical record](validation/HOST-CAPABILITIES-1.3.17.md). These checks do not qualify 1.3.18.
 
 ## Historical unpublished 1.3.16 source and installed repair
 

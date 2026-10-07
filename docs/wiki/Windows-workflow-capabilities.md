@@ -1,8 +1,8 @@
-# Windows workflow capabilities in 1.3.17
+# Windows workflow capabilities in 1.3.18
 
 Forge adds dedicated web search/fetch/HTTP, native DOCX/XLSX/PPTX creation, visible desktop/accessibility/browser/input/capture, native PNG drawing and image previews, independent model workers and persistent model-task schedules. These join the existing tools, specialists, read-only reviewers, evidence, process jobs, memory, policy and continuity.
 
-Rig's corrected display shows the observed native conversation and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for actual rollover state; preference readback does not establish completed rollover. The higher 1.3.17 package includes this correction; final installed readback is recorded separately after execution.
+Rig's corrected display shows the observed native conversation and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for actual rollover state; preference readback does not establish completed rollover. The higher 1.3.18 package includes this correction; final installed readback is recorded separately after execution.
 
 Explicit HTTP supports GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS, with bodies for POST/PUT/PATCH/DELETE. Only GET/HEAD follow redirects; use mutating methods within the user's authorized task and inspect the observed response. Remote accounts and credentials must come from an authorized existing connection or explicit API input.
 
@@ -18,7 +18,7 @@ Managed worker/reviewer Responses outputs include native PNG image content in th
 
 Worker scope also excludes legacy `session_checkpoint` and `session_handoff`, which mutate session continuity state. Their existing authorized Primary/Fallback routes remain available; this restriction applies to independent and scheduled workers.
 
-Up to sixteen independent workers can run simultaneously, including scheduled inference. Read-only reviewers have a separate sixteen-concurrent-run limit. Finished terminal threads release admission capacity when another run starts or status is read. Worker and reviewer receipts remain sealed and addressable by run ID; the unpublished 1.3.15 candidate removed the earlier reviewer sixteen-record lifetime limit, retained in 1.3.17. Terminal reviewer status reloads the durable receipt and reports actual evidence integrity and SHA-256. Raw output remains bounded to 256 KiB, with serialized receipt files bounded to 4 MiB. Recurring runs do not automatically delete earlier outputs; retained files require disk space, and storage errors remain explicit.
+Up to sixteen independent workers can run simultaneously, including scheduled inference. Read-only reviewers have a separate sixteen-concurrent-run limit. Finished terminal threads release admission capacity when another run starts or status is read. Worker and reviewer receipts remain sealed and addressable by run ID; the unpublished 1.3.15 candidate removed the earlier reviewer sixteen-record lifetime limit, retained in 1.3.18. Terminal reviewer status reloads the durable receipt and reports actual evidence integrity and SHA-256. Raw output remains bounded to 256 KiB, with serialized receipt files bounded to 4 MiB. Recurring runs do not automatically delete earlier outputs; retained files require disk space, and storage errors remain explicit.
 
 Schedules require explicit owner/task authorization context and a running Manager. UTC times or intervals of at least 60 seconds persist in separately authorized storage. Future triggers restore after restart; live runs do not overlap; uncertain interrupted effects block automatic replay until an explicitly authorized new attempt. Schedule state is distinct from the latest worker's actual result. Authorization references are audit context, not identity proof, and no outbound email is sent.
 
@@ -30,4 +30,4 @@ Meaningful changes use the installed Forge Conductor application's local Windows
 
 Desktop input reports submission and requires subsequent observation. Browser launch is not proof of page loading. Screen capture includes overlapping visible windows, and Windows account/integrity restrictions still apply.
 
-See the [complete capability contracts and limits](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/HOST-CAPABILITIES.md) and [executed verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.17.md).
+See the [complete capability contracts and limits](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/HOST-CAPABILITIES.md) and [executed verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.18.md).

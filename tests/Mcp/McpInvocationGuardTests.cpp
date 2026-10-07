@@ -804,6 +804,75 @@ void managedRunProtocolUsesContextOnlyContinuity()
     REQUIRE(guard->snapshot(caller).implicitRoots.empty());
 }
 
+void managedContextRecoveryPreservesLegacyStateAndValidatesReceipts()
+{
+    LegacyContinuityFake continuity;
+    FixedHasher hasher;
+    FixedClock clock;
+    auto guard = take(Mcp::McpInvocationGuard::create(continuity, hasher, clock));
+    const auto caller = client("managed-recovery-client");
+    for (std::uint64_t sequence = 1U; sequence <= 8U; ++sequence) {
+        const auto call = request(caller, "fs_read", R"json({"path":"same.txt"})json", sequence);
+        REQUIRE(take(execute(*guard, call, context(call, sequence))).receipt.ok);
+    }
+    const auto loop = request(caller, "fs_read", R"json({"path":"same.txt"})json", 9U);
+    REQUIRE(take(guard->beforeInvoke(loop, descriptor(loop), context(loop, 9U))).immediateOutcome);
+    const auto legacy = guard->snapshot(caller);
+    REQUIRE(legacy.handoffPending);
+    REQUIRE(legacy.handoffId);
+    const auto handoff = id<Domain::LegacyHandoffId>(*legacy.handoffId);
+    const Domain::ContextRecoveryReceipt recovery{caller, handoff,
+        take(Domain::PathText::create("D:/workspace")),
+        {take(Domain::PathText::create("D:/workspace/main.cpp"))}};
+    const auto encoded = Json{{"ok", true}, {"found", true}, {"handoff_id", handoff.value()},
+        {"packet", {{"task", {{"cwd", "D:/workspace"}, {"goal", "Inspect the recovered project"}}},
+                    {"working_set", {{"key_files", Json::array({"D:/workspace/main.cpp"})}}}}}}.dump();
+    const auto managed = request(caller, "context_get", "{}", 10U, "managed-run-v1");
+    const auto operation = context(managed, 10U);
+    REQUIRE(!take(guard->beforeInvoke(managed, descriptor(managed), operation)).immediateOutcome);
+    auto outcome = successOutcome(managed, recovery);
+    outcome.canonicalPayload = encoded;
+    const auto recovered = take(guard->afterInvoke(managed, descriptor(managed),
+        Domain::Result<Domain::ToolCallOutcome>::success(std::move(outcome)), operation));
+    REQUIRE(recovered.receipt.ok);
+    REQUIRE(recovered.canonicalPayload == encoded);
+    REQUIRE(recovered.contextRecovery);
+    REQUIRE(recovered.contextRecovery->handoffId == handoff);
+    REQUIRE(!payload(recovered).contains("context_budget_cleared"));
+    REQUIRE(guard->snapshot(caller).handoffPending);
+    REQUIRE(guard->snapshot(caller).blocked == legacy.blocked);
+    REQUIRE(guard->snapshot(caller).handoffId == legacy.handoffId);
+    REQUIRE(guard->snapshot(caller).readbackHandoffId == legacy.readbackHandoffId);
+    REQUIRE(guard->snapshot(caller).implicitRoots == legacy.implicitRoots);
+    REQUIRE(guard->pendingCallCount() == 0U);
+
+    for (const auto violation : {0U, 1U, 2U, 3U, 4U}) {
+        const auto sequence = 20U + violation;
+        const auto call = request(caller, "context_get", "{}", sequence, "managed-run-v1");
+        const auto current = context(call, sequence);
+        REQUIRE(!take(guard->beforeInvoke(call, descriptor(call), current)).immediateOutcome);
+        auto invalid = successOutcome(call, recovery);
+        invalid.canonicalPayload = encoded;
+        switch (violation) {
+        case 0U: invalid.contextRecovery->clientId = client("foreign-recovery-client"); break;
+        case 1U: invalid.receipt.requestId = managed.metadata.requestId; break;
+        case 2U: invalid.receipt.toolName = "context_list"; break;
+        case 3U: invalid.canonicalPayload.push_back('\0'); break;
+        case 4U: invalid.canonicalPayload.assign(1U, static_cast<char>(0xff)); break;
+        }
+        const auto rejected = guard->afterInvoke(call, descriptor(call),
+            Domain::Result<Domain::ToolCallOutcome>::success(std::move(invalid)), current);
+        REQUIRE(!rejected);
+        REQUIRE(rejected.error().code == Domain::ErrorCodes::IntegrityFailure);
+        REQUIRE(guard->pendingCallCount() == 0U);
+        REQUIRE(guard->snapshot(caller).handoffPending);
+        REQUIRE(guard->snapshot(caller).blocked == legacy.blocked);
+        REQUIRE(guard->snapshot(caller).handoffId == legacy.handoffId);
+    }
+    REQUIRE(continuity.budgetCalls() == 2U);
+    REQUIRE(continuity.automaticCalls() == 0U);
+}
+
 void failuresCancellationBoundsAndShutdownAreSafe()
 {
     LegacyContinuityFake continuity;
@@ -1166,6 +1235,7 @@ int main()
         successfulModelWritesRefreshRecoverySeedAndFailedWritesPreserveIt();
         ordinaryProgressNeverCreatesCountOrTimeHandoffs();
         managedRunProtocolUsesContextOnlyContinuity();
+        managedContextRecoveryPreservesLegacyStateAndValidatesReceipts();
         failuresCancellationBoundsAndShutdownAreSafe();
         concurrentThresholdCrossingCoalescesPersistence();
         implicitRootsAreAuthorizedAndBounded();

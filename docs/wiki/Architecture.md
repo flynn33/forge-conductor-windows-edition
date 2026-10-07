@@ -18,7 +18,7 @@ Workspace, Rig, Continuity, Activity, and Settings retain the existing native de
 
 Existing persistence migrations and stable MSIX identity remain. Historical Manager-owned Responses run records describe earlier versions, not the current native chat handoff guarantee.
 
-## Dedicated host workflows in 1.3.17
+## Dedicated host workflows in 1.3.18
 
 Native web, Office and desktop/image services reuse operation contexts, project authority issuers and atomic storage. Office writers build complete OOXML packages before publication; PNG drawing uses Windows primitives/codecs. Production adds no Office/Python runtime. Owner-selected host/workspace filesystem modes retain the registered project as the relative-path default.
 

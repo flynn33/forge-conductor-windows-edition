@@ -1,12 +1,19 @@
 # Changelog
 
-## 1.3.17 - Cold Manager startup reporting (candidate)
+## 1.3.18 - Managed context-recovery completion (candidate)
 
-- Align active product, package, dependency-manifest and documentation identities to 1.3.17 / 1.3.17.0 for an ordinary higher Windows upgrade after the installed, unpublished 1.3.16.0 candidate.
-- Retain all 104 Primary/Fallback tools, ten specialist playbooks and five CLU tools, including existing image analysis, web, Office, desktop, workers, schedules, filesystem, shell/process, review, memory, governance and continuity.
-- Retain the exact owned Manager startup process handle in the CLI and inspect its exit while attempting authentication. An exited child with no competing profile owner returns its actual exit-code diagnostic instead of waiting through the remaining startup window; a competing owner still requires authenticated connection and exact sibling/profile checks. Regression and final-source qualification remain pending.
-- Preserve the corrected isolated-profile automatic-deployment boundary and all earlier candidate evidence with its original source and package identity. The 1.3.16 source suite/CI, signed upgrade and explicit repair did not establish original/current-chat workflow qualification or a published release.
-- Keep final 1.3.17 source/build/static/package/install/current-chat and publication results pending until actual execution.
+- Align active product/package/dependency-manifest and current documentation identities to 1.3.18 / 1.3.18.0 for an ordinary higher Windows upgrade after the installed, unpublished 1.3.17.0 candidate.
+- Restrict recovered-context legacy bookkeeping and its lease requirement to legacy-protocol calls. Managed-run `context_get` retains the actual recovered packet without clearing or annotating unrelated pending legacy state; client ownership and canonical request/receipt validation remain unconditional. Final committed-source/full-suite, installed and model qualification remain pending.
+- Reproduce the original missing-lease failure before the one-condition completion fix; the existing focused InvocationGuard CTest entry then passed 1/1 in 0.09 seconds. Final committed-source/full-suite, installed and model qualification remain pending.
+- Retain all 104 Primary/Fallback tools, ten specialist playbooks and five CLU tools, all original features, frozen/current authority, read-only reviewer policy and separate worker/reviewer concurrency bounds. No catalog or permission expansion is required by this completion fix.
+- Preserve historical 1.3.14–1.3.17 source/install/model successes and failures with their original identities. Final 1.3.18 source, packaging, installation, current-chat acceptance and publication remain pending.
+
+## 1.3.17 - Cold Manager startup reporting (unpublished, superseded)
+
+- Retain the exact owned Manager startup process handle and report its exit promptly when no competing profile owner exists, preserving authenticated sibling/profile admission and the isolated automatic-deployment boundary.
+- Source `34e6e4c3f418c52522e4db33bf1d1dbb917abc46` / tree `c9a899ed0318af0d25d87c35f5c984c5b13eaa17` passed 162/162 local Release tests in 84.41 seconds; [Windows CI 37646332085](https://github.com/flynn33/forge-conductor-windows-edition/actions/runs/37646332085) passed 162/162 in 91.69 seconds. Product All, static gates, package persistence and signed packaging passed.
+- Installed 1.3.17.0 payloads matched all four staging/MSIX hashes and preserved 8,206 profile files. Automatic three-role repair completed in 8.019 seconds with protected state and all 730 foreign plugin files preserved.
+- Retain actual current-chat attempts, a completed first image-analysis run refused by the literal property check, and blocked Windows notification admission. A valid managed `context_get` recovery was rejected by legacy-only lease bookkeeping in completion. Final release qualification, a tag and publication did not follow; the higher 1.3.18.0 candidate addresses that verified source defect.
 
 ## 1.3.16 - Isolated Manager deployment boundary (unpublished, superseded)
 

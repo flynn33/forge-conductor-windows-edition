@@ -1,6 +1,10 @@
-# Current candidate 1.3.17
+# Current candidate 1.3.18
 
-Product/package identities are 1.3.17 / 1.3.17.0. Final source/build, signed payload, installed App, current-chat qualification and publication remain pending until their actual checks execute. See [Release 1.3.17](Release-1.3.17) and the [verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.17.md). Historical checks below apply only to the named earlier binaries; no result is reassigned.
+Product/package identities are 1.3.18 / 1.3.18.0. Final source/build, signed payload, installed App, current-chat qualification and publication remain pending until their actual checks execute. See [Release 1.3.18](Release-1.3.18) and the [verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.18.md). Historical checks below apply only to the named earlier binaries; no result is reassigned.
+
+## Historical unpublished 1.3.17 candidate
+
+Source `34e6e4c3f418c52522e4db33bf1d1dbb917abc46`, tree `c9a899ed0318af0d25d87c35f5c984c5b13eaa17`, passed 162/162 local Release tests in 84.41 seconds and [Windows CI 37646332085](https://github.com/flynn33/forge-conductor-windows-edition/actions/runs/37646332085) passed 162/162 in 91.69 seconds. Product All, all three static gates and package persistence passed. The signed 1.3.17.0 installation matched all four payloads and preserved 8,206 owner-profile files; automatic three-role repair completed in 8.019 seconds while preserving protected state and all 730 foreign plugin files. Managed-run context recovery then exposed a continuity-state lease defect. Current-chat attempts and the first image literal-check refusal remain retained, without final release qualification, a tag or publication. See [the historical investigation](Release-1.3.17). No result is reassigned to 1.3.18.
 
 ## Historical unpublished 1.3.16 candidate
 

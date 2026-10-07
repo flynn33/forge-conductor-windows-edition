@@ -167,7 +167,7 @@ public:
                                   : role == Domain::LMStudioConnectorRole::Fallback
                                       ? "forge-conductor-fallback"
                                       : "forge-conductor-clu"},
-                    {"version", "1.3.17"}}}}}};
+                    {"version", "1.3.18"}}}}}};
     Json tools = canonicalTools();
     if (role == Domain::LMStudioConnectorRole::Clu) {
         tools.erase(std::remove_if(

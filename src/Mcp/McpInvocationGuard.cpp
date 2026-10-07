@@ -626,7 +626,7 @@ public:
                         Domain::ErrorCodes::IntegrityFailure,
                         "The recovered context receipt belongs to another client.");
                 }
-                if (recovery) {
+                if (recovery && usesLegacyContinuityPolicy(request)) {
                     if (!stateLease.token()) {
                         return failure<Domain::ToolCallOutcome>(
                             Domain::ErrorCodes::IntegrityFailure,
