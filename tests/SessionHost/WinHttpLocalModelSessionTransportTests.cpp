@@ -1643,13 +1643,20 @@ void automaticSetupUsesRealManagerAndPersistsProject()
     std::filesystem::create_directories(project);
     const auto testUserProfile = root / L"user-profile";
     std::filesystem::create_directories(testUserProfile / L".lmstudio");
+    const auto unavailableLocalApplicationData =
+        testUserProfile / L"AppData" / L"Local";
+    REQUIRE(!std::filesystem::exists(unavailableLocalApplicationData));
+    constexpr std::string_view originalMcpConfiguration{
+        R"({"mcpServers":{}})"};
     {
         std::ofstream mcpConfiguration{
-            testUserProfile / L".lmstudio" / L"mcp.json"};
-        mcpConfiguration << R"({"mcpServers":{}})";
+            testUserProfile / L".lmstudio" / L"mcp.json", std::ios::binary};
+        mcpConfiguration << originalMcpConfiguration;
     }
     ScopedEnvironmentValue userProfileEnvironment{
         L"USERPROFILE", testUserProfile.native()};
+    ScopedEnvironmentValue localApplicationDataEnvironment{
+        L"LOCALAPPDATA", unavailableLocalApplicationData.native()};
     const auto profile = take(W::WindowsAlphaManagerProfile::create((root / L"profile").wstring()));
     std::uint16_t dashboardPort{};
     {
@@ -1679,8 +1686,22 @@ void automaticSetupUsesRealManagerAndPersistsProject()
     auto client = take(W::WindowsManagerNamedPipeClient::create(clock, std::wstring{names.pipeName()}, *nonce));
     struct Cleanup {
         W::WindowsManagerNamedPipeClient& client;
-        ~Cleanup() { (void)client.requestShutdown(operationContext("12121212-1212-4212-8212-121212121298", 10s)); }
+        HANDLE process{};
+        bool stopped{};
+        ~Cleanup()
+        {
+            if (!stopped) {
+                (void)client.requestShutdown(operationContext(
+                    "12121212-1212-4212-8212-121212121298", 10s));
+                if (process) (void)::WaitForSingleObject(process, 10'000U);
+            }
+            if (process) (void)::CloseHandle(process);
+        }
     } cleanup{*client};
+    const auto managerStatus = take(client->status(context()));
+    cleanup.process = ::OpenProcess(
+        SYNCHRONIZE, FALSE, managerStatus.processId);
+    REQUIRE(cleanup.process != nullptr);
     Domain::ManagerSettingsPatch patch;
     patch.localModelPort = server.port();
     const auto saved = take(client->updateSettings(patch, true, context()));
@@ -1758,6 +1779,27 @@ void automaticSetupUsesRealManagerAndPersistsProject()
     REQUIRE(persistedPolicy.loaded);
     REQUIRE(Json::parse(persistedPolicy.canonicalJson).at("active").get<bool>());
     server.requireHealthy();
+    REQUIRE(client->requestShutdown(context()));
+    REQUIRE(::WaitForSingleObject(cleanup.process, 10'000U) == WAIT_OBJECT_0);
+    cleanup.stopped = true;
+    {
+        std::ifstream mcpConfiguration{
+            testUserProfile / L".lmstudio" / L"mcp.json", std::ios::binary};
+        std::array<char, 64U> contents{};
+        mcpConfiguration.read(contents.data(),
+            static_cast<std::streamsize>(contents.size()));
+        REQUIRE(mcpConfiguration.eof());
+        const std::string_view actualMcpConfiguration{contents.data(),
+            static_cast<std::size_t>(mcpConfiguration.gcount())};
+        REQUIRE(actualMcpConfiguration == originalMcpConfiguration);
+    }
+    REQUIRE(!std::filesystem::exists(unavailableLocalApplicationData));
+    for (const auto* role : {L"forge-conductor", L"forge-conductor-fallback",
+             L"forge-conductor-clu"}) {
+        REQUIRE(!std::filesystem::exists(
+            testUserProfile / L".lmstudio" / L"extensions" / L"plugins" /
+                L"mcp" / role));
+    }
     std::cout << "PASS automatic_setup.real_manager_project_retry_and_removed_run " << root.string() << '\n';
 }
 

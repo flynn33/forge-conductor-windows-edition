@@ -1443,8 +1443,16 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
     const auto& process = snapshot();
     InfrastructureWindows::WindowsApplicationPaths persistentPaths{
         InfrastructureWindows::WindowsApplicationPathsOptions{std::nullopt, false}};
-    const bool automaticLmStudioDeployment = equalWindowsPath(
-        take(persistentPaths.dataRoot(context)), process.dataRoot());
+    const auto persistentRoot = persistentPaths.dataRoot(context);
+    if (!persistentRoot &&
+        (persistentRoot.error().code == Domain::ErrorCodes::Cancelled ||
+         persistentRoot.error().code == Domain::ErrorCodes::DeadlineExceeded)) {
+        throw CompositionFailure{persistentRoot.error()};
+    }
+    // An unavailable persistent profile cannot authorize automatic host repair.
+    // The independently validated explicit Manager data root remains usable.
+    const bool automaticLmStudioDeployment = persistentRoot &&
+        equalWindowsPath(persistentRoot.value(), process.dataRoot());
     if (!options_.enableExternalHostMaintenance) {
         initializeUnavailableLmStudio(
             context,
