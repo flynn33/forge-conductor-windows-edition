@@ -6,7 +6,7 @@ Product **1.3.19**, Windows MSIX **1.3.19.0**, Release x64. Both native WinHTTP 
 |---|---|
 | Immutable product commit | `f93b0cd76126720b9316a7d4dc143e6520c31972` |
 | Immutable product tree | `815d7a31eed46d75e0ead2f6bcd832bfd9fea383` |
-| Documentation input commit | `f93b0cd76126720b9316a7d4dc143e6520c31972`; this measured update is a later docs-only descendant |
+| Documentation input commit | `2d6731b729bd8c01205f7dd120dd303a1a454e75`; this measured update is a later docs-only descendant |
 | MSIX SHA-256 | `ca59499a1e11e1905b06087d9c78f449770065a47eeb2c10b7f30ecc8bec3047` |
 | Payload-manifest SHA-256 | `3de9b393dbe495b77a25a72c5ff8962788a9f50d2fc1da9fe41afd6894283b82` |
 | Full local tests | 162/162, exit 0, 74.37 seconds |
@@ -45,6 +45,6 @@ The artifact uses the existing Forge Conductor Development certificate. Exact pa
 
 Qualification does not execute or approve the original project gate, establish a new live rollover or physical context exhaustion, exhaustive GUI/every-feature coverage, or cloud connector parity. Blind recognition uses the fresh independent read-only `image_analyze` route; stock preview display alone does not qualify pixel interpretation. Its inner provider image request body is not retained in the native run record and was not directly captured. Shell cwd admission is not an OS sandbox. Earlier 1.3.14–1.3.18 attempts retain their own results and identities and do not substitute for these final binaries.
 
-Publication is pending; no published download is asserted.
+[Published release](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.19) contains seven assets verified by size and SHA-256. [Windows package](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.19/ForgeConductor-1.3.19.0-x64.msix) and [installation bundle](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.19/ForgeConductor-1.3.19.0-x64.zip).
 
 [Release notes](../releases/1.3.19.md).

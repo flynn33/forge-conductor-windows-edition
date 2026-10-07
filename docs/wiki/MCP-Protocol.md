@@ -27,7 +27,7 @@ The `initialize` response provides plain-text instructions that identify the aut
 
 Install or repair carries the selected registered project ID/root into all three roles. This disclosure comes from that binding and remains available when a recovered continuity packet has an empty `paths` object. A different registered project's package/policy records are not substituted for the selected project's configuration.
 
-In host filesystem mode, continuity adoption authorizes both the registered project alias and recovered candidate for Read, then checks their canonical subtree relationship. A broad authorized volume root does not replace registered project identity; unregistered/sibling paths or revoked access remain denied. The focused client workspace-context regression passed, while current installed/native-chat acceptance requires its own executed evidence.
+In host filesystem mode, continuity adoption authorizes both the registered project alias and recovered candidate for Read, then checks their canonical subtree relationship. A broad authorized volume root does not replace registered project identity; unregistered/sibling paths or revoked access remain denied. The focused client workspace-context regression passed. The installed 1.3.19 [qualification](Release-1.3.19) now separately records nine actual native-chat cases and exact seeded-packet retrieval through managed context recovery. These bounded checks do not establish a new live rollover.
 
 ## Transport rules
 
@@ -41,7 +41,7 @@ In host filesystem mode, continuity adoption authorizes both the registered proj
 
 Supported methods include `initialize`, `ping`, `tools/list`, `tools/call`, `notifications/cancelled`, empty `resources/list`, and empty `prompts/list`.
 
-Managed worker/reviewer provider Responses function outputs retain text-string compatibility. A native PNG preview adds `input_text` metadata and `input_image` content within its original `function_call_output`, preserving `call_id`; encoded previews are bounded to 512 KiB. This additive provider-content path is separate from MCP framing. Fresh loopback-provider image transport cases passed; they do not establish that the configured model supports vision, and current installed Qwen acceptance remains pending.
+Managed worker/reviewer provider Responses function outputs retain text-string compatibility. A native PNG preview adds `input_text` metadata and `input_image` content within its original `function_call_output`, preserving `call_id`; encoded previews are bounded to 512 KiB. This additive provider-content path is separate from MCP framing. Fresh loopback-provider image transport cases passed. The installed 1.3.19 [qualification](Release-1.3.19) separately records Qwen recognizing three private image properties through a fresh independent read-only `image_analyze` run and sealed `reviewer_status` output. Stock preview transport alone does not establish pixel interpretation. The individual inner provider image request was not captured, and a new live rollover was not tested.
 
 ## Bounded native result delivery
 
