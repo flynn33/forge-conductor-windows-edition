@@ -1,6 +1,12 @@
 # Roadmap
 
-## Current candidate: 1.3.19
+<!-- measured-qualification-1.3.19 -->
+
+Both native WinHTTP timeout diagnostics consistently report the selected receive budget, with unchanged timeout, deadline and cancellation behavior. The managed-context legacy-lease fix is retained. The exact 1.3.19 source passed 162/162 Release tests in 74.37 seconds, Product All, all three static gates and package persistence. Windows CI separately passed 162/162 in 126.04 seconds. Installed/staging/MSIX hashes matched all four executables, and actual catalogs returned 104/104/5. The existing selected Qwen conversation passed 9 bounded cases, including the formerly denied Host read and fresh sealed blind image analysis. The dedicated real-model managed recovery returned the exact seeded packet and unseen file in 2 captured native calls with verified sealed output. Publication is pending; no published download is asserted.
+
+<!-- /measured-qualification-1.3.19 -->
+
+## Current version: 1.3.19
 
 Version 1.3.19 retains 104 Primary/Fallback tools while preserving all original tools, ten specialist playbooks and five CLU tools. Dedicated web, native Office documents, desktop/browser, PNG/image previews, independent managed workers and persistent schedules join owner-selected host/workspace filesystem access. Existing shell/process jobs, reviews, memory, policy, deployment and continuity remain. See the [capability guide](docs/HOST-CAPABILITIES.md) and [release notes](docs/releases/1.3.19.md) for implementation bounds and executed verification.
 

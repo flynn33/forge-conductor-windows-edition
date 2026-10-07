@@ -1,12 +1,11 @@
 # Changelog
 
-## 1.3.19 - Provider timeout diagnostic consistency (candidate)
+## 1.3.19 - Provider timeout diagnostic consistency (qualified; publication pending)
 
-- Align active product/package/dependency-manifest and current documentation identities to 1.3.19 / 1.3.19.0 for an ordinary higher Windows upgrade after the installed, unpublished 1.3.18.0 candidate.
-- Report the selected provider receive budget consistently in the two native WinHTTP timeout messages. They previously recalculated remaining operation time under the `receive_timeout_ms` label; request-budget enforcement, clipping to the operation deadline, cancellation and shutdown behavior remain unchanged.
-- Retain the failed 1.3.18 CI assertion and its missing returned-message evidence. The existing header-timeout assertion now prints its actual message on failure, and partial-body timeout coverage checks the same selected-budget diagnostic. Fresh 1.3.19 source/full-suite/CI, package, installation and model outcomes remain pending.
-- Retain the managed context-recovery completion fix, all 104 Primary/Fallback tools, ten specialist playbooks, five CLU tools, frozen/current authority, original features and separate sixteen-concurrent worker/reviewer bounds. No tool or permission expansion is required by this diagnostic repair.
-- Preserve every earlier candidate's successful and failed evidence with its original source and artifact identity; no earlier result qualifies 1.3.19.
+- Retain all 104 Primary/Fallback tools, ten specialist playbooks and five CLU tools, including native web/Office/desktop/image analysis, workers, schedules and the original workflows.
+- Report the selected receive budget consistently in both native WinHTTP timeout diagnostics, while timeout, deadline and cancellation behavior remain unchanged. Retain legacy-only managed-context completion bookkeeping and its lease requirement; recovered packets, client ownership and canonical request/receipt validation remain preserved. The packaged source completed the required source and native qualification recorded above.
+- Preserve alternate-profile automatic-deployment isolation; live MCP and all three plugin inventories remain unchanged across final isolated probes.
+- Both native WinHTTP timeout diagnostics consistently report the selected receive budget, with unchanged timeout, deadline and cancellation behavior. The managed-context legacy-lease fix is retained. The exact 1.3.19 source passed 162/162 Release tests in 74.37 seconds, Product All, all three static gates and package persistence. Windows CI separately passed 162/162 in 126.04 seconds. Installed/staging/MSIX hashes matched all four executables, and actual catalogs returned 104/104/5. The existing selected Qwen conversation passed 9 bounded cases, including the formerly denied Host read and fresh sealed blind image analysis. The dedicated real-model managed recovery returned the exact seeded packet and unseen file in 2 captured native calls with verified sealed output. Publication is pending; no published download is asserted.
 
 ## 1.3.18 - Managed context-recovery completion (unpublished, superseded)
 

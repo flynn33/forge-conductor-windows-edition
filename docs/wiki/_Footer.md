@@ -7,7 +7,7 @@
     <a href="Guided-Setup">Workspace Guide</a> ·
     <a href="How-To">How-To</a> ·
     <a href="Troubleshooting">Troubleshooting</a> ·
-    <a href="Release-1.3.19">Candidate 1.3.19</a> ·
+    <a href="Release-1.3.19">Version 1.3.19</a> ·
     <a href="https://github.com/flynn33/forge-conductor-windows-edition">Source</a>
   </sub>
 </p>

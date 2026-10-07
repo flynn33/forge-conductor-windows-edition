@@ -1,5 +1,11 @@
 # Install Forge Conductor
 
+<!-- measured-qualification-1.3.19 -->
+
+Both native WinHTTP timeout diagnostics consistently report the selected receive budget, with unchanged timeout, deadline and cancellation behavior. The managed-context legacy-lease fix is retained. The exact 1.3.19 source passed 162/162 Release tests in 74.37 seconds, Product All, all three static gates and package persistence. Windows CI separately passed 162/162 in 126.04 seconds. Installed/staging/MSIX hashes matched all four executables, and actual catalogs returned 104/104/5. The existing selected Qwen conversation passed 9 bounded cases, including the formerly denied Host read and fresh sealed blind image analysis. The dedicated real-model managed recovery returned the exact seeded packet and unseen file in 2 captured native calls with verified sealed output. Publication is pending; no published download is asserted.
+
+<!-- /measured-qualification-1.3.19 -->
+
 Forge Conductor 1.3.19 (Windows package 1.3.19.0) targets Windows 11 x64. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
@@ -32,9 +38,9 @@ For upgrades, install a higher package version with the same stable identity and
 
 ## Current 1.3.19 distribution
 
-The 1.3.19 candidate distribution and publication are pending. Its complete ZIP must contain the signed 1.3.19.0 MSIX, public publisher certificate, installer, metadata and checksums before installation is qualified. The local engineering packages use the existing development publisher. Inspect actual verification and provenance for the committed source, executable hashes, signature and qualification scope. See [candidate notes](releases/1.3.19.md).
+The qualified 1.3.19.0 distribution binds its signed MSIX, public publisher certificate, installer, metadata and checksums to the source and installed verification below. The local engineering packages use the existing development publisher. Inspect actual verification and provenance for the committed source, executable hashes, signature and qualification scope. See [release notes](releases/1.3.19.md).
 
-The installed, unpublished [1.3.18 investigation](validation/HOST-CAPABILITIES-1.3.18.md) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact. Its exact installed identity is historical; the higher 1.3.19.0 candidate requires fresh package and acceptance checks.
+The installed, unpublished [1.3.18 investigation](validation/HOST-CAPABILITIES-1.3.18.md) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact. Its exact installed identity is historical; the final 1.3.19.0 higher-version upgrade and exact payload checks are recorded separately above.
 
 ## Earlier unpublished upgrade investigations
 

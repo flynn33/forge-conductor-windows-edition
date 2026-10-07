@@ -1,8 +1,14 @@
 # Windows workflow capabilities in 1.3.19
 
+<!-- measured-qualification-1.3.19 -->
+
+Both native WinHTTP timeout diagnostics consistently report the selected receive budget, with unchanged timeout, deadline and cancellation behavior. The managed-context legacy-lease fix is retained. The exact 1.3.19 source passed 162/162 Release tests in 74.37 seconds, Product All, all three static gates and package persistence. Windows CI separately passed 162/162 in 126.04 seconds. Installed/staging/MSIX hashes matched all four executables, and actual catalogs returned 104/104/5. The existing selected Qwen conversation passed 9 bounded cases, including the formerly denied Host read and fresh sealed blind image analysis. The dedicated real-model managed recovery returned the exact seeded packet and unseen file in 2 captured native calls with verified sealed output. Publication is pending; no published download is asserted.
+
+<!-- /measured-qualification-1.3.19 -->
+
 Forge adds dedicated web search/fetch/HTTP, native DOCX/XLSX/PPTX creation, visible desktop/accessibility/browser/input/capture, native PNG drawing and image previews, independent model workers and persistent model-task schedules. These join the existing tools, specialists, read-only reviewers, evidence, process jobs, memory, policy and continuity.
 
-Rig's corrected display shows the observed native conversation and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for actual rollover state; preference readback does not establish completed rollover. The higher 1.3.19 package includes this correction; final installed readback is recorded separately after execution.
+Rig's corrected display shows the observed native conversation and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for actual rollover state; preference readback does not establish completed rollover. The higher 1.3.19 package includes this correction; final installed/readback and current-chat evidence is recorded separately above.
 
 Explicit HTTP supports GET/HEAD/POST/PUT/PATCH/DELETE/OPTIONS, with bodies for POST/PUT/PATCH/DELETE. Only GET/HEAD follow redirects; use mutating methods within the user's authorized task and inspect the observed response. Remote accounts and credentials must come from an authorized existing connection or explicit API input.
 

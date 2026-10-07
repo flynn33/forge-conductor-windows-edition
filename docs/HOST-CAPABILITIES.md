@@ -1,8 +1,14 @@
 # Host workflows in 1.3.19
 
+<!-- measured-qualification-1.3.19 -->
+
+Both native WinHTTP timeout diagnostics consistently report the selected receive budget, with unchanged timeout, deadline and cancellation behavior. The managed-context legacy-lease fix is retained. The exact 1.3.19 source passed 162/162 Release tests in 74.37 seconds, Product All, all three static gates and package persistence. Windows CI separately passed 162/162 in 126.04 seconds. Installed/staging/MSIX hashes matched all four executables, and actual catalogs returned 104/104/5. The existing selected Qwen conversation passed 9 bounded cases, including the formerly denied Host read and fresh sealed blind image analysis. The dedicated real-model managed recovery returned the exact seeded packet and unseen file in 2 captured native calls with verified sealed output. Publication is pending; no published download is asserted.
+
+<!-- /measured-qualification-1.3.19 -->
+
 Primary and Fallback advertise 104 tools; CLU retains five governance tools, and all ten specialist playbooks remain. Call `host_capabilities` before deciding that a category is unavailable: it reports actual tool names, filesystem mode, Manager-backed capabilities, and external connection requirements. `get_forge_status` also reports the selected project's directory and detailed active authority. The full catalog remains available through the existing MCP protocol.
 
-Rig's corrected display shows the native conversation observed by the App and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. The preference does not establish live rollover availability. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for the native worker's actual state; its `available` flag becomes true after a successor conversation and handed message are verified. The 1.3.19 App includes this correction from the earlier candidate; final installation/readback remains pending in the versioned verification record. Earlier tests and package evidence retain their recorded source identities.
+Rig's corrected display shows the native conversation observed by the App and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. The preference does not establish live rollover availability. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for the native worker's actual state; its `available` flag becomes true after a successor conversation and handed message are verified. The 1.3.19 App includes this correction from the earlier candidate; final installed/readback and current-chat results are recorded in the versioned verification record. Earlier tests and package evidence retain their recorded source identities.
 
 ## Filesystem and project defaults
 

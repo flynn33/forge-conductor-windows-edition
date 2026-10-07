@@ -26,7 +26,9 @@ Production publication replaces `-DevelopmentSigning` with an approved PFX and p
 
 ## Current 1.3.19 verification
 
-The candidate retains all 104 tools and the existing managed context-recovery fix. Final committed-source/full-suite/CI, package, installation and current-chat checks are pending in the [1.3.19 qualification record](validation/HOST-CAPABILITIES-1.3.19.md). Required timeout coverage checks the selected provider budget during header and partial-body expiry, while retaining deadline, cancellation and shutdown assertions. Isolated Manager startup must preserve production routing. Earlier sections retain stage-local wording and apply only to their named artifacts.
+Both native WinHTTP timeout diagnostics consistently report the selected receive budget, with unchanged timeout, deadline and cancellation behavior. The managed-context legacy-lease fix is retained. The exact 1.3.19 source passed 162/162 Release tests in 74.37 seconds, Product All, all three static gates and package persistence. Windows CI separately passed 162/162 in 126.04 seconds. Installed/staging/MSIX hashes matched all four executables, and actual catalogs returned 104/104/5. The existing selected Qwen conversation passed 9 bounded cases, including the formerly denied Host read and fresh sealed blind image analysis. The dedicated real-model managed recovery returned the exact seeded packet and unseen file in 2 captured native calls with verified sealed output. Publication is pending; no published download is asserted.
+
+See [the measured record](validation/HOST-CAPABILITIES-1.3.19.md). The complete source suite includes selected receive-budget diagnostics during header and partial-body expiry, unchanged deadline/cancellation/shutdown assertions, isolated Manager routing preservation and the early exited-child startup regression.
 
 ## Historical unpublished 1.3.18 source and installed investigation
 
