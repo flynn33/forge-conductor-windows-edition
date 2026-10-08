@@ -1253,6 +1253,9 @@ void completedSuccessorRechecksChangedCacheWithoutNewGeneration()
     require(f.sends==3U && f.creations==1U && waiting["context_telemetry"]["pressure_source"]=="cached_rendered_prompt" &&
         waiting["context_telemetry"]["generation_reference"]==completed["context_telemetry"]["generation_reference"],
         "a completed successor ignored cache-only pressure or repeated New chat instead of requesting a fresh model packet");
+    const auto nextState=f.checkpoint().at("state");
+    require(!nextState.at("delivery_acknowledged").get<bool>() && !nextState.at("context_recovered").get<bool>(),
+        "a second rollover inherited delivery/recovery acknowledgements from the completed packet");
 }
 
 void cachedPromptTelemetryClearsWhenSelectionDisappears()
@@ -1457,6 +1460,109 @@ void explicitVisibleRouteRecoveryCases()
         f.nativeResume();f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="resumed";});
         require(f.creations==1U && f.sends==1U && bytes(archive)==raw,"completed explicit recovery replayed effects or altered its archive");
     });
+    run("completed_cycle_failed_new_request_has_no_delivery_acknowledgements",[&] {
+        VisibleHandoffFixture f;f.waiting();const auto predecessor=f.selected;f.saveModelPacket();
+        f.run([](const Json& status) {return status.value("state",std::string{})=="resuming";});
+        f.nativeResume();f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="resumed";});
+        const auto completed=f.checkpoint().at("state");
+        require(completed.at("delivery_acknowledged")==true && completed.at("context_recovered")==true,
+            "private first cycle did not complete with both real acknowledgements");
+        f.selected=predecessor;ConversationFixture::write(f.fixture.fileFixture.root()/".internal"/"conversation-config.json",Json{{"selectedConversation",predecessor}});
+        f.fault=VisibleHandoffFixture::Fault::UndispatchedRequest;f.reconstruct();
+        f.run([&](const Json& status) {
+            const auto error=status.value("error",std::string{});
+            if(error.find("32 MiB")==std::string::npos) return false;
+            const auto state=f.checkpoint().at("state");return state.at("phase")==1U &&
+                state.at("dispatch_error")==error && state.at("operational_error")==error;
+        });
+        const auto state=f.checkpoint().at("state");
+        require(!state.at("delivery_acknowledged").get<bool>() && !state.at("context_recovered").get<bool>() &&
+            !state.at("packet_request_acknowledged").get<bool>() && state.at("effect").is_null() &&
+            state.at("packet_id")=="" && state.at("packet_write_sequence")==0U &&
+            state.at("handed").is_null() && state.at("handed_message")=="" &&
+            state.at("previous_packet")=="durable-native-packet" && state.at("previous_sequence")==1U,
+            "a failed second cycle retained a delivery acknowledgement or lost the prior packet boundary");
+        require(f.creations==1U && f.sends==2U,"a failed second packet request repeated New chat or Send");
+    });
+    const auto legacyUndispatched=[&](VisibleHandoffFixture& f) {
+        f.fixture.fileFixture.save(conversation(Json::array()));f.saveModelPacket("prior-completed-packet",1U);
+        f.undispatched();auto saved=f.checkpoint();
+        require(saved.at("state").at("previous_packet")=="prior-completed-packet" && saved.at("state").at("previous_sequence")==1U,
+            "private legacy new cycle did not retain its prior model packet boundary");
+        saved["state"]["delivery_acknowledged"]=true;saved["state"]["context_recovered"]=true;
+        f.writeCheckpoint(saved);
+    };
+    run("legacy_empty_failed_cycle_requires_fresh_native_packet_and_preserves_archive",[&] {
+        VisibleHandoffFixture f;legacyUndispatched(f);const auto old=f.checkpoint();const auto raw=bytes(f.checkpointPath());
+        f.upgradeRoutes();f.saveModelPacket("fresh-second-cycle-packet",2U);const auto native=f.nativeHandoff();
+        const auto send=f.controls->send;std::atomic<bool> newCycleVerified{};
+        f.controls->send=[&](const Domain::PathText& executable,std::string_view text,bool newChat,
+            const Domain::OperationContext& operation,std::optional<std::string_view> expected,
+            const std::function<void(std::string_view)>& successor,
+            const Infrastructure::Windows::LMStudioChatEffectObserver& receipt) {
+            require(newChat,"legacy route recovery retried the failed old packet request");
+            const auto state=f.checkpoint().at("state");
+            require(state.at("phase")==2U && state.at("packet_id")=="fresh-second-cycle-packet" &&
+                state.at("packet_write_sequence")==2U && !state.at("delivery_acknowledged").get<bool>() &&
+                !state.at("context_recovered").get<bool>() && !state.at("packet_request_acknowledged").get<bool>() &&
+                state.at("effect").is_null(),"explicit legacy recovery did not clear only the prior cycle flags before new dispatch");
+            newCycleVerified=true;return send(executable,text,newChat,operation,expected,successor,receipt);
+        };
+        f.reconstruct();f.queueHandoff(native);
+        const auto status=f.run([](const Json& value) {return value.value("state",std::string{})=="resuming";});
+        require(newCycleVerified && f.creations==1U && f.sends==1U,"fresh native legacy recovery did not deliver exactly once");
+        const auto& recovery=status.at("route_recovery");
+        require(bytes(std::filesystem::path{recovery.at("archive_path").get<std::string>()})==raw &&
+            recovery.at("previous_scope")==old.at("scope") && recovery.at("previous_revision")==old.at("revision"),
+            "explicit recovery rewrote its legacy encrypted state or lost its source scope/revision");
+        require(!f.checkpoint()["state"]["packet_request_acknowledged"].get<bool>(),
+            "legacy recovery fabricated acknowledgement of the failed request");
+    });
+    for(const char* change:{"mixed_delivery","mixed_context","request_ack","repair_ack","repair_request","repair_attempt",
+        "successor","created_successor","handed_body","handed_message","packet_id","write_sequence",
+        "uncertain_effect","confirmed_effect","different_failure","missing_failure","rejected_packet","rejected_sequence","invalid_requests"}) {
+        run((std::string{"legacy_empty_cycle_refuses_"}+change).c_str(),[&,change] {
+            VisibleHandoffFixture f;legacyUndispatched(f);auto saved=f.checkpoint();auto& state=saved["state"];
+            const std::string_view field{change};
+            if(field=="mixed_delivery") state["delivery_acknowledged"]=false;
+            else if(field=="mixed_context") state["context_recovered"]=false;
+            else if(field=="request_ack") state["packet_request_acknowledged"]=true;
+            else if(field=="repair_ack") state["repair_acknowledged"]=true;
+            else if(field=="repair_request") state["repair_request"]="retained repair request";
+            else if(field=="repair_attempt") state["repair_attempts"]=1U;
+            else if(field=="successor") state["successor"]="project/other.conversation.json";
+            else if(field=="created_successor") state["created_successor"]="project/other.conversation.json";
+            else if(field=="handed_body") state["handed"]=Json::object();
+            else if(field=="handed_message") state["handed_message"]="retained delivered packet text";
+            else if(field=="packet_id") state["packet_id"]="prior-completed-packet";
+            else if(field=="write_sequence") state["packet_write_sequence"]=1U;
+            else if(field=="different_failure") state["operational_error"]="different real operational error";
+            else if(field=="missing_failure") state["dispatch_error"]="";
+            else if(field=="rejected_packet") state["last_rejected_packet"]="rejected-old-packet";
+            else if(field=="rejected_sequence") state["last_rejected_sequence"]=1U;
+            else if(field=="invalid_requests") state["processed_invalid_requests"]=Json::array({"old-invalid-request"});
+            else state["effect"]={{"kind","send"},{"stage",field=="confirmed_effect"?"confirmed":"uncertain"},{"purpose","request"},
+                {"conversation_id",f.selected},{"previous_user_messages",0U}};
+            f.writeCheckpoint(saved);f.upgradeRoutes();f.saveModelPacket("fresh-second-cycle-packet",2U);
+            const auto native=f.nativeHandoff();f.reconstruct();f.queueHandoff(native);refused(f);
+        });
+    }
+    run("legacy_empty_cycle_without_fresh_callback_does_not_migrate",[&] {
+        VisibleHandoffFixture f;legacyUndispatched(f);f.upgradeRoutes();f.saveModelPacket("fresh-second-cycle-packet",2U);
+        f.reconstruct();refused(f);
+    });
+    run("legacy_empty_cycle_stale_callback_scope_does_not_migrate",[&] {
+        VisibleHandoffFixture f;legacyUndispatched(f);f.saveModelPacket("fresh-second-cycle-packet",2U);const auto native=f.nativeHandoff();
+        f.reconstruct();f.queueHandoff(native);f.upgradeRoutes();refused(f);
+    });
+    run("legacy_empty_cycle_missing_native_result_does_not_migrate",[&] {
+        VisibleHandoffFixture f;legacyUndispatched(f);f.upgradeRoutes();f.saveModelPacket("fresh-second-cycle-packet",2U);const auto native=f.nativeHandoff();
+        f.fixture.fileFixture.save(conversation(Json::array()));f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    run("legacy_empty_cycle_unchanged_write_sequence_does_not_migrate",[&] {
+        VisibleHandoffFixture f;legacyUndispatched(f);f.upgradeRoutes();f.saveModelPacket("fresh-second-cycle-packet",1U);const auto native=f.nativeHandoff();
+        f.reconstruct();f.queueHandoff(native);refused(f);
+    });
     run("no_automatic_route_migration",[&] {
         VisibleHandoffFixture f;f.undispatched();f.upgradeRoutes();f.saveModelPacket();f.reconstruct();refused(f);
     });
@@ -1643,6 +1749,12 @@ void explicitVisibleRouteRecoveryCases()
         require(bytes(std::filesystem::path{status.at("route_recovery").at("archive_path").get<std::string>()})==raw,"planned route recovery changed the original encrypted archive");
         require(!f.checkpoint()["state"]["packet_request_acknowledged"].get<bool>(),"planned recovery fabricated an old request acknowledgement");
     });
+    run("planned_creating_paired_old_acknowledgements_are_not_normalized",[&] {
+        VisibleHandoffFixture f;planned(f);auto saved=f.checkpoint();
+        saved["state"]["delivery_acknowledged"]=true;saved["state"]["context_recovered"]=true;f.writeCheckpoint(saved);
+        f.upgradeRoutes();f.saveModelPacket("fresh-planned-packet",2U);const auto native=f.nativeHandoff();
+        f.reconstruct();f.queueHandoff(native);refused(f);
+    });
     run("planned_creating_old_callback_and_sequence_refused",[&] {
         VisibleHandoffFixture f;planned(f);f.upgradeRoutes();const auto native=f.nativeHandoff();f.reconstruct();f.queueHandoff(native);refused(f);
     });
@@ -1800,6 +1912,8 @@ void explicitVisibleRouteRecoveryCases()
         f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet";});
         const auto state=f.checkpoint().at("state");require(f.creations==1U && f.sends==3U && state.at("previous_sequence")==1U &&
             state.at("previous_packet")=="durable-native-packet" && state.at("packet_id")=="","returning to an aged chat replayed a successor or reused its prior packet");
+        require(!state.at("delivery_acknowledged").get<bool>() && !state.at("context_recovered").get<bool>(),
+            "returning to an aged predecessor retained the prior successor's delivery/recovery acknowledgements");
     });
     require(failures.empty(),"Explicit visible route recovery cases failed; inspect the per-case evidence above.");
 }

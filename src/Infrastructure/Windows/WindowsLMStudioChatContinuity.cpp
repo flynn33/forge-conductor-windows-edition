@@ -819,8 +819,10 @@ private:
             catch(...) {restoreCheckpointUnlocked(previous);throw;}
             const bool request=phase_==Phase::WaitingPacket && packetId_.empty() && packetWriteSequence_==0U && handed_.is_null() && handedMessage_.empty() && !dispatchError_.empty() && continuityError_==dispatchError_;
             const bool planned=phase_==Phase::Creating && !packetId_.empty() && packetWriteSequence_>0U && handed_.is_object() && !handedMessage_.empty();
+            const bool inheritedCompletedAcknowledgements=request && deliveryAcknowledged_ && contextRecovered_ &&
+                lastRejectedPacket_.empty() && lastRejectedSequence_==0U && processedInvalidRequests_.empty();
             const bool eligible=(request || planned) && effect_.is_null() && !packetRequestAcknowledged_ &&
-                !repairAcknowledged_ && !deliveryAcknowledged_ && !contextRecovered_ &&
+                !repairAcknowledged_ && ((!deliveryAcknowledged_ && !contextRecovered_) || inheritedCompletedAcknowledgements) &&
                 successor_.empty() && createdSuccessor_.empty() && repairRequest_.empty() && packetRepairAttempts_==0U && chat.conversationId==predecessor_;
             restoreCheckpointUnlocked(previous);
             if(!eligible) {recoveryUnlocked("Explicit route recovery is limited to the exact predecessor of an undispatched packet request; acknowledged or uncertain effects are retained without replay.");return false;}
@@ -863,6 +865,7 @@ private:
             auto next=saved;next["phase"]=static_cast<unsigned>(Phase::Creating);next["packet_id"]=packet.id.value();
             next["handed"]=nativeResult.at("packet");next["handed_message"]=resumePrompt(packet.id.value(),nativeResult.at("packet"));
             next["packet_write_sequence"]=record.writeSequence;next["operational_error"]="";next["dispatch_error"]="";
+            next["delivery_acknowledged"]=false;next["context_recovered"]=false;
             // The explicit model handoff replaces the failed request, without
             // asserting that the old request was ever sent or acknowledged.
             auto published=checkpoint_->recoverRoute(inspected.value(),next,[&] {
@@ -1311,6 +1314,7 @@ private:
                 "Do not use repeated-character padding. Keep the concrete pending next_actions; a generic continue/resume/next entry cannot resume the work. After saving the packet, acknowledge briefly and stop; Forge will open the successor LM Studio chat."+taskInstructions(chat)+nativeCallHistory(chat);
             { std::lock_guard lock{mutex_};predecessor_=chat.conversationId;phase_=Phase::WaitingPacket;
                 effect_=Json{};packetId_.clear();createdSuccessor_.clear();successor_.clear();handed_=Json{};handedMessage_.clear();packetWriteSequence_=0U;
+                deliveryAcknowledged_=false;contextRecovered_=false;
                 packetRequest_=prompt;packetRequestGeneration_=chat.generationEvidence;previousUserMessages_=chat.userMessages.size();packetRequestAcknowledged_=false;packetRepairAttempts_=0U;repairRequest_.clear();repairAcknowledged_=false;
                 lastRejectedPacket_.clear();lastRejectedSequence_=0U;
                 retryAfter_=clock_.monotonicNow()+std::chrono::seconds{5};status_["state"]="requesting_model_packet";
