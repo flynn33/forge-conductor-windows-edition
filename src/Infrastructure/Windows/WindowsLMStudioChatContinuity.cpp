@@ -541,8 +541,20 @@ private:
             return true;
         } catch(const std::exception& error) {checkpointFailure(error.what());return false;}
     }
+    bool terminalPacketRepairUnlocked() const {
+        return phase_==Phase::WaitingPacket && packetId_.empty() && packetWriteSequence_==0U &&
+            handed_.is_null() && handedMessage_.empty() && successor_.empty() && createdSuccessor_.empty() &&
+            packetRequestAcknowledged_ && repairAcknowledged_ && packetRepairAttempts_==3U &&
+            !deliveryAcknowledged_ && !contextRecovered_ && !packetRequest_.empty() && !repairRequest_.empty() &&
+            dispatchError_.empty() && continuityError_==
+                "No complete native handoff packet was saved after three corrective requests; rollover is deferred and Forge tools remain callable." &&
+            effect_.is_object() && effect_.at("kind")=="send" && effect_.at("purpose")=="repair" &&
+            effect_.at("stage")=="confirmed" && effect_.at("conversation_id")==predecessor_ &&
+            effect_.at("previous_user_messages")==previousRepairUserMessages_;
+    }
     bool recoverRouteFromNativeResume(const LMStudioConversationObservation& chat,
-                                      const Domain::OperationContext& operation)
+                                      const Domain::OperationContext& operation,
+                                      const bool terminalOnly = false)
     {
         try
         {
@@ -569,7 +581,10 @@ private:
                 checkpointLoaded_ = false;
                 checkpointLoadFailed_ = true;
             }
-            auto inspected = checkpoint_->inspectRouteRecovery(operation);
+            const auto recoveryScope = terminalOnly
+                ? Detail::LMStudioChatCheckpoint::RecoveryScope::TerminalPacket
+                : Detail::LMStudioChatCheckpoint::RecoveryScope::RouteChange;
+            auto inspected = checkpoint_->inspectRouteRecovery(operation, recoveryScope);
             if (!inspected)
             {
                 recoveryUnlocked(inspected.error().message);
@@ -586,38 +601,53 @@ private:
                 restoreCheckpointUnlocked(previous);
                 throw;
             }
+            const bool terminal = terminalPacketRepairUnlocked() && chat.conversationId != predecessor_;
             const bool eligible =
-                (phase_ == Phase::Creating || phase_ == Phase::Resuming ||
+                !terminalOnly && (phase_ == Phase::Creating || phase_ == Phase::Resuming ||
                  phase_ == Phase::Complete) &&
                 !packetId_.empty() && chat.conversationId != predecessor_ &&
                 (createdSuccessor_.empty() || createdSuccessor_ == chat.conversationId) &&
                 (effect_.is_null() || effect_.at("purpose") == "delivery");
             restoreCheckpointUnlocked(previous);
-            if (!eligible)
+            if (!eligible && !terminal)
             {
                 recoveryUnlocked("Native successor route recovery requires the retained successor "
                                  "and packet; an empty or unrelated chat cannot authorize replay.");
                 return false;
             }
-            const auto id =
-                Domain::LegacyHandoffId::parse(saved.at("packet_id").get<std::string>());
+            const auto receipt = routeRecoveryIntent_->result;
+            const auto id = Domain::LegacyHandoffId::parse(terminal
+                ? receipt.value("handoff_id", std::string{})
+                : saved.at("packet_id").get<std::string>());
+            if (!id) {
+                recoveryUnlocked("Native recovery callback has no valid complete model packet identifier.");
+                return false;
+            }
             auto retained = continuity_.get({id.value(), true}, operation);
             if (!retained)
             {
                 throw std::runtime_error{retained.error().message};
             }
             if (!retained.value().record ||
-                retained.value().record->writeSequence !=
-                    saved.at("packet_write_sequence").get<std::uint64_t>() ||
                 !completeModelPacket(retained.value().record->packet) ||
-                !samePacketBody(saved.at("handed"), retained.value().record->packet))
+                (terminal
+                    ? retained.value().record->writeSequence <= saved.at("previous_sequence").get<std::uint64_t>()
+                    : (retained.value().record->writeSequence != saved.at("packet_write_sequence").get<std::uint64_t>() ||
+                       !samePacketBody(saved.at("handed"), retained.value().record->packet))))
             {
                 recoveryUnlocked("Native successor route recovery requires the exact complete "
                                  "retained packet revision.");
                 return false;
             }
             const auto record = *retained.value().record;
-            const auto receipt = routeRecoveryIntent_->result;
+            if (terminal) {
+                auto pointer = memory_.get({"continuity/project/" + project_.value()}, operation);
+                if (!pointer) throw std::runtime_error{pointer.error().message};
+                if (!pointer.value().note || pointer.value().note->body != record.packet.id.value()) {
+                    recoveryUnlocked("Terminal packet recovery requires the current project's newly saved model packet pointer.");
+                    return false;
+                }
+            }
             if (!receipt.value("ok", false) || !receipt.value("found", false) ||
                 receipt.value("handoff_id", std::string{}) != record.packet.id.value() ||
                 !receipt.contains("packet") || !samePacketBody(receipt.at("packet"), record.packet))
@@ -639,14 +669,29 @@ private:
                 return nativeReceipt == receipt;
             };
             const auto evidence =
-                [&](const LMStudioConversationObservation& selected) -> std::string {
-                std::string request;
+                [&](const LMStudioConversationObservation& selected) -> std::pair<std::string, std::string> {
+                std::string handoff, request;
                 bool following = false;
                 for (const auto& result : selected.nativeToolResults)
                 {
-                    if (result.pluginIdentifier != "mcp/forge-conductor" ||
-                        result.requestId.empty() ||
-                        routeRecoveryIntent_->nativeResults.contains(nativeResultIdentity(result)))
+                    if (result.pluginIdentifier != "mcp/forge-conductor" || result.requestId.empty())
+                        continue;
+                    if (terminal && result.name == "session_handoff" && request.empty()) {
+                        const auto digest = checkpointDigest(result.content);
+                        const auto& baseline = saved.at("previous_native_handoffs");
+                        if (std::find(baseline.begin(), baseline.end(), Json(digest)) == baseline.end()) {
+                            for (const auto& body : result.textBodies) {
+                                const auto value = Json::parse(body, nullptr, false);
+                                if (value.is_object() && value.value("ok", false) &&
+                                    value.value("handoff_id", std::string{}) == record.packet.id.value() &&
+                                    value.value("resume_seed", std::string{}) == record.packet.resumeSeed &&
+                                    value.contains("packet") && samePacketBody(value.at("packet"), record.packet))
+                                    handoff = result.requestId;
+                            }
+                        }
+                        continue;
+                    }
+                    if (routeRecoveryIntent_->nativeResults.contains(nativeResultIdentity(result)))
                     {
                         continue;
                     }
@@ -658,7 +703,7 @@ private:
                             continue;
                         }
                         if (result.name == "context_get" && matchesResumeReceipt(value) &&
-                            request.empty())
+                            request.empty() && (!terminal || !handoff.empty()))
                         {
                             request = result.requestId;
                         }
@@ -670,9 +715,10 @@ private:
                         }
                     }
                 }
-                return following ? request : std::string{};
+                return following ? std::pair{handoff, request} : std::pair<std::string, std::string>{};
             };
-            const auto request = evidence(chat);
+            const auto nativeEvidence = evidence(chat);
+            const auto& request = nativeEvidence.second;
             if (request.empty())
             {
                 recoveryUnlocked("Native successor route recovery awaits the exact PRIMARY "
@@ -680,6 +726,12 @@ private:
                 return false;
             }
             auto next = saved;
+            if (terminal) {
+                next["packet_id"] = record.packet.id.value();
+                next["packet_write_sequence"] = record.writeSequence;
+                next["handed"] = receipt.at("packet");
+                next["handed_message"] = resumePrompt(record.packet.id.value(), receipt.at("packet"));
+            }
             next["created_successor"] = chat.conversationId;
             next["successor"] = chat.conversationId;
             next["phase"] = static_cast<unsigned>(Phase::Complete);
@@ -724,7 +776,7 @@ private:
                     if (!selected.value() ||
                         selected.value()->conversationId != chat.conversationId ||
                         selected.value()->toolsActive || !hasForgeIntegrations(*selected.value()) ||
-                        evidence(*selected.value()) != request)
+                        evidence(*selected.value()) != nativeEvidence)
                     {
                         return Domain::Result<void>::failure(Domain::makeError(
                             Domain::ErrorCodes::Conflict,
@@ -755,7 +807,7 @@ private:
                     }
                     return Domain::Result<void>::success();
                 },
-                operation);
+                operation, recoveryScope);
             if (!published)
             {
                 recoveryUnlocked(published.error().message);
@@ -786,8 +838,9 @@ private:
                 {"native_request_id", request},
                 {"packet_id", packetId_},
                 {"packet_write_sequence", packetWriteSequence_},
-                {"recovery_kind", "native_successor_resume"},
+                {"recovery_kind", terminal ? "terminal_model_packet_native_resume" : "native_successor_resume"},
                 {"automatic_replay", false}};
+            if (terminal) status_["route_recovery"]["native_handoff_request_id"] = nativeEvidence.first;
             traceUnlocked({{"event", "explicit_native_successor_route_recovery"},
                            {"archive", status_.at("route_recovery")},
                            {"result", receipt}});
@@ -1143,7 +1196,10 @@ private:
             failure("No complete native handoff packet was saved after three corrective requests; rollover is deferred and Forge tools remain callable.");return;
         }
         const auto repair="Auto Continuity: your completed response did not save a new continuity packet. Invoke the actual callable MCP tool session_handoff from forge-conductor NOW. "
-            "Use its packet_json STRING argument containing a complete JSON object with goal, detailed narrative and resume_seed (each at least 256 characters), "
+            "Use ONLY packet_json as the outer tool argument. Put ALL packet fields, including handoff_id when updating, inside its encoded JSON object. Do not duplicate packet fields outside packet_json. "
+            "Record each fact once in its appropriate packet field; refer to the packet's collections rather than repeating them in narrative and resume_seed. Keep narrative and resume_seed each at least 256 characters. "
+            "Aim for about 2000 output tokens only when all facts fit; never truncate or omit constraints, exact values, task facts or paths to meet that advisory target. "
+            "Use its packet_json STRING argument containing a complete JSON object with goal, detailed narrative and resume_seed, "
             "decisions as a nonempty array of EVERY explicit user constraint and exact release/version/protected-process values, key_files as actual path strings, "
             "and ordered next_actions as a nonempty array. Distinguish source reads from executed commands. Preserve project "+root_.value()+
             ". The tool is present in your MCP tool list. Do not use shell_exec, console commands, printed acknowledgments or placeholders as a substitute. "
@@ -1237,9 +1293,19 @@ private:
         catch(...) {failure("The automatic continuity preference could not be read.",true);return;}
         observationRecovered(chat.conversationId);
         { std::lock_guard lock{mutex_};status_["enabled"]=isEnabled; }
-        if(!ensureCheckpoint(operation) && (!isEnabled ||
+        const bool checkpointReady = ensureCheckpoint(operation);
+        if(!checkpointReady && (!isEnabled ||
             (!recoverRouteFromNativeResume(chat,operation) && !recoverRouteFromNativeHandoff(chat,operation)))) return;
         if(!isEnabled) return;
+        if (checkpointReady) {
+            bool terminalIntent{};
+            {
+                std::lock_guard lock{mutex_};
+                terminalIntent = terminalPacketRepairUnlocked() && routeRecoveryIntent_ &&
+                    routeRecoveryIntent_->tool == "context_get";
+            }
+            if (terminalIntent && !recoverRouteFromNativeResume(chat, operation, true)) return;
+        }
         if(!reconcileCheckpoint(chat,operation)) return;
         Phase phase;bool delivered; {std::lock_guard lock{mutex_};phase=phase_;delivered=deliveryAcknowledged_;}
         if(phase==Phase::Complete) {
@@ -1306,10 +1372,13 @@ private:
                 std::to_string(chat.usedTokens)+" tokens of "+std::to_string(chat.contextCapacity)+
                 ", with "+std::to_string(budget.value().reserved)+" tokens reserved."+cachedPromptDescription+
                 " Stop additional task work at this pause. "
+                "Use ONLY packet_json as the outer tool argument. Put ALL packet fields, including handoff_id when updating, inside its encoded JSON object. Do not duplicate packet fields outside packet_json. "
+                "Record each fact once in its appropriate packet field; refer to the packet's collections rather than repeating them in narrative and resume_seed. Keep narrative and resume_seed each at least 256 characters. "
+                "Aim for about 2000 output tokens only when all facts fit; never truncate or omit constraints, exact values, task facts or paths to meet that advisory target. "
                 "Invoke the actual MCP tool session_handoff through forge-conductor with packet_json: a JSON STRING containing the complete packet object. This callable tool is in your tool list. A shell command or a printed claim does not save a packet. "
                 "Include the current task goal, all constraints, completed changes with exact paths, commands and actual results, "
                 "decisions, blockers, key_files, agent session IDs, and ordered next_actions. In decisions, record EVERY explicit user constraint as separate strings: prohibitions, release/version instructions, protected installed processes, approval boundaries and project/package/policy bindings. Preserve exact values supplied by the user. Do not replace them with a generic claim that constraints were preserved. Distinguish code you read from commands actually executed; do not claim reading a function proves it ran. Put detailed state in resume_seed "
-                "as well as narrative and collections. Omit handoff_id to create a new packet; never invent an existing packet ID. Inside the packet_json string, include JSON object fields goal, narrative, resume_seed, decisions as a nonempty array of explicit user constraints, key_files as a nonempty array of actual path strings (the real project root is valid when no individual files were read), and next_actions as a nonempty array of concrete ordered action strings. The resume_seed must be detailed task prose, not an opaque identifier. The arrays must be actual JSON fields in that object, not descriptions inside narrative or resume_seed. Do not use summary alone. Serialize the full object into packet_json in the actual tool call. Include the exact user constraints, measured tool counts, actual file reads and findings. Use task-specific prose; never use draft markers, filler, padded strings or a summary-only patch. Write task-specific facts from this chat; state unverified claims as unverified. The narrative and resume_seed each need at least 256 characters. Preserve project folder "+root_.value()+
+                "with actionable pending instructions, and put detailed task facts in narrative and collections. Omit handoff_id to create a new packet; never invent an existing packet ID. Inside the packet_json string, include JSON object fields goal, narrative, resume_seed, decisions as a nonempty array of explicit user constraints, key_files as a nonempty array of actual path strings (the real project root is valid when no individual files were read), and next_actions as a nonempty array of concrete ordered action strings. The resume_seed must be detailed task prose, not an opaque identifier. The arrays must be actual JSON fields in that object, not descriptions inside narrative or resume_seed. Do not use summary alone. Serialize the full object into packet_json in the actual tool call. Include the exact user constraints, measured tool counts, actual file reads and findings. Use task-specific prose; never use draft markers, filler, padded strings or a summary-only patch. Write task-specific facts from this chat; state unverified claims as unverified. The narrative and resume_seed each need at least 256 characters. Preserve project folder "+root_.value()+
                 ". Preserve all existing user constraints and follow the bound instruction packages and development policies. "
                 "Do not use repeated-character padding. Keep the concrete pending next_actions; a generic continue/resume/next entry cannot resume the work. After saving the packet, acknowledge briefly and stop; Forge will open the successor LM Studio chat."+taskInstructions(chat)+nativeCallHistory(chat);
             { std::lock_guard lock{mutex_};predecessor_=chat.conversationId;phase_=Phase::WaitingPacket;
@@ -1394,6 +1463,9 @@ private:
                         failure("The model still has not supplied a complete packet after three corrective requests; automatic rollover is deferred and Forge tools remain callable.");return;
                     }
                     const auto repair="Auto Continuity: YOUR session_handoff call was rejected. You must correct YOUR tool call now; do not ask the user to resend it. "
+                        "Use ONLY packet_json as the outer tool argument. Put ALL packet fields, including handoff_id when updating, inside its encoded JSON object. Do not duplicate packet fields outside packet_json. "
+                        "Record each fact once in its appropriate packet field; refer to the packet's collections rather than repeating them in narrative and resume_seed. Keep narrative and resume_seed each at least 256 characters. "
+                        "Aim for about 2000 output tokens only when all facts fit; never truncate or omit constraints, exact values, task facts or paths to meet that advisory target. "
                         "Use the packet_json argument: serialize a complete JSON object into this STRING argument on session_handoff. Omit handoff_id for a new packet; do not invent an existing ID. Use detailed task prose for resume_seed, never an opaque ID or padded token. The object must keep your full detailed goal, narrative and resume_seed, with decisions as a nonempty array listing EVERY explicit user constraint, exact release/version values, protected installed processes and project/package/policy bindings. Distinguish source reads from commands actually executed. Then include these actual JSON array fields: "
                         "\"key_files\":["+Json(root_.value()).dump()+"] (include the actual task files as additional array items); "
                         "\"next_actions\":[\"Call context_get for this packet\",\"Call agent_list to verify agents remain available\",\"Call get_forge_status, then resume the user's pending task\"]. "
@@ -1442,8 +1514,12 @@ private:
                 }
                 auto idle=controls_->idle(exe_,operation);
                 if(!idle) throw std::runtime_error{idle.error().message};if(chat.toolsActive || !idle.value()) return;
-                const auto repair="Auto Continuity cannot use this incomplete packet. Call session_handoff with handoff_id=\""+
-                    packet.id.value()+"\" and packet_json: a STRING containing the complete JSON object with ALL these fields: goal (non-empty task goal), narrative (full detailed string, at least 256 characters), "
+                const auto repair="Auto Continuity cannot use this incomplete packet. "
+                    "Use ONLY packet_json as the outer tool argument. Put ALL packet fields, including handoff_id when updating, inside its encoded JSON object. Do not duplicate packet fields outside packet_json. "
+                    "Record each fact once in its appropriate packet field; refer to the packet's collections rather than repeating them in narrative and resume_seed. Keep narrative and resume_seed each at least 256 characters. "
+                    "Aim for about 2000 output tokens only when all facts fit; never truncate or omit constraints, exact values, task facts or paths to meet that advisory target. "
+                    "Call session_handoff with packet_json: a STRING containing the complete JSON object. Include handoff_id=\""+
+                    packet.id.value()+"\" INSIDE that object to update this packet, together with ALL these fields: goal (non-empty task goal), narrative (full detailed string, at least 256 characters), "
                     "resume_seed (full detailed string, at least 256 characters), key_files (non-empty array of actual path strings), "
                     "next_actions (non-empty array of ordered action strings), decisions (non-empty array listing EVERY explicit user constraint with exact release/version values and protected processes). Do not send a summary-only or status-only patch. "
                     "Put real arrays in the JSON object serialized into packet_json; do not put them only in narrative or resume_seed. Preserve every user constraint, exact tool results/counts, "

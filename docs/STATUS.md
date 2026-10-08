@@ -1,8 +1,10 @@
 # Product status
 
-## Current 1.3.27 source candidate
+## Current 1.3.28 source candidate
 
-The **1.3.27 source candidate / Windows package 1.3.27.0** retains 112 Primary/Fallback descriptors, five CLU tools, ten specialist playbooks and every existing feature. The planned continuity change clears acknowledgement and context-recovery state when starting a new packet-request cycle. A narrow legacy-undispatched-request recovery path requires fresh authorized Primary handoff and exact native packet evidence; it must not replay an uncertain New chat or Send. Manager ownership, cached-pressure generation evidence and the separate 25-second dispatch context remain. Implementation, regression checks, final clean artifact source, build/tests, signed installation, catalogs, native/public workflows, automatic delivery, CI and publication are **pending**. No earlier 1.3.26 pass qualifies this candidate.
+The **1.3.28 source candidate / Windows package 1.3.28.0** retains 112 Primary/Fallback tool names, five CLU tools, ten specialist playbooks and every existing feature. Automatic handoff and repair instructions ask the model to send only the outer `packet_json` string argument, with all packet fields inside its encoded JSON object. The same instructions ask the model to record each fact once and use an advisory output target only when every constraint, exact value, task fact and path fits. Direct-field calls and conflicting-field refusal remain supported. The only catalog amendment is the `session_handoff` packet_json description; every other descriptor field remains exact. Manager ownership, acknowledgement resets, guarded legacy recovery, cached-pressure evidence and the separate 25-second dispatch context are retained. The source now supports explicit recovery from the exhausted, acknowledged three-repair waiting state without a saved packet. A fresh native Primary session_handoff must save a complete model-authored packet with a new sequence and the current project pointer; an exact context_get result and a later successful Primary tool result authorize recovery in the selected successor. The original encrypted checkpoint is archived exactly, historical acknowledgements are retained, and this recovery issues no automatic New chat or Send replay. Installed native verification of this branch remains open. Final clean source/build, signature/install, catalogs, installed native handoff, CI and publication require new evidence; no earlier 1.3.27.0 result qualifies these binaries.
+
+The focused working-source build and three-target check passed: 3/3 targets in 147.40 seconds, 141 Infrastructure groups in 147.11 seconds, all 40 terminal-recovery cases, 1,042 catalog assertions and 2,090 adapter assertions. The terminal cases cover unchanged and changed routes, refusal of incomplete or mismatched native evidence, and sequence/pointer changes before publication. These are source regressions; the complete release graph, signed installation, actual Qwen recovery, automatic New/Send, exact-source CI and publication require separate current-artifact evidence.
 
 ## Historical 1.3.26 installed investigation
 
@@ -10,7 +12,7 @@ The installed, unpublished **1.3.26 / Windows package 1.3.26.0** artifact at sou
 
 The selected Qwen recovery capture contained **24 messages**. Two actual Primary calls returned saved context and status reporting **1.3.26 / 112 tools**; the response reached `eosFound`. Manager remained `recovery_pending` at inherited checkpoint revision **14**: `WaitingPacket`, no packet or successor, no effect, and false packet-request acknowledgement, while delivery acknowledgement and context recovery remained true from the older cycle. The current source begins a new packet-request cycle without clearing those two flags. Fresh native readback did not satisfy the existing successor-and-packet recovery eligibility. Automatic New chat/Send and successor continuation were not established, and no 1.3.26 release was published. The subsequent 1.3.27 changes and their checks have separate inputs. The independently retained native process handles recorded all three predecessor connector CLIs and bridge processes exiting with code `1` while Manager PID `35288` remained alive. This is separate from the normal code `0` isolated processes and does not prove automatic handoff. Selected native five-group and native image-provider scopes were not qualified by these captures.
 
-See [candidate notes](releases/1.3.27.md), [pending qualification](validation/HOST-CAPABILITIES-1.3.27.md) and [retained 1.3.24 scopes](validation/HOST-CAPABILITIES-1.3.24.md).
+See [candidate notes](releases/1.3.28.md), [pending qualification](validation/HOST-CAPABILITIES-1.3.28.md) and [retained 1.3.24 scopes](validation/HOST-CAPABILITIES-1.3.24.md).
 
 ## Superseded 1.3.24 installed investigation
 
@@ -30,7 +32,7 @@ The superseded installed 1.3.22 candidate at source `9178abdf12998af56df4860a56b
 
 See [retained 1.3.22 measurements](validation/HOST-CAPABILITIES-1.3.22.md).
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.27 candidate.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.28 candidate.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -50,7 +52,7 @@ Stock LM Studio MCP image metadata remains distinct from model image input and i
 
 
 
-The current source version is 1.3.27 / Windows package identity 1.3.27.0, with 112 Primary/Fallback tools, ten specialist playbooks and five CLU tools. Native CMake/CTest jobs, paged desktop accessibility reads and optional higher-resolution bounded previews extend dedicated web, native Office, desktop/browser, image analysis, independent workers and schedules. Owner-selected host/workspace filesystem modes and existing contracts remain. Integrated 1.3.27 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. See [capabilities](HOST-CAPABILITIES.md), [CMake/CTest](CMAKE-CTEST.md), [implementation notes](releases/1.3.27.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.27.md).
+The current source version is 1.3.28 / Windows package identity 1.3.28.0, with 112 Primary/Fallback tools, ten specialist playbooks and five CLU tools. Native CMake/CTest jobs, paged desktop accessibility reads and optional higher-resolution bounded previews extend dedicated web, native Office, desktop/browser, image analysis, independent workers and schedules. Owner-selected host/workspace filesystem modes and existing contracts remain. Integrated 1.3.28 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. See [capabilities](HOST-CAPABILITIES.md), [CMake/CTest](CMAKE-CTEST.md), [implementation notes](releases/1.3.28.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.28.md).
 
 The historical 1.3.19 source, installed and current-chat results are recorded above. The installed, unpublished [1.3.18 investigation](validation/HOST-CAPABILITIES-1.3.18.md) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact.
 
@@ -73,7 +75,7 @@ The installed 1.3.11 Release suite passed 153/153; signed installation, all thre
 | Packages | Universal inventory and streamed hashes; callable `instruction_package.read` returns the selected project queue row and paged content. |
 | Status | `get_forge_status` returns project ID/folder and binding source, ordered package paths, policy source/revision, tool names/count, and agent count. |
 | Governance | Bound repository reading, structured evidence evaluation, findings, model tool-result notifications, visible findings/correction history, and redacted export. |
-| Auto Continuity | The 1.3.27 candidate uses a Manager-lifetime observer and authorized Primary observations. Actual native messages/effects, packet retrieval and a following Forge result gate completion; installed qualification is pending. |
+| Auto Continuity | The 1.3.28 candidate uses a Manager-lifetime observer and authorized Primary observations. Actual native messages/effects, packet retrieval and a following Forge result gate completion; installed qualification is pending. |
 | Telemetry layout | Real WinUI observer with injected Manager measured zero Rig position transitions across 16 polls; injected CPU values kept updating. |
 | Packet view | Saved packet list and detail, refresh, delete selected packet, and clear all packets. |
 | Settings | Load/save/readback/revert/test/restart controls remain; record selection plus delete buttons replaces the old scope-maintenance scheme. |

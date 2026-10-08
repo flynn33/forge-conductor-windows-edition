@@ -13,6 +13,7 @@ namespace ForgeConductor::Infrastructure::Windows::Detail {
 // The scope is supplied by the current caller; a document never issues authority.
 class LMStudioChatCheckpoint final {
 public:
+    enum class RecoveryScope { RouteChange, TerminalPacket };
     struct RouteRecoverySnapshot final {
         nlohmann::json document;
         std::vector<std::byte> stored;
@@ -29,11 +30,13 @@ public:
     [[nodiscard]] Domain::Result<void> save(const nlohmann::json& state,
         const Domain::OperationContext& operation) noexcept;
     [[nodiscard]] Domain::Result<RouteRecoverySnapshot> inspectRouteRecovery(
-        const Domain::OperationContext& operation) noexcept;
+        const Domain::OperationContext& operation,
+        RecoveryScope recoveryScope = RecoveryScope::RouteChange) noexcept;
     [[nodiscard]] Domain::Result<Domain::PathText> recoverRoute(
         const RouteRecoverySnapshot& snapshot, const nlohmann::json& state,
         const std::function<Domain::Result<void>()>& freshAuthority,
-        const Domain::OperationContext& operation) noexcept;
+        const Domain::OperationContext& operation,
+        RecoveryScope recoveryScope = RecoveryScope::RouteChange) noexcept;
     [[nodiscard]] const nlohmann::json& scope() const noexcept { return scope_; }
     [[nodiscard]] const Domain::PathText& path() const noexcept { return path_; }
     [[nodiscard]] static Domain::Result<std::vector<std::byte>> seal(

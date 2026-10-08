@@ -975,6 +975,292 @@ Json visibleContinuityTraceEvent(const VisibleHandoffFixture& fixture, const std
     return found;
 }
 
+void requireCompactPacketEnvelope(const std::string& prompt, const std::string& root)
+{
+    for (const auto instruction : {
+        "Use ONLY packet_json as the outer tool argument.",
+        "Put ALL packet fields, including handoff_id when updating, inside its encoded JSON object.",
+        "Do not duplicate packet fields outside packet_json.",
+        "Record each fact once in its appropriate packet field",
+        "Keep narrative and resume_seed each at least 256 characters.",
+        "Aim for about 2000 output tokens only when all facts fit",
+        "never truncate or omit constraints, exact values, task facts or paths"}) {
+        require(prompt.find(instruction) != std::string::npos,
+            "model packet prompt omitted an exclusive-envelope or lossless compactness instruction");
+    }
+    for (const auto field : {"goal", "narrative", "resume_seed", "decisions", "key_files", "next_actions"}) {
+        require(prompt.find(field) != std::string::npos,
+            "compact model packet guidance omitted a required complete-packet field");
+    }
+    require(prompt.find(root) != std::string::npos || prompt.find(Json(root).dump()) != std::string::npos,
+        "compact model packet guidance lost the exact bound project path");
+    require(prompt.find("user constraint") != std::string::npos && prompt.find("actual") != std::string::npos,
+        "compact model packet guidance lost explicit constraints or actual-evidence instructions");
+}
+
+constexpr std::string_view ExhaustedPacketError =
+    "No complete native handoff packet was saved after three corrective requests; rollover is deferred and Forge tools remain callable.";
+
+Json terminalConfirmedPacketRepair(VisibleHandoffFixture& fixture)
+{
+    fixture.upgradeRoutes();
+    fixture.fixture.fileFixture.save(conversation(Json::array()));
+    fixture.saveModelPacket("prior-terminal-packet", 10U);
+    fixture.waiting();
+    auto saved = fixture.checkpoint();
+    auto& state = saved.at("state");
+    const std::string repair = "Auto Continuity: this is the exact third private corrective request for a complete model packet.";
+    fixture.append(message(Json::array({Json{{"type", "singleStep"}, {"role", "user"},
+        {"content", Json::array({Json{{"type", "text"}, {"text", repair}}})}}})));
+    state["repair_request"] = repair;
+    state["repair_acknowledged"] = true;
+    state["repair_attempts"] = 3U;
+    state["previous_repair_user_messages"] = 1U;
+    state["effect"] = Json{{"kind", "send"}, {"purpose", "repair"}, {"stage", "confirmed"},
+        {"conversation_id", fixture.selected}, {"previous_user_messages", 1U}};
+    state["operational_error"] = std::string{ExhaustedPacketError};
+    state["dispatch_error"] = "";
+    fixture.writeCheckpoint(saved);
+    fixture.sends = 0U;
+    return saved;
+}
+
+Json terminalPacketResumeReceipt(const VisibleHandoffFixture& fixture)
+{
+    const auto handoff = fixture.nativeHandoff();
+    return Json{{"ok", true}, {"found", true}, {"handoff_id", handoff.at("handoff_id")},
+        {"resume_seed", handoff.at("resume_seed")}, {"packet", handoff.at("packet")}};
+}
+
+void terminalConfirmedPacketRepairNativeRecovery()
+{
+    for (const bool changedRoutes : {false, true}) {
+        VisibleHandoffFixture fixture;
+        const auto saved = terminalConfirmedPacketRepair(fixture);
+        std::ifstream input{fixture.checkpointPath(), std::ios::binary};
+        const std::vector<char> original{std::istreambuf_iterator<char>{input}, {}};
+        input.close();
+        if (changedRoutes) {
+            auto routes = fixture.upgradeRoutes();
+            for (const char* role : {"forge-conductor", "forge-conductor-fallback", "forge-conductor-clu"})
+                routes["mcpServers"][role]["env"]["FORGE_DEPLOYMENT_ID"] = "7dbe3c65-2d62-4d77-8ad9-27dcddc6e366";
+            ConversationFixture::write(fixture.fixture.fileFixture.root() / "mcp.json", routes);
+        }
+        fixture.select("project/terminal-native-resume.conversation.json", conversation(Json::array()));
+        fixture.saveModelPacket("fresh-terminal-packet", 11U);
+        const auto receipt = terminalPacketResumeReceipt(fixture);
+        fixture.reconstruct();
+        fixture.fixture.observer->recordTool("context_get", true, receipt.dump());
+        fixture.append(message(Json::array({version(Json::array({
+            VisibleHandoffFixture::tool("context_get", receipt, 20U),
+            VisibleHandoffFixture::tool("agent_list", Json{{"ok", true}}, 21U), generation(3000U, 32768U)}))})));
+        const auto status = fixture.run([](const Json& value) {return value.value("state", std::string{}) == "resumed";});
+        const auto& recovery = status.at("route_recovery");
+        const auto archivePath = std::filesystem::path{recovery.at("archive_path").get<std::string>()};
+        const auto extendedArchivePath = std::filesystem::path{L"\\\\?\\" + std::filesystem::absolute(archivePath).wstring()};
+        std::ifstream archive{extendedArchivePath, std::ios::binary};
+        require(static_cast<bool>(archive), "terminal archive fixture read failed; path characters=" +
+            std::to_string(archivePath.wstring().size()) + "; original bytes=" + std::to_string(original.size()));
+        require(std::vector<char>{std::istreambuf_iterator<char>{archive}, {}} == original,
+            "terminal recovery changed its original encrypted failed-state archive");
+        const auto current = fixture.checkpoint();
+        require(fixture.sends == 0U && fixture.creations == 0U && recovery.at("automatic_replay") == false &&
+            recovery.at("recovery_kind") == "terminal_model_packet_native_resume" &&
+            current.at("revision") == saved.at("revision").get<std::uint64_t>() + 1U &&
+            current.at("state").at("phase") == 4U && current.at("state").at("packet_id") == "fresh-terminal-packet" &&
+            current.at("state").at("packet_write_sequence") == 11U &&
+            current.at("state").at("packet_request_acknowledged") == true &&
+            current.at("state").at("repair_acknowledged") == true && current.at("state").at("repair_attempts") == 3U,
+            "terminal native recovery replayed a UI effect or lost the retained failed-cycle boundary");
+        std::cout << "[CASE PASS] continuity-terminal-repair." << (changedRoutes ? "changed_routes" : "same_routes") << '\n';
+    }
+    const auto bytes = [](const std::filesystem::path& path) {
+        std::ifstream input{path, std::ios::binary};
+        return std::vector<char>{std::istreambuf_iterator<char>{input}, {}};
+    };
+    const auto refused = [&](VisibleHandoffFixture& fixture) {
+        const auto original = bytes(fixture.checkpointPath());
+        std::optional<std::int64_t> first;
+        fixture.run([&](const Json& status) {
+            if (status.value("state", std::string{}) != "recovery_pending" || !status.contains("context_telemetry")) return false;
+            const auto observed = status.at("context_telemetry").at("observed_at_unix_ms").get<std::int64_t>();
+            if (!first) {first = observed; return false;}
+            return observed > *first;
+        });
+        require(bytes(fixture.checkpointPath()) == original && fixture.sends == 0U && fixture.creations == 0U,
+            "refused terminal recovery changed the encrypted checkpoint or dispatched a UI effect");
+    };
+    for (const char* fault : {"request_unacknowledged", "repair_unacknowledged", "attempts_not_exhausted",
+        "uncertain_effect", "missing_effect", "wrong_effect_kind", "wrong_effect_purpose", "wrong_effect_chat",
+        "wrong_effect_boundary", "wrong_error", "dispatch_error", "empty_repair", "delivery_ack", "context_ack",
+        "planned_packet", "saved_successor", "cross_project", "provider_scope", "home_scope", "source_contract",
+        "stale_callback_scope", "missing_callback", "missing_handoff", "fallback_handoff", "missing_context",
+        "fallback_context", "missing_following", "fallback_following", "reversed_results", "stale_context_ids",
+        "stale_sequence", "pointer_drift", "incomplete_packet", "automatic_packet", "handoff_body_drift"}) {
+        VisibleHandoffFixture fixture;
+        auto saved = terminalConfirmedPacketRepair(fixture);
+        auto& state = saved.at("state");
+        const std::string_view change{fault};
+        if (change == "request_unacknowledged") state["packet_request_acknowledged"] = false;
+        else if (change == "repair_unacknowledged") state["repair_acknowledged"] = false;
+        else if (change == "attempts_not_exhausted") state["repair_attempts"] = 2U;
+        else if (change == "uncertain_effect") state["effect"]["stage"] = "uncertain";
+        else if (change == "missing_effect") state["effect"] = nullptr;
+        else if (change == "wrong_effect_kind") state["effect"]["kind"] = "new_chat";
+        else if (change == "wrong_effect_purpose") state["effect"]["purpose"] = "request";
+        else if (change == "wrong_effect_chat") state["effect"]["conversation_id"] = "project/third.conversation.json";
+        else if (change == "wrong_effect_boundary") state["effect"]["previous_user_messages"] = 0U;
+        else if (change == "wrong_error") state["operational_error"] = "A different operational failure.";
+        else if (change == "dispatch_error") state["dispatch_error"] = "A dispatch is still uncertain.";
+        else if (change == "empty_repair") state["repair_request"] = "";
+        else if (change == "delivery_ack") state["delivery_acknowledged"] = true;
+        else if (change == "context_ack") state["context_recovered"] = true;
+        else if (change == "planned_packet") {state["packet_id"] = "prior-terminal-packet"; state["packet_write_sequence"] = 10U;}
+        else if (change == "saved_successor") state["created_successor"] = "project/third.conversation.json";
+        else if (change == "cross_project") saved["scope"]["project_id"] = "a0e807fe-c975-45df-9ec6-4c1125985067";
+        else if (change == "provider_scope") saved["scope"]["provider"]["port"] = 1235U;
+        else if (change == "home_scope") saved["scope"]["home"] = "C:/private/unrelated-home";
+        else if (change == "source_contract") saved["source_contract"] = "a-different-contract";
+        fixture.writeCheckpoint(saved);
+        fixture.select("project/terminal-native-resume.conversation.json", conversation(Json::array()));
+        fixture.saveModelPacket("fresh-terminal-packet", change == "stale_sequence" ? 10U : 11U);
+        auto receipt = terminalPacketResumeReceipt(fixture);
+        if (change == "missing_handoff") fixture.select(fixture.selected, conversation(Json::array()));
+        else if (change == "fallback_handoff" || change == "handoff_body_drift") {
+            const auto path = fixture.fixture.fileFixture.root() / "conversations" / std::filesystem::path{fixture.selected};
+            std::ifstream input{path, std::ios::binary}; auto native = Json::parse(input); input.close();
+            auto& content = native["messages"][0]["versions"][0]["steps"][0]["content"];
+            if (change == "fallback_handoff") content[0]["pluginIdentifier"] = "mcp/forge-conductor-fallback";
+            else content[1]["content"] = Json::array({Json{{"type", "text"}, {"text", Json{{"ok", true},
+                {"handoff_id", "fresh-terminal-packet"}, {"resume_seed", "different native packet"}, {"packet", receipt.at("packet")}}.dump()}}}).dump();
+            ConversationFixture::write(path, native);
+        }
+        if (change == "pointer_drift") {
+            TestContext operation;
+            const auto stored = take(fixture.fixture.memory.set({"continuity/project/" + fixture.fixture.project.value(), "prior-terminal-packet", {}}, operation.active()));
+            require(stored.stored, "private pointer drift was not saved");
+        }
+        if (change == "incomplete_packet") fixture.fixture.legacyContinuity.record->packet.resumeReady = false;
+        if (change == "automatic_packet") fixture.fixture.legacyContinuity.record->packet.source = Domain::LegacyHandoffSource::Automatic;
+        auto contextTool = VisibleHandoffFixture::tool("context_get", receipt, 20U);
+        auto followingTool = VisibleHandoffFixture::tool("agent_list", Json{{"ok", true}}, 21U);
+        if (change == "fallback_context") contextTool["content"][0]["pluginIdentifier"] = "mcp/forge-conductor-fallback";
+        if (change == "fallback_following") followingTool["content"][0]["pluginIdentifier"] = "mcp/forge-conductor-fallback";
+        if (change == "stale_context_ids") fixture.append(message(Json::array({version(Json::array({contextTool, followingTool}))})));
+        fixture.reconstruct();
+        if (change != "missing_callback") fixture.fixture.observer->recordTool("context_get", true, receipt.dump());
+        if (change == "stale_callback_scope") {
+            auto routes = fixture.upgradeRoutes();
+            for (const char* role : {"forge-conductor", "forge-conductor-fallback", "forge-conductor-clu"})
+                routes["mcpServers"][role]["env"]["FORGE_DEPLOYMENT_ID"] = "c39e356b-d26d-41c9-9b1b-b006a62bed65";
+            ConversationFixture::write(fixture.fixture.fileFixture.root() / "mcp.json", routes);
+        }
+        auto steps = Json::array();
+        if (change == "reversed_results") steps.push_back(followingTool);
+        if (change != "missing_context") steps.push_back(contextTool);
+        if (change != "missing_following" && change != "reversed_results") steps.push_back(followingTool);
+        steps.push_back(generation(3000U, 32768U));
+        fixture.append(message(Json::array({version(steps)})));
+        refused(fixture);
+        std::cout << "[CASE PASS] continuity-terminal-repair.refuses_" << fault << '\n';
+    }
+    for (const bool pointerDrift : {false, true}) {
+        VisibleHandoffFixture fixture;
+        terminalConfirmedPacketRepair(fixture);
+        fixture.select("project/terminal-native-resume.conversation.json", conversation(Json::array()));
+        fixture.saveModelPacket("fresh-terminal-packet", 11U);
+        const auto receipt = terminalPacketResumeReceipt(fixture);
+        std::atomic<std::size_t> freshCalls{};
+        fixture.fixture.observer.reset();
+        fixture.fixture.observer = Infrastructure::Windows::Detail::LMStudioChatContinuityAccess::createScoped(
+            fixture.controls, std::nullopt,
+            [&](const Domain::ProjectId&, const Domain::PathText&, const Domain::OperationContext& operation) {
+                ++freshCalls;
+                if (pointerDrift) {
+                    auto result = fixture.fixture.memory.set({"continuity/project/" + fixture.fixture.project.value(), "prior-terminal-packet", {}}, operation);
+                    require(result && result.value().stored, "private publication pointer drift failed");
+                } else ++fixture.fixture.legacyContinuity.record->writeSequence;
+                return Domain::Result<void>::success();
+            }, fixture.fixture.project, fixture.fixture.fileFixture.path(), fixture.home(), fixture.fixture.fileFixture.path(),
+            fixture.fixture.fileFixture.path(), Domain::LocalModelConfig{}, fixture.fixture.memory, fixture.fixture.legacyContinuity,
+            fixture.fixture.projects, fixture.fixture.clock, fixture.fixture.uuid, fixture.fixture.configuration, true);
+        fixture.fixture.observer->recordTool("context_get", true, receipt.dump());
+        fixture.append(message(Json::array({version(Json::array({
+            VisibleHandoffFixture::tool("context_get", receipt, 20U),
+            VisibleHandoffFixture::tool("agent_list", Json{{"ok", true}}, 21U), generation(3000U, 32768U)}))})));
+        refused(fixture);
+        require(freshCalls > 0U, "terminal recovery did not revalidate fresh publication authority");
+        std::cout << "[CASE PASS] continuity-terminal-repair.refuses_publication_" << (pointerDrift ? "pointer_drift" : "sequence_drift") << '\n';
+    }
+    {
+        using Checkpoint = Infrastructure::Windows::Detail::LMStudioChatCheckpoint;
+        VisibleHandoffFixture fixture;
+        const auto saved = terminalConfirmedPacketRepair(fixture);
+        TestContext operation;
+        Checkpoint store{fixture.home(), fixture.fixture.project, saved.at("scope"), operation.active()};
+        requireError(store.inspectRouteRecovery(operation.active()), Domain::ErrorCodes::IntegrityFailure,
+            "default route-only inspection admitted an identical scope");
+        const auto snapshot = take(store.inspectRouteRecovery(operation.active(), Checkpoint::RecoveryScope::TerminalPacket));
+        requireError(store.recoverRoute(snapshot, saved.at("state"), [] {return Domain::Result<void>::success();}, operation.active()),
+            Domain::ErrorCodes::IntegrityFailure, "default route-only publication admitted an identical scope");
+        auto changed = saved; changed["revision"] = saved.at("revision").get<std::uint64_t>() + 1U;
+        const auto rejected = store.recoverRoute(snapshot, saved.at("state"), [&] {
+            fixture.writeCheckpoint(changed); return Domain::Result<void>::success();
+        }, operation.active(), Checkpoint::RecoveryScope::TerminalPacket);
+        requireError(rejected, Domain::ErrorCodes::IntegrityFailure, "same-scope recovery overwrote a changed checkpoint");
+        require(fixture.checkpoint() == changed && fixture.sends == 0U && fixture.creations == 0U,
+            "same-scope recovery lost the concurrent checkpoint or dispatched effects");
+        std::cout << "[CASE PASS] continuity-terminal-repair.default_scope_and_checkpoint_CAS\n";
+    }
+}
+
+void modelPacketPromptsRequireOneCompactEnvelope()
+{
+    {
+        VisibleHandoffFixture fixture;
+        fixture.waiting();
+        requireCompactPacketEnvelope(fixture.lastText, fixture.fixture.fileFixture.path().value());
+        require(fixture.checkpoint().at("state").at("packet_request") == fixture.lastText &&
+            fixture.sends == 1U && fixture.creations == 0U,
+            "initial compact-envelope guidance was not the one retained native request");
+    }
+    for (const auto path : {"missing", "rejected", "incomplete"}) {
+        VisibleHandoffFixture fixture;
+        fixture.waiting();
+        Json steps = Json::array();
+        if (std::string_view{path} == "rejected") {
+            steps.push_back(VisibleHandoffFixture::tool("session_handoff", Json{{"ok", false},
+                {"code", "invalid_request"}, {"message", "packet_json conflicts with the outer session_handoff field: goal. No packet was saved."}}, 10U));
+        } else if (std::string_view{path} == "incomplete") {
+            fixture.saveModelPacket("compact-incomplete-packet", 1U);
+            const auto shortNarrative = std::string{"The selected task is not fully recorded yet."};
+            fixture.fixture.legacyContinuity.record->packet.narrative = shortNarrative;
+            auto receipt = fixture.nativeHandoff();
+            receipt["packet"]["narrative"] = shortNarrative;
+            steps.push_back(VisibleHandoffFixture::tool("session_handoff", receipt, 10U));
+        }
+        steps.push_back(generation(32000U, 32768U));
+        fixture.append(message(Json::array({version(steps)})));
+        fixture.run([&](const Json&) {
+            if (fixture.sends != 2U) return false;
+            const auto state = fixture.checkpoint().at("state");
+            return state.at("repair_acknowledged").get<bool>() && state.at("repair_attempts") == 1U;
+        });
+        requireCompactPacketEnvelope(fixture.lastText, fixture.fixture.fileFixture.path().value());
+        const auto saved = fixture.checkpoint().at("state");
+        require(saved.at("repair_request") == fixture.lastText && saved.at("packet_request_acknowledged").get<bool>() &&
+            saved.at("repair_acknowledged").get<bool>() && saved.at("phase") == 1U &&
+            fixture.sends == 2U && fixture.creations == 0U,
+            "compact corrective guidance changed request acknowledgement, attempts or native effects");
+        if (std::string_view{path} == "incomplete") {
+            require(fixture.fixture.legacyContinuity.record->writeSequence == 1U &&
+                fixture.fixture.legacyContinuity.record->packet.narrative == "The selected task is not fully recorded yet.",
+                "compact corrective guidance fabricated a completed packet or changed its stored task state");
+        }
+        std::cout << "[CASE PASS] continuity-compact-envelope." << path << '\n';
+    }
+}
+
 void cachedPromptPressureRequestsPacketWithSeparateProviderEvidence()
 {
     VisibleHandoffFixture f;
@@ -2460,6 +2746,10 @@ void freshEmptyConversation()
 
 void registerWindowsLMStudioConversationReaderTests(TestRegistry& tests)
 {
+    addTest(tests, "LMStudioChatContinuity.terminal_confirmed_packet_repair_native_recovery",
+        terminalConfirmedPacketRepairNativeRecovery);
+    addTest(tests, "LMStudioChatContinuity.model_packet_prompts_use_one_lossless_compact_envelope",
+        modelPacketPromptsRequireOneCompactEnvelope);
     addTest(tests, "LMStudioChatContinuity.fresh_dispatch_budget_preserves_cancellation_and_authority",
         continuitySendUsesFreshBudgetAndPreservesAuthority);
     addTest(tests, "LMStudioConversationReader.selected_provider_statistics",

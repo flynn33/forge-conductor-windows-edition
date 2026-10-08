@@ -170,7 +170,7 @@ Domain::Result<void> LMStudioChatCheckpoint::save(const Json& state, const Domai
 }
 
 Domain::Result<LMStudioChatCheckpoint::RouteRecoverySnapshot> LMStudioChatCheckpoint::inspectRouteRecovery(
-    const Domain::OperationContext& operation) noexcept {
+    const Domain::OperationContext& operation, const RecoveryScope recoveryScope) noexcept {
     try {
         auto path=authorized(Domain::FileAccess::Read,operation);
         if(!path) return Domain::Result<RouteRecoverySnapshot>::failure(path.error());
@@ -178,7 +178,9 @@ Domain::Result<LMStudioChatCheckpoint::RouteRecoverySnapshot> LMStudioChatCheckp
         if(!stored) return Domain::Result<RouteRecoverySnapshot>::failure(stored.error());
         auto opened=open(stored.value());
         if(!opened) return Domain::Result<RouteRecoverySnapshot>::failure(opened.error());
-        if(!validEnvelope(opened.value()) || !routeOnlyDifference(opened.value().at("scope"),scope_))
+        if(!validEnvelope(opened.value()) ||
+            (!routeOnlyDifference(opened.value().at("scope"),scope_) &&
+             (recoveryScope!=RecoveryScope::TerminalPacket || opened.value().at("scope")!=scope_)))
             return Domain::Result<RouteRecoverySnapshot>::failure(invalid("Explicit route recovery requires the same source contract and current scope except for the route digest."));
         BCryptSha256Hasher hasher;auto hash=hasher.sha256(stored.value());
         if(!hash) return Domain::Result<RouteRecoverySnapshot>::failure(hash.error());
@@ -188,9 +190,9 @@ Domain::Result<LMStudioChatCheckpoint::RouteRecoverySnapshot> LMStudioChatCheckp
 
 Domain::Result<Domain::PathText> LMStudioChatCheckpoint::recoverRoute(const RouteRecoverySnapshot& snapshot,
     const Json& state,const std::function<Domain::Result<void>()>& freshAuthority,
-    const Domain::OperationContext& operation) noexcept {
+    const Domain::OperationContext& operation, const RecoveryScope recoveryScope) noexcept {
     try {
-        auto current=inspectRouteRecovery(operation);
+        auto current=inspectRouteRecovery(operation,recoveryScope);
         if(!current) return Domain::Result<Domain::PathText>::failure(current.error());
         if(current.value().stored!=snapshot.stored || current.value().document!=snapshot.document || current.value().sha256!=snapshot.sha256)
             return Domain::Result<Domain::PathText>::failure(invalid("Explicit route recovery checkpoint changed after inspection."));
@@ -219,7 +221,7 @@ Domain::Result<Domain::PathText> LMStudioChatCheckpoint::recoverRoute(const Rout
             return Domain::Result<Domain::PathText>::failure(invalid("Explicit route recovery archive differs from the original encrypted checkpoint; it will not be overwritten."));
         auto fresh=freshAuthority();
         if(!fresh) return Domain::Result<Domain::PathText>::failure(fresh.error());
-        current=inspectRouteRecovery(operation);
+        current=inspectRouteRecovery(operation,recoveryScope);
         if(!current) return Domain::Result<Domain::PathText>::failure(current.error());
         if(current.value().stored!=snapshot.stored)
             return Domain::Result<Domain::PathText>::failure(invalid("Explicit route recovery checkpoint changed before publication."));

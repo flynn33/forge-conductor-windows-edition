@@ -406,7 +406,7 @@ using Property = std::pair<std::string_view, Json>;
                 "For Auto Continuity, record all explicit user constraints as nonblank strings in this nonempty array.";
             schema["properties"]["packet_json"] = Json{
                 {"type", "string"},
-                {"description", "JSON-string containing the complete model-authored packet object: goal, narrative, resume_seed, key_files array, next_actions array, and any other session_handoff fields. Arrays must be JSON arrays inside that object."}};
+                {"description", "JSON-string containing the complete model-authored packet object. When using this encoded form, supply ONLY packet_json as the outer argument; put ALL fields, including handoff_id for an update, inside the encoded object. Do not duplicate fields beside packet_json. Include goal, narrative, resume_seed, decisions, key_files and next_actions; collections must be JSON arrays inside the object. Direct field calls remain supported when packet_json is omitted."}};
         }
         return schema;
     }
