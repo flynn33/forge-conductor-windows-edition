@@ -412,10 +412,12 @@ add_test(NAME sleep COMMAND "${CMAKE_COMMAND}" -E sleep 10)
     if (!generatorInstance.empty()) configure.arguments.push_back("-DCMAKE_GENERATOR_INSTANCE=" + std::string{generatorInstance});
     configure.workingDirectory = path(source); configure.timeout = 30s;
     const auto diagnostic = [](const Domain::ShellJobSnapshot& job) {
-        return Json{{"state", static_cast<int>(job.state)},
+        return Json{{"state", static_cast<int>(job.state)}, {"elapsed_ms", job.elapsed.count()},
+            {"pid", job.processId}, {"pid_creation_time", job.processCreationTime},
             {"error", job.error ? Json{{"code", job.error->code}, {"message", job.error->message}} : Json(nullptr)},
             {"result", job.result ? Json{{"exit_code", job.result->exitCode}, {"timed_out", job.result->timedOut},
                 {"cancelled", job.result->cancelled}, {"termination_confirmed", job.result->terminationConfirmed},
+                {"elapsed_ms", job.result->elapsed.count()},
                 {"stdout", job.result->stdoutUtf8.substr(0U, 8U * 1024U)}, {"stderr", job.result->stderrUtf8.substr(0U, 4U * 1024U)}} : Json(nullptr)}}.dump();
     };
     wchar_t systemDirectory[MAX_PATH]{};
@@ -436,7 +438,8 @@ add_test(NAME sleep COMMAND "${CMAKE_COMMAND}" -E sleep 10)
         folderChecked.result->terminationConfirmed && !folderChecked.result->timedOut && !folderChecked.result->cancelled &&
         (folderChecked.result->stdoutUtf8 == "FORGE_NATIVE_COMMON_APPLICATION_DATA_READY\r\n" ||
             folderChecked.result->stdoutUtf8 == "FORGE_NATIVE_COMMON_APPLICATION_DATA_READY\n"),
-        "Native Windows PowerShell could not resolve CommonApplicationData: " + diagnostic(folderChecked));
+        "Native Windows PowerShell known-folder probe did not complete successfully: " + diagnostic(folderChecked));
+    std::cout << "Native Windows PowerShell known-folder probe: " << diagnostic(folderChecked) << '\n';
     const auto initialized = terminal(service, take(service.startProcess(configure, scope, context(4U))).jobId, scope);
     const auto configureDiagnostic = diagnostic(initialized);
     require(initialized.state == Domain::ShellJobState::Completed && initialized.result && initialized.result->exitCode == 0,
