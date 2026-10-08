@@ -1,4 +1,6 @@
-# Host workflows in 1.3.19
+# Host workflows in 1.3.20
+
+The measurement block below is historical 1.3.19 qualification; it does not qualify the current 1.3.20 implementation.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -6,7 +8,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-Primary and Fallback advertise 104 tools; CLU retains five governance tools, and all ten specialist playbooks remain. Call `host_capabilities` before deciding that a category is unavailable: it reports actual tool names, filesystem mode, Manager-backed capabilities, and external connection requirements. `get_forge_status` also reports the selected project's directory and detailed active authority. The full catalog remains available through the existing MCP protocol.
+The current 1.3.20 source catalog defines 106 Primary/Fallback tools, adding `cmake_test_run` and `cmake_test_status` while retaining all previous tools, five CLU governance tools and ten specialist playbooks. Qualification of the final source, package, installed tools and live Qwen workflows is pending. Call `host_capabilities` before deciding that a category is unavailable: it reports actual tool names, filesystem mode, Manager-backed capabilities, and external connection requirements. `get_forge_status` also reports the selected project's directory and detailed active authority. The full catalog remains available through the existing MCP protocol.
 
 Rig's corrected display shows the native conversation observed by the App and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. The preference does not establish live rollover availability. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for the native worker's actual state; its `available` flag becomes true after a successor conversation and handed message are verified. The 1.3.19 App includes this correction from the earlier candidate; final installed/readback and current-chat results are recorded in the versioned verification record. Earlier tests and package evidence retain their recorded source identities.
 
@@ -56,21 +58,37 @@ Receipts contain canonical `path`, `format`, actual `bytes_written`, engine `for
 
 ## Desktop, browser and image tools
 
-Use `desktop_list` to observe exact visible `window_id`/`pid` pairs, titles and geometry. `desktop_read` reads bounded accessibility controls/text for the selected window. `browser_open` launches an HTTP/HTTPS URL in the registered browser and reports launch acceptance; observe the resulting browser to establish loading or page behavior.
+Use `desktop_list` to observe exact visible `window_id`/`pid` pairs, titles and geometry. `desktop_read` reads bounded accessibility controls/text for the selected window without activating it or submitting input. Optional zero-based `offset` defaults to 0; `limit` defaults to 100 and accepts 1–300 scanned control positions. Follow `next_offset` while `has_more` to reach later controls. Each returned row has its observed `index`; the receipt also reports `offset`, `scanned_elements`, `returned_elements`, `total_elements` and `truncated`. Native responses retain a 32 KiB aggregate text bound and a 64 KiB encoded JSON bound before MCP framing, so a page can be shorter than requested. `next_offset` is null at the end; offsets beyond the current tree are invalid. Indices belong to a freshly observed accessibility tree and may change with the UI; restart observation when the target changes. Password text remains excluded. `browser_open` launches an HTTP/HTTPS URL in the registered browser and reports launch acceptance; observe the resulting browser to establish loading or page behavior.
 
 `desktop_click`, `desktop_type` and `desktop_key` require task authorization and fresh observation of the target. They operate on the selected foreground window and report input submission, followed by required observation of its result. Refresh a stale window/PID binding. A covered click point or unavailable foreground target fails explicitly. Windows integrity-level and desktop permissions still apply.
 
 `desktop_capture` captures the visible screen region of a selected window into an authorized PNG and returns an image preview. Other windows overlapping that region can appear in the capture. `image_read` uses native Windows codecs to decode an authorized PNG/JPEG/GIF/BMP/TIFF/ICO and returns a bounded PNG preview with original dimensions. `image_write` draws structured rectangles, ellipses, lines and Unicode text to a native PNG and returns its preview. These primitives support diagrams/charts; generative artwork requires a separately connected image model/provider. No external image or account connection is fabricated.
 
+In the 1.3.20 implementation, rectangle fills use the requested width and height as exact pixel dimensions, clipped at the canvas edges. This adjusts earlier rendering: GDI `Rectangle` with `NULL_PEN` reduced each dimension by one pixel, making a requested 1×1 rectangle empty. Ellipse rendering keeps its existing behavior. Qualification of the new exact-size PNG/pixel regression remains pending.
+
+All four tools `desktop_capture`, `image_read`, `image_write` and `image_analyze` accept optional integer `preview_max_dimension` from 128 through 2,048, defaulting to 256. It requests the preview's longest dimension without enlarging a smaller source. Adaptive downscaling keeps the base64-encoded PNG preview within 512 KiB; the written/captured full image keeps its original dimensions. Inspect the exact `preview_width`/`preview_height`, `preview_max_dimension_requested`, `preview_encoded_bytes`, `preview_encoded_byte_limit` and `preview_reduced_for_byte_limit` instead of assuming the request was delivered at full size. Invalid preview parameters are rejected before image-write or capture file effects. Larger previews do not establish exact OCR or pixel recognition, and do not change LM Studio's stock MCP image-to-metadata boundary.
+
 Managed worker and reviewer Responses requests carry native PNG previews as `input_text` and `input_image` content within the same `function_call_output`, preserving the original `call_id`. Encoded PNG previews are bounded to 512 KiB; invalid MIME/base64 and oversize previews fail explicitly. On the installed 1.3.14 candidate, a fresh Qwen reviewer correctly recognized a blind image while the original chat's stock `image_read` result produced an incorrect description. The saved PNG bytes matched exactly. This separates preview delivery from model interpretation; the [earlier investigation](validation/HOST-CAPABILITIES-1.3.14.md) retains that failure and the successful independent control.
 
 `image_analyze` provides the independent image-analysis route from the existing MCP integrations. Supply an authorized image `path`, an explicit `authorization` reference, and an optional bounded `question`. It validates the path and native decode before starting a fresh read-only Manager run with no executor history. The returned run is asynchronous: call `reviewer_status` with its `run_id` until terminal, then inspect actual output, errors and usage. The default receive budget is 600 seconds per provider turn and is configurable up to 3,600 seconds. Analysis reads the authorized source image when the run calls `image_read`; the start receipt does not assert completed analysis or frozen source bytes. Independent workers cannot start further image-analysis runs.
+
+When supplied, `preview_max_dimension` is forwarded to both the admission decode and the fresh reviewer run's requested `image_read`. Inspect that run's actual output and sealed receipt; an admission preview is not a completed analysis.
+
+For deterministic native pixel checks, `image_read` also accepts optional `samples`, an array of 1–64 closed `{ "x": 0, "y": 0 }` objects. Coordinates are zero-based integers within the actual decoded frame. The returned `pixel_samples` preserve request order and duplicates, with measured `rgba` channel arrays. Without a request, that field is absent. Every successful read identifies frame 0, `decoded_pixel_format: "RGBA8"`, decoded dimensions, tightly packed row stride and `decoded_rgba8_sha256`. The hash covers top-to-bottom WIC-decoded straight RGBA8 bytes; `preview_png_sha256` separately covers the exact emitted preview PNG bytes before base64. These hashes are distinct from the source file's hash. Source alpha is measured independently of the existing opaque BGR/GDI preview. These receipts verify native decoding and preview bytes; they do not establish the stock chat's inference input or substitute for observed model interpretation.
 
 ```json
 {"path":"reports/diagram.png","authorization":"Analyze the owner-selected diagram for this task","question":"Describe the visible labels and connections."}
 ```
 
 A preview rendered in the chat UI is not proof that the chat model received pixels. The analysis output explicitly comes from a fresh independent run using the configured provider/model. It does not approve a governance gate. Generative image creation remains a separate configured provider capability.
+
+## CMake and CTest jobs
+
+`cmake_test_run` requires an explicit initialized build directory containing `CMakeCache.txt` and `CTestTestfile.cmake`, enabled shell policy and Read/Write/Execute authority. Default `mode: "test"` runs CTest directly; `mode: "build_and_test"` runs `cmake --build` first and launches tests only after confirmed uninterrupted build success. Optional `filter` selects CTest names, `config` selects the configuration, and `target` applies only to explicit build-and-test mode. There is no implicit configure step or added clangd service.
+
+The returned project-owned `job_id` uses existing durable process storage, logs, bounded waiting and cancellation. `timeout_sec` defaults to 1,800 and accepts 1–3,600 seconds, shared across both phases and report parsing. Read `cmake_test_status`: outer `ok` describes retrieval, while actual phase exit/timeout/cancellation/termination flags describe outcomes. Missing phase results and counts stay null; a crash without a final receipt retains unknown exit status rather than inventing success. The validated CTest JUnit report supplies counts and failure data, not synthesized expected/actual assertion fields.
+
+Failure paging uses zero-based `failure_offset` and `max_failures` 1–32 (default 16). Follow `next_failure_offset` while `has_more`; rows preserve UTF-8 boundaries and fit a 24 KiB encoded row-list bound. Reports are bounded to 8 MiB and 100,000 cases. Per-job report path, byte length and SHA-256 checks bind recorded evidence; unkeyed hashes do not authenticate producer text or approve a policy gate. See [CMake/CTest contracts, examples and recovery limits](CMAKE-CTEST.md).
 
 ## Independent model workers
 
@@ -106,4 +124,4 @@ Manager reports meaningful transitions through its local notification callback, 
 
 ## Verification and remaining external requirements
 
-See [1.3.19 release notes](releases/1.3.19.md) and [verification](validation/HOST-CAPABILITIES-1.3.19.md) for executed checks and their exact scope. A listed tool, accepted input, queued schedule, opened browser or submitted input is not proof that the user's final task completed. Inspect actual receipts, output, observed UI and error state. Generative image models, cloud accounts and their credentials remain configured external services; the dedicated native workflows above do not remove existing shell/process or integration routes.
+Qualification of the current 1.3.20 implementation is pending. See the historical [1.3.19 release notes](releases/1.3.19.md) and [verification](validation/HOST-CAPABILITIES-1.3.19.md) for that artifact's executed checks and exact scope. A listed tool, accepted input, queued schedule, opened browser or submitted input is not proof that the user's final task completed. Inspect actual receipts, output, observed UI and error state. Generative image models, cloud accounts and their credentials remain configured external services; the dedicated native workflows above do not remove existing shell/process or integration routes.

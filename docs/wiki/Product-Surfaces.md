@@ -1,6 +1,6 @@
 # Product surfaces
 
-Version 1.3.19 retains the native app design and the 1.3.5 run/action/maintenance removals. The shared Manager diagnostic remains collapsed during 500 ms telemetry observations, so its single-line and multiline status updates no longer move the visible page. Settings adds the owner's host/workspace filesystem selection; dedicated model workflows retain explicit native receipts through the MCP tools.
+Version 1.3.20 retains the native app design and the 1.3.5 run/action/maintenance removals. The shared Manager diagnostic remains collapsed during 500 ms telemetry observations, so its single-line and multiline status updates no longer move the visible page. Settings retains the owner's host/workspace filesystem selection; dedicated model workflows retain explicit native receipts through the MCP tools.
 
 | Destination | Actions |
 |---|---|
@@ -13,6 +13,14 @@ Version 1.3.19 retains the native app design and the 1.3.5 run/action/maintenanc
 Removed: Managed Run/readback, Export selected project, Import verify first, Actions frame/Invoke Tool, Advanced Canonical Catalog, Scope Test, Reset Scope, Apply and Verify, and the old Data Maintenance scheme. The five settings actions were retained. Selected project identity/root are carried through the existing three-plugin install/repair action. Sessions are LM Studio chats; baseline agent-session tools do not create a replacement run manager.
 
 The 1.3.14 Rig controls use the existing Manager handlers. Finish owned work or confirm terminal cancellation before restarting/stopping Manager; scheduled triggers require it to remain running. Their presence is established from the App source, while final installed UI acceptance remains pending until executed.
+
+## Current native continuity source
+
+The Primary MCP worker checkpoints the native handoff phase for reconstruction after a connector exit. This uses the existing project/provider Auto Continuity preference and saved packets, with no new product surface or plugin. Read live checkpoint/reconciliation status through Primary `get_forge_status.visible_chat_continuity`; Rig's observed chat and saved preference remain distinct from proof that rollover completed. `recovery_pending` preserves an unfinished phase and its reason, and uncertain New chat or Send effects are not replayed. Final reconstruction regression and installed interrupted-connector restart qualification are pending. See [Auto Continuity](Continuity).
+
+## Historical App and native qualification
+
+The following source/build and native-check observations retain their original qualification scope. The process-local handoff limitation below describes the earlier implementation, before the 1.3.20 checkpoint source.
 
 The source-`7b3e154` App displays the actual observed native conversation in Rig and the Manager's enabled/disabled continuity preference, distinguishing a read from a save. It directs live rollover inspection to Primary MCP's `get_forge_status`, replacing the unconditional unavailable warning and obsolete selected-run label. The updated App has been rebuilt into a valid signed candidate; its installed readback remains pending.
 

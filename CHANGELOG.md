@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.3.20 - Durable CMake/CTest jobs and richer desktop/image tools (unreleased)
+
+- Clear stale context telemetry after the selected native LM Studio chat is cleared, while preserving handoff and workspace-binding state. Refresh preferences and clear recovered read errors only after successful observation; a real selected empty chat retains its identity.
+- Add an atomic, Windows-user-protected checkpoint for native visible-chat handoff phases. Fresh project/provider/route authority and exact native message or packet-recovery evidence are required after observer reconstruction. Record Send and New chat before dispatch, retain uncertain outcomes without replay, and expose `recovery_pending` when reconciliation is incomplete. Final recovery qualification is pending.
+- Add `cmake_test_run` and `cmake_test_status`, increasing Primary/Fallback to 106 tools while retaining every previous tool, ten specialist playbooks and five CLU tools. Reuse durable jobs for sequential build/test phases, actual phase results, validated JUnit counts, paged failures, logs and cancellation. Explicit initialized build directories and current local Read/Write/Execute authority remain required.
+- Add accessibility `offset` paging, actual row indices and continuation metadata to `desktop_read`, with bounded text and encoded JSON pages from a fresh UI tree.
+- Add optional 128–2048 pixel preview requests to image read/write, desktop capture and independent image analysis. Preserve the default 256-pixel preview and 512 KiB base64-encoded transport bound with adaptive resizing.
+- Add optional source-coordinate samples to `image_read`, returning measured RGBA8 values and hashes of the canonical decoded frame and emitted preview PNG. Source alpha measurements remain distinct from the existing opaque preview and do not establish the stock chat's inference input.
+- Supply the bounded Windows installer-directory environment variables needed by native CMake/Visual Studio discovery, while retaining explicit caller overrides and the existing limited process environment.
+- Correct filled rectangle dimensions, including one-pixel shapes and canvas clipping. Requested width and height now include the previously omitted right/bottom edge.
+- Clear recovered LM Studio read-pipeline errors only after successful complete observation; preserve operational handoff and workspace-binding errors.
+- Align native, CMake, packaging and application source identities to 1.3.20 / 1.3.20.0. Final source, installed, current-session and publication qualification are pending; [the verification record](docs/validation/HOST-CAPABILITIES-1.3.20.md) retains those distinctions.
+
 ## 1.3.19 - Provider timeout diagnostic consistency (published)
 
 - Retain all 104 Primary/Fallback tools, ten specialist playbooks and five CLU tools, including native web/Office/desktop/image analysis, workers, schedules and the original workflows.

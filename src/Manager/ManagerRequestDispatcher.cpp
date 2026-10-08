@@ -3653,6 +3653,8 @@ private:
                     // This current-user authenticated pipe is the durable job
                     // broker. General desktop tool execution remains disabled.
                     const bool brokered = workerScopeTool(payload.toolName)
+                        || payload.toolName == "cmake_test_run"
+                        || payload.toolName == "cmake_test_status"
                         || payload.toolName == "workspace_authority_bind"
                         || payload.toolName == "shell_job_start"
                         || payload.toolName == "shell_job_status"

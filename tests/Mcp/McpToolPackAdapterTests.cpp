@@ -636,10 +636,11 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
 {
     auto catalog = take(Mcp::McpToolCatalog::create());
     const auto tools = catalog->tools();
-    REQUIRE(tools.size() == 104U);
+    REQUIRE(tools.size() == 106U);
 
     const std::map<std::string_view, std::size_t> expectedPackCounts{
         {"AgentToolPack", 9U},
+        {"CMakeTestToolPack", 2U},
         {"CluGovernanceToolPack", 4U},
         {"ContinuityLifecycleToolPack", 7U},
         {"ContinuityToolPack", 4U},
@@ -666,6 +667,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
         REQUIRE(schema.value("type", "") == "object");
 
         const bool closedPack =
+            descriptor.tool.pack == "CMakeTestToolPack" ||
             descriptor.tool.pack == "InstructionPackageToolPack" ||
             descriptor.tool.pack == "ProjectPolicyToolPack" ||
             descriptor.tool.pack == "ProjectMemoryToolPack" ||
@@ -931,7 +933,7 @@ void testRuntimeDispatchAndSchemaPolicy()
     auto imageAnalysisDependencies = adapterDependencies;
     auto capabilityDependencies = adapterDependencies;
     auto adapter = take(Mcp::McpToolPackAdapter::create(std::move(adapterDependencies)));
-    REQUIRE(adapter->tools().size() == 104U);
+    REQUIRE(adapter->tools().size() == 106U);
 
     const auto authorizeFor = [&] (
                                   const std::string& toolName,
@@ -975,6 +977,22 @@ void testRuntimeDispatchAndSchemaPolicy()
     };
 
     {
+        const auto imagePath = root.value() + "/sampled-image.png";
+        const Json request{{"path", imagePath}, {"samples", Json::array({Json{{"x", 1}, {"y", 0}}})}};
+        nativeCapabilities.response = Json{{"ok", true}, {"path", imagePath},
+            {"decoded_frame_index", 0}, {"decoded_pixel_format", "RGBA8"}, {"decoded_width", 2}, {"decoded_height", 1},
+            {"decoded_row_stride_bytes", 8}, {"decoded_rgba8_sha256", std::string(64, 'a')},
+            {"preview_png_sha256", std::string(64, 'b')},
+            {"pixel_samples", Json::array({Json{{"x", 1}, {"y", 0}, {"rgba", Json::array({17, 34, 51, 68})}}})}};
+        const auto measured = Json::parse(take(adapter->handle(authorize("image_read", Domain::ToolEffect::Read,
+            request.dump(), "image-read-pixel-measurements"), authority, context)).canonicalPayload);
+        REQUIRE(nativeCapabilities.calls.back() == "image_read" && nativeCapabilities.lastArguments == request);
+        REQUIRE(measured.at("decoded_rgba8_sha256") == nativeCapabilities.response->at("decoded_rgba8_sha256"));
+        REQUIRE(measured.at("preview_png_sha256") == nativeCapabilities.response->at("preview_png_sha256"));
+        REQUIRE(measured.at("decoded_pixel_format") == "RGBA8" && measured.at("decoded_frame_index") == 0);
+        REQUIRE(measured.at("pixel_samples") == nativeCapabilities.response->at("pixel_samples"));
+    }
+    {
         const auto imagePath = root.value() + "/image-\xCE\xA9.png";
         const Json imageRequest{{"path", imagePath}, {"authorization", "Owner requested visual inspection"},
             {"question", "Describe the \"actual visible pixels\".\nReport uncertainty."}, {"receive_timeout_sec", 1800}};
@@ -1011,6 +1029,23 @@ void testRuntimeDispatchAndSchemaPolicy()
         REQUIRE(analyzed.at("image_analysis").at("tool_scope") == "existing_project_authorized_read_only_reviewer_catalog");
         REQUIRE(analyzed.at("image_analysis").at("width") == 256);
         REQUIRE(analyzed.at("image_base64") == "iVBORw0KGgo=");
+        REQUIRE(analyzed.at("image_analysis").at("preview_max_dimension_requested") == 256);
+        auto detailedRequest = imageRequest; detailedRequest["preview_max_dimension"] = 1024;
+        const auto baseImageResponse = nativeCapabilities.response;
+        nativeCapabilities.response->update(Json{{"width", 1024}, {"height", 768},
+            {"preview_width", 768}, {"preview_height", 576}, {"preview_max_dimension_requested", 1024},
+            {"preview_encoded_bytes", 12}, {"preview_encoded_byte_limit", 512U * 1024U},
+            {"preview_reduced_for_byte_limit", true}});
+        const auto detailed = Json::parse(take(analyze(detailedRequest, authority)).canonicalPayload);
+        const Json expectedImageArguments{{"path", imagePath}, {"preview_max_dimension", 1024}};
+        REQUIRE(nativeCapabilities.lastArguments == expectedImageArguments);
+        REQUIRE(forwarded.at("opening_message").get<std::string>().find(expectedImageArguments.dump()) != std::string::npos);
+        REQUIRE(detailed.at("state") == "running" && detailed.at("output").is_null() && detailed.at("gate_approved") == false);
+        REQUIRE(detailed.at("image_analysis").at("preview_max_dimension_requested") == 1024);
+        REQUIRE(detailed.at("preview_max_dimension_requested") == 1024 && detailed.at("preview_width") == 768 &&
+            detailed.at("preview_height") == 576 && detailed.at("preview_reduced_for_byte_limit") == true &&
+            detailed.at("preview_encoded_byte_limit") == 512U * 1024U && detailed.at("preview_encoded_bytes") == 12);
+        nativeCapabilities.response = baseImageResponse;
         auto defaults = imageRequest; defaults.erase("question"); defaults.erase("receive_timeout_sec");
         REQUIRE(analyze(defaults, authority));
         REQUIRE(forwarded.at("receive_timeout_sec") == 600);
@@ -1026,6 +1061,10 @@ void testRuntimeDispatchAndSchemaPolicy()
             Json{{"path", imagePath}, {"authorization", std::string(1025U, 'a')}},
             Json{{"path", imagePath}, {"authorization", "owner"}, {"receive_timeout_sec", 0}},
             Json{{"path", imagePath}, {"authorization", "owner"}, {"receive_timeout_sec", 3601}},
+            Json{{"path", imagePath}, {"authorization", "owner"}, {"preview_max_dimension", 127}},
+            Json{{"path", imagePath}, {"authorization", "owner"}, {"preview_max_dimension", 2049}},
+            Json{{"path", imagePath}, {"authorization", "owner"}, {"preview_max_dimension", "1024"}},
+            Json{{"path", imagePath}, {"authorization", "owner"}, {"preview_max_dimension", 512.5}},
             Json{{"path", imagePath}, {"authorization", "owner"}, {"unknown", true}}}) REQUIRE(!analyze(invalid, authority));
         auto outside = imageRequest; outside["path"] = "Z:/outside/image.png";
         const auto deniedPath = analyze(outside, authority);
@@ -1065,7 +1104,7 @@ void testRuntimeDispatchAndSchemaPolicy()
     {
         const auto capabilities = Json::parse(take(adapter->handle(authorize("host_capabilities", Domain::ToolEffect::Read,
             "{}", "native-capability-report"), authority, context)).canonicalPayload);
-        REQUIRE(capabilities.at("tool_count") == 104U);
+        REQUIRE(capabilities.at("tool_count") == 106U);
         REQUIRE(capabilities.at("dedicated").at("word_excel_powerpoint_creation") == true);
         REQUIRE(capabilities.at("dedicated").at("independent_image_analysis") == true);
         auto noReviewDependencies = capabilityDependencies;
@@ -1197,7 +1236,7 @@ void testRuntimeDispatchAndSchemaPolicy()
         brokeredExecutionDependencies.durableToolBroker = [&](const std::string_view name,
             const std::string_view arguments, const Domain::ProjectId& project,
             const Domain::OperationContext&) -> Domain::Result<std::string> {
-            REQUIRE(name == "process_launch" || name == "shell_job_start" || name == "reviewer_start");
+            REQUIRE(name == "process_launch" || name == "shell_job_start" || name == "reviewer_start" || name == "cmake_test_run" || name == "cmake_test_status");
             REQUIRE(project == projectId);
             ++executionBrokerCalls;
             brokeredArguments = Json::parse(arguments);
@@ -1249,6 +1288,33 @@ void testRuntimeDispatchAndSchemaPolicy()
         REQUIRE(boundOpening.receipt.ok);
         REQUIRE(brokeredArguments.at("opening_message_path") == secondaryRoot.value() + "/opening.txt");
         REQUIRE(executionBrokerCalls == 5U);
+
+        const auto cmakeRun = [&](Json arguments, const auto& selectedAuthority) {
+            return executionAdapter->handle(authorizeFor("cmake_test_run", Domain::ToolEffect::Write,
+                arguments.dump(), "broker-cmake-run", selectedAuthority), selectedAuthority, context);
+        };
+        const auto unselectedBuild = cmakeRun(Json{{"build_dir", secondaryRoot.value()}}, narrowed);
+        REQUIRE(!unselectedBuild && unselectedBuild.error().code == Domain::ErrorCodes::Unauthorized);
+        const auto outsideBuild = cmakeRun(Json{{"build_dir", "Z:/outside/build"}}, shellAuthority);
+        REQUIRE(!outsideBuild && outsideBuild.error().code == Domain::ErrorCodes::Unauthorized);
+        const auto targetWithoutBuild = cmakeRun(Json{{"build_dir", root.value()}, {"target", "ProductAll"}}, shellAuthority);
+        REQUIRE(!targetWithoutBuild && targetWithoutBuild.error().code == Domain::ErrorCodes::InvalidRequest);
+        REQUIRE(executionBrokerCalls == 5U);
+        const auto acceptedBuild = take(cmakeRun(Json{{"build_dir", secondaryRoot.value()},
+            {"mode", "build_and_test"}, {"filter", "UnitTests"}}, shellAuthority));
+        REQUIRE(acceptedBuild.receipt.ok);
+        REQUIRE(brokeredArguments.at("build_dir") == secondaryRoot.value());
+        REQUIRE(brokeredArguments.at("mode") == "build_and_test");
+        REQUIRE(acceptedBuild.continuityObservation->workingDirectory == secondaryRoot);
+        REQUIRE(Json::parse(acceptedBuild.canonicalPayload).at("broker") == "persistent_manager");
+        REQUIRE(executionBrokerCalls == 6U);
+        const auto forwardedStatus = take(executionAdapter->handle(authorize("cmake_test_status", Domain::ToolEffect::Read,
+            R"({"job_id":"broker-job","failure_offset":3,"max_failures":1})", "broker-cmake-status"), authority, context));
+        REQUIRE(forwardedStatus.receipt.ok);
+        REQUIRE(brokeredArguments.at("job_id") == "broker-job");
+        REQUIRE(brokeredArguments.at("failure_offset") == 3);
+        REQUIRE(brokeredArguments.at("max_failures") == 1);
+        REQUIRE(executionBrokerCalls == 7U);
     }
 
     // A full valid control-character report expands sixfold in JSON. Every
@@ -2972,6 +3038,115 @@ void testRuntimeDispatchAndSchemaPolicy()
         REQUIRE(shell.processStartCalls == starts + 1U);
         REQUIRE(shell.lastJobRequest && shell.lastJobRequest->arguments.at(3) == "D:/workspace-other/verification-env");
         workspaceAuthority.restoreWorkspace();
+    }
+    {
+        auto testJob = trackedJob;
+        testJob.cmakeTest = Domain::CMakeTestMetadata{root.value(), false, {}, {}, {},
+            root.value() + "/owned.ctest.xml"};
+        shell.startCMakeTestResult.set(Domain::Result<Domain::ShellJobSnapshot>::success(testJob));
+        const auto testRun = [&](Json arguments, const auto& selectedAuthority) {
+            return adapter->handle(authorizeFor("cmake_test_run", Domain::ToolEffect::Write,
+                arguments.dump(), "cmake-local-run", selectedAuthority), selectedAuthority, context);
+        };
+        auto started = take(testRun(Json{{"build_dir", root.value()}}, shellAuthority));
+        auto value = Json::parse(started.canonicalPayload);
+        REQUIRE(started.receipt.ok && value.at("done") == false);
+        REQUIRE(value.at("cmake_test").at("build_result").is_null());
+        REQUIRE(value.at("cmake_test").at("test_result").is_null());
+        REQUIRE(value.at("cmake_test").at("counts").is_null());
+        REQUIRE(shell.lastCMakeTestRequest->timeout == 1800s);
+        REQUIRE(!shell.lastCMakeTestRequest->build);
+        REQUIRE(shell.lastCMakeTestRequest->buildDirectory == root);
+        started = take(testRun(Json{{"build_dir", root.value()}, {"mode", "build_and_test"},
+            {"target", "ProductAll"}, {"filter", "Core.UnitTests"}, {"config", "Release"}, {"timeout_sec", 17}}, shellAuthority));
+        REQUIRE(started.receipt.ok);
+        REQUIRE(shell.lastCMakeTestRequest->build);
+        REQUIRE(shell.lastCMakeTestRequest->target == "ProductAll");
+        REQUIRE(shell.lastCMakeTestRequest->filter == "Core.UnitTests");
+        REQUIRE(shell.lastCMakeTestRequest->configuration == "Release");
+        REQUIRE(shell.lastCMakeTestRequest->timeout == 17s);
+        const auto startCount = shell.cmakeTestStartCalls;
+        for (const auto& arguments : std::vector<Json>{Json::object(), Json{{"build_dir", ""}},
+                Json{{"build_dir", root.value()}, {"target", "ProductAll"}},
+                Json{{"build_dir", root.value()}, {"mode", "other"}},
+                Json{{"build_dir", root.value()}, {"timeout_sec", 0}},
+                Json{{"build_dir", root.value()}, {"timeout_sec", 3601}},
+                Json{{"build_dir", root.value()}, {"timeout_sec", 1.25}},
+                Json{{"build_dir", root.value()}, {"extra", true}}}) {
+            REQUIRE(!testRun(arguments, shellAuthority));
+        }
+        REQUIRE(!testRun(Json{{"build_dir", "Z:/outside/build"}}, shellAuthority));
+        REQUIRE(shell.cmakeTestStartCalls == startCount);
+
+        testJob.state = Domain::ShellJobState::Failed;
+        testJob.cmakeTest->buildRequested = true;
+        testJob.cmakeTest->buildResult = Domain::ProcessResult{7, "build output", "build failed"};
+        shell.getCMakeTestResult.set(Domain::Result<Domain::CMakeTestRunStatus>::success(
+            Domain::CMakeTestRunStatus{testJob}));
+        const auto testStatus = [&](Json arguments) {
+            arguments["job_id"] = testJob.jobId;
+            return adapter->handle(authorize("cmake_test_status", Domain::ToolEffect::Read,
+                arguments.dump(), "cmake-local-status"), authority, context);
+        };
+        auto failedBuild = take(testStatus(Json::object()));
+        value = Json::parse(failedBuild.canonicalPayload);
+        REQUIRE(failedBuild.receipt.ok);
+        REQUIRE(value.at("done") == true && value.at("state") == "failed");
+        REQUIRE(value.at("cmake_test").at("build_result").at("ok") == false);
+        REQUIRE(value.at("cmake_test").at("build_result").at("exit_code") == 7);
+        REQUIRE(value.at("cmake_test").at("test_result").is_null());
+        REQUIRE(value.at("cmake_test").at("counts").is_null());
+        REQUIRE(!value.at("cmake_test").at("build_result").contains("stdout"));
+        REQUIRE(shell.lastFailureOffset == 0U && shell.lastMaximumFailures == 16U);
+
+        testJob.cmakeTest->buildRequested = false;
+        testJob.cmakeTest->buildResult.reset();
+        testJob.cmakeTest->testResult = Domain::ProcessResult{8, "CTest output", ""};
+        testJob.cmakeTest->reportUnverified = true;
+        testJob.cmakeTest->reportError = Domain::makeError(Domain::ErrorCodes::IntegrityFailure,
+            "The produced test report exceeded its capture bound.");
+        shell.getCMakeTestResult.set(Domain::Result<Domain::CMakeTestRunStatus>::success(
+            Domain::CMakeTestRunStatus{testJob}));
+        value = Json::parse(take(testStatus(Json::object())).canonicalPayload);
+        REQUIRE(value.at("cmake_test").at("report_unverified") == true);
+        REQUIRE(value.at("cmake_test").at("report_sha256").is_null());
+        REQUIRE(value.at("cmake_test").at("counts").is_null());
+        REQUIRE(value.at("cmake_test").at("report_error").at("code").get<std::string>() == Domain::ErrorCodes::IntegrityFailure);
+        REQUIRE(value.at("cmake_test").at("test_result").at("exit_code") == 8);
+        testJob.cmakeTest->reportUnverified = false;
+        testJob.cmakeTest->reportError.reset();
+
+        testJob.cmakeTest->buildResult.reset();
+        testJob.cmakeTest->testResult = Domain::ProcessResult{8, "CTest output", ""};
+        testJob.cmakeTest->counts = Domain::CMakeTestCounts{4U, 1U, 2U, 1U, 0U};
+        testJob.cmakeTest->reportSha256 = packageRevision.value();
+        testJob.cmakeTest->reportBytes = 983U;
+        shell.getCMakeTestResult.set(Domain::Result<Domain::CMakeTestRunStatus>::success(
+            Domain::CMakeTestRunStatus{testJob, {{"second failure", "fail", "explicit message", "actual output", false}},
+                1U, 2U, 2U, false}));
+        auto failedTests = take(testStatus(Json{{"failure_offset", 1}, {"max_failures", 1}}));
+        value = Json::parse(failedTests.canonicalPayload);
+        REQUIRE(failedTests.receipt.ok);
+        REQUIRE(value.at("cmake_test").at("test_result").at("exit_code") == 8);
+        REQUIRE(value.at("cmake_test").at("counts").at("failed") == 2U);
+        REQUIRE(value.at("cmake_test").at("counts").at("passed") == 1U);
+        REQUIRE(value.at("cmake_test").at("report_sha256") == packageRevision.value());
+        REQUIRE(value.at("failures").size() == 1U);
+        REQUIRE(value.at("failures").at(0).at("output") == "actual output");
+        REQUIRE(!value.at("failures").at(0).contains("expected"));
+        REQUIRE(!value.at("failures").at(0).contains("actual"));
+        REQUIRE(value.at("failure_offset") == 1U && value.at("next_failure_offset") == 2U);
+        REQUIRE(value.at("has_more") == false);
+        REQUIRE(shell.lastFailureOffset == 1U && shell.lastMaximumFailures == 1U);
+        const auto statusCount = shell.cmakeTestStatusCalls;
+        REQUIRE(!testStatus(Json{{"failure_offset", -1}}));
+        REQUIRE(!testStatus(Json{{"max_failures", 0}}));
+        REQUIRE(!testStatus(Json{{"max_failures", 33}}));
+        REQUIRE(shell.cmakeTestStatusCalls == statusCount);
+        shell.getCMakeTestResult.set(Domain::Result<Domain::CMakeTestRunStatus>::failure(
+            Domain::makeError(Domain::ErrorCodes::IntegrityFailure, "The sealed test report changed.")));
+        const auto changedReport = testStatus(Json::object());
+        REQUIRE(!changedReport && changedReport.error().code == Domain::ErrorCodes::IntegrityFailure);
     }
     auto startJobCall = authorizeFor("shell_job_start", Domain::ToolEffect::Write,
         R"({"command":"Write-Output long-test","cwd":"D:/workspace"})", "start-shell-job", shellAuthority);

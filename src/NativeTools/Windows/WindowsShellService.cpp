@@ -2,6 +2,7 @@
 
 #include "NativeToolValidation.h"
 #include "ShellJobStorage.h"
+#include "CMakeTestSupport.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
 
 #include "ForgeConductor/Domain/Utf8.h"
@@ -325,12 +326,13 @@ void ensureShellToolchainEnvironment(
             environment.push_back(Domain::EnvironmentVariable{"COMSPEC", *comspec});
         }
     }
-    constexpr std::pair<std::string_view, const wchar_t*> profileVariables[]{
+    constexpr std::pair<std::string_view, const wchar_t*> hostVariables[]{
         {"USERNAME", L"USERNAME"}, {"USERDOMAIN", L"USERDOMAIN"},
         {"USERPROFILE", L"USERPROFILE"}, {"APPDATA", L"APPDATA"},
         {"LOCALAPPDATA", L"LOCALAPPDATA"}, {"HOMEDRIVE", L"HOMEDRIVE"},
-        {"HOMEPATH", L"HOMEPATH"}};
-    for (const auto& [name, wideName] : profileVariables) {
+        {"HOMEPATH", L"HOMEPATH"}, {"ProgramFiles", L"ProgramFiles"},
+        {"ProgramFiles(x86)", L"ProgramFiles(x86)"}, {"ProgramData", L"ProgramData"}};
+    for (const auto& [name, wideName] : hostVariables) {
         if (!hasEnvironmentName(environment, name)) {
             if (auto value = shellHostEnvironmentValue(wideName)) {
                 environment.push_back({std::string{name}, std::move(*value)});
@@ -413,6 +415,43 @@ void enforceOutputBounds(
     result.stderrTruncated =
         truncate(result.stderrUtf8, maximumStderrBytes) ||
         result.stderrTruncated;
+}
+
+[[nodiscard]] Domain::Result<Domain::ProcessRequest> resolveProcessRequest(Domain::ProcessRequest request)
+{
+    try {
+        const auto native = [](const std::string_view text) {
+            return std::filesystem::path{std::u8string{reinterpret_cast<const char8_t*>(text.data()), text.size()}};
+        };
+        auto executable = native(request.executable.value());
+        if (!executable.is_absolute()) {
+            if (executable.has_parent_path()) {
+                if (!request.workingDirectory) return Domain::Result<Domain::ProcessRequest>::failure(
+                    Domain::makeError(Domain::ErrorCodes::InvalidRequest, "Process cwd is required."));
+                executable = std::filesystem::absolute(native(request.workingDirectory->value()) / executable);
+            } else {
+                auto searchPath = shellSearchPath();
+                for (const auto& variable : request.environment)
+                    if (asciiNameEquals(variable.name, "PATH")) searchPath = variable.value;
+                std::wstring found(32'768U, L'\0');
+                const auto search = native(searchPath).wstring();
+                const auto count = ::SearchPathW(search.c_str(), executable.c_str(), L".exe",
+                    static_cast<DWORD>(found.size()), found.data(), nullptr);
+                if (count == 0U || count >= found.size()) return Domain::Result<Domain::ProcessRequest>::failure(
+                    Domain::makeError(Domain::ErrorCodes::ProcessLaunchFailed,
+                        "The process executable could not be resolved through the effective PATH."));
+                found.resize(count); executable = std::filesystem::path{found};
+            }
+        }
+        const auto encoded = executable.generic_u8string();
+        auto parsed = Domain::PathText::create(std::string{reinterpret_cast<const char*>(encoded.data()), encoded.size()});
+        if (!parsed) return Domain::Result<Domain::ProcessRequest>::failure(std::move(parsed).error());
+        request.executable = std::move(parsed).value();
+        return Domain::Result<Domain::ProcessRequest>::success(std::move(request));
+    } catch (...) {
+        return Domain::Result<Domain::ProcessRequest>::failure(Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest, "The direct process request could not be resolved."));
+    }
 }
 
 } // namespace
@@ -805,42 +844,34 @@ Domain::Result<Domain::ShellJobSnapshot> WindowsShellService::startProcess(
     const Domain::ProcessRequest& request, const Contracts::WorkspaceAuthority& authority,
     const Domain::OperationContext& context) noexcept
 {
+    auto resolved = resolveProcessRequest(request);
+    if (!resolved) return Domain::Result<Domain::ShellJobSnapshot>::failure(std::move(resolved).error());
+    return startOwnedJob(resolved.value(), authority, context, true);
+}
+
+Domain::Result<Domain::ShellJobSnapshot> WindowsShellService::startCMakeTestRun(
+    const Domain::CMakeTestRequest& request, const Contracts::WorkspaceAuthority& authority,
+    const Domain::OperationContext& context) noexcept
+{
+    using Outcome = Domain::Result<Domain::ShellJobSnapshot>;
     try {
-        const auto toPath = [](const std::string_view text) {
-            return std::filesystem::path{std::u8string{
-                reinterpret_cast<const char8_t*>(text.data()), text.size()}};
-        };
-        auto resolved = request;
-        auto executable = toPath(request.executable.value());
-        if (!executable.is_absolute()) {
-            if (executable.has_parent_path()) {
-                if (!request.workingDirectory) return Domain::Result<Domain::ShellJobSnapshot>::failure(
-                    Domain::makeError(Domain::ErrorCodes::InvalidRequest, "Process cwd is required."));
-                executable = std::filesystem::absolute(toPath(request.workingDirectory->value()) / executable);
-            } else {
-                auto path = shellSearchPath();
-                for (const auto& variable : request.environment) {
-                    if (asciiNameEquals(variable.name, "PATH")) path = variable.value;
-                }
-                std::wstring found(32'768U, L'\0');
-                const auto search = toPath(path).wstring();
-                const auto count = ::SearchPathW(search.c_str(), executable.c_str(), L".exe",
-                    static_cast<DWORD>(found.size()), found.data(), nullptr);
-                if (count == 0U || count >= found.size()) return Domain::Result<Domain::ShellJobSnapshot>::failure(
-                    Domain::makeError(Domain::ErrorCodes::ProcessLaunchFailed,
-                        "The process executable could not be resolved through the effective PATH."));
-                found.resize(count); executable = std::filesystem::path{found};
-            }
-        }
-        const auto encoded = executable.generic_u8string();
-        auto parsed = Domain::PathText::create(std::string{
-            reinterpret_cast<const char*>(encoded.data()), encoded.size()});
-        if (!parsed) return Domain::Result<Domain::ShellJobSnapshot>::failure(std::move(parsed).error());
-        resolved.executable = std::move(parsed).value();
-        return startOwnedJob(resolved, authority, context, true);
+        auto valid = Detail::validateCMakeTestRequest(request, authority, context);
+        if (!valid) return Outcome::failure(std::move(valid).error());
+        if (!implementation_ || !implementation_->jobRoot) return Outcome::failure(Domain::makeError(
+            Domain::ErrorCodes::HostCapabilityUnavailable, "Structured CMake/CTest requires durable process storage."));
+        auto executable = Domain::PathText::create("ctest");
+        if (!executable) return Outcome::failure(std::move(executable).error());
+        Domain::ProcessRequest process{std::move(executable).value()};
+        process.workingDirectory = request.buildDirectory; process.timeout = request.timeout;
+        process.maximumStdoutBytes = 16U * 1024U; process.maximumStderrBytes = 4U * 1024U;
+        process.arguments = {"--test-dir", request.buildDirectory.value(), "--output-on-failure", "--no-tests=error"};
+        if (request.filter) { process.arguments.push_back("-R"); process.arguments.push_back(*request.filter); }
+        if (request.configuration) { process.arguments.push_back("-C"); process.arguments.push_back(*request.configuration); }
+        auto resolved = resolveProcessRequest(std::move(process));
+        if (!resolved) return Outcome::failure(std::move(resolved).error());
+        return startOwnedJob(resolved.value(), authority, context, true, request);
     } catch (...) {
-        return Domain::Result<Domain::ShellJobSnapshot>::failure(Domain::makeError(
-            Domain::ErrorCodes::InvalidRequest, "The direct process request could not be resolved."));
+        return Outcome::failure(Domain::makeError(Domain::ErrorCodes::InternalFailure, "CMake/CTest job could not be admitted."));
     }
 }
 
@@ -848,7 +879,8 @@ Domain::Result<Domain::ShellJobSnapshot> WindowsShellService::startOwnedJob(
     const Domain::ProcessRequest& request,
     const Contracts::WorkspaceAuthority& authority,
     const Domain::OperationContext& context,
-    const bool directProcess) noexcept
+    const bool directProcess,
+    std::optional<Domain::CMakeTestRequest> cmakeTest) noexcept
 {
     using Outcome = Domain::Result<Domain::ShellJobSnapshot>;
     const auto implementation = implementation_;
@@ -898,7 +930,36 @@ Domain::Result<Domain::ShellJobSnapshot> WindowsShellService::startOwnedJob(
             directProcess ? request.executable.value() : request.arguments.front(), request.workingDirectory->value(),
             static_cast<std::uint32_t>((request.timeout.count() + 999) / 1000),
             std::nullopt, std::nullopt, std::chrono::milliseconds::zero()};
-        if (directProcess) initial.arguments = request.arguments;
+        auto jobRequest = request;
+        std::optional<Domain::ProcessRequest> buildPhase;
+        if (cmakeTest) {
+            const auto native = [](std::string_view value) { return std::filesystem::path{
+                std::u8string{reinterpret_cast<const char8_t*>(value.data()), value.size()}}; };
+            const auto report = native(implementation->jobRoot->value()) / authority.projectId().value() / (operation.value() + ".ctest.xml");
+            if (std::filesystem::exists(report)) return Outcome::failure(Domain::makeError(
+                Domain::ErrorCodes::Conflict, "The CTest run report already exists; stale reports are not reused."));
+            const auto encoded = report.generic_u8string();
+            initial.cmakeTest.emplace();
+            auto& metadata = *initial.cmakeTest;
+            metadata.buildDirectory = cmakeTest->buildDirectory.value(); metadata.buildRequested = cmakeTest->build;
+            metadata.target = cmakeTest->target; metadata.filter = cmakeTest->filter; metadata.configuration = cmakeTest->configuration;
+            metadata.reportPath = {reinterpret_cast<const char*>(encoded.data()), encoded.size()};
+            jobRequest.arguments.push_back("--output-junit"); jobRequest.arguments.push_back(metadata.reportPath);
+            if (cmakeTest->build) {
+                auto executablePath = Domain::PathText::create("cmake");
+                if (!executablePath) return Outcome::failure(std::move(executablePath).error());
+                Domain::ProcessRequest phase{std::move(executablePath).value()};
+                phase.workingDirectory = cmakeTest->buildDirectory; phase.timeout = request.timeout;
+                phase.maximumStdoutBytes = 16U * 1024U; phase.maximumStderrBytes = 4U * 1024U;
+                phase.arguments = {"--build", cmakeTest->buildDirectory.value()};
+                if (cmakeTest->target) { phase.arguments.push_back("--target"); phase.arguments.push_back(*cmakeTest->target); }
+                if (cmakeTest->configuration) { phase.arguments.push_back("--config"); phase.arguments.push_back(*cmakeTest->configuration); }
+                auto resolved = resolveProcessRequest(std::move(phase));
+                if (!resolved) return Outcome::failure(std::move(resolved).error());
+                buildPhase = std::move(resolved).value();
+            }
+        }
+        if (directProcess) initial.arguments = jobRequest.arguments;
         auto job = std::make_shared<Impl::Job>(Impl::Job{
             authority.projectId(), operation, initial, now, {}, {}, {}});
         std::shared_ptr<Impl::Job> retired;
@@ -928,23 +989,51 @@ Domain::Result<Domain::ShellJobSnapshot> WindowsShellService::startOwnedJob(
                 implementation->jobs.erase(oldest);
             }
             implementation->jobs.push_back(job);
-            auto managedRequest = request;
+            auto managedRequest = jobRequest;
             managedRequest.managedJob = true;
             if (job->storage) managedRequest.outputObserver = job->storage;
             try {
-                job->worker = std::jthread{[implementation, job, managedRequest, authority, directProcess,
+                job->worker = std::jthread{[implementation, job, managedRequest, authority, directProcess, buildPhase,
                     correlationId = context.correlationId]() noexcept {
                     try {
-                        const Domain::OperationContext jobContext{job->operationId,
-                            job->startedAt + managedRequest.timeout + std::chrono::seconds{10},
-                            job->cancellation.get_token(), correlationId};
-                        auto outcome = executeInternal(implementation, managedRequest, authority, jobContext, true, directProcess);
                         Domain::ShellJobSnapshot snapshot;
                         JobCompletionSink sink;
                         {
                             std::scoped_lock completionLock{implementation->stateMutex};
                             snapshot = job->snapshot;
                             sink = implementation->completionSink;
+                        }
+                        const Domain::OperationContext jobContext{job->operationId,
+                            job->startedAt + managedRequest.timeout + (snapshot.cmakeTest ? std::chrono::seconds{0} : std::chrono::seconds{10}),
+                            job->cancellation.get_token(), correlationId};
+                        const auto phase = [&](Domain::ProcessRequest next) {
+                            next.managedJob = true; next.outputObserver = managedRequest.outputObserver;
+                            next.timeout = std::chrono::duration_cast<std::chrono::milliseconds>(jobContext.deadline - std::chrono::steady_clock::now());
+                            if (next.timeout.count() <= 0) return Domain::Result<Domain::ProcessResult>::failure(
+                                Domain::makeError(Domain::ErrorCodes::DeadlineExceeded, "CMake/CTest shared deadline expired before the next phase."));
+                            return executeInternal(implementation, next, authority, jobContext, true, true);
+                        };
+                        const auto testPhase = [&] {
+                            auto fresh = Detail::validateFreshCTestReport(*snapshot.cmakeTest);
+                            if (!fresh) return Domain::Result<Domain::ProcessResult>::failure(std::move(fresh).error());
+                            return phase(managedRequest);
+                        };
+                        auto outcome = snapshot.cmakeTest
+                            ? (buildPhase ? phase(*buildPhase) : testPhase())
+                            : executeInternal(implementation, managedRequest, authority, jobContext, true, directProcess);
+                        if (snapshot.cmakeTest) {
+                            auto& metadata = *snapshot.cmakeTest;
+                            if (buildPhase && outcome) metadata.buildResult = outcome.value();
+                            if (buildPhase && outcome && outcome.value().exitCode == 0 && outcome.value().terminationConfirmed &&
+                                    !outcome.value().timedOut && !outcome.value().cancelled) {
+                                outcome = testPhase();
+                                if (outcome) metadata.testResult = outcome.value();
+                            } else if (!buildPhase && outcome) metadata.testResult = outcome.value();
+                            Detail::captureCTestReport(metadata, &jobContext);
+                            if (metadata.counts) {
+                                auto active = Detail::checkContext(jobContext, "CMake/CTest completion");
+                                if (!active) { metadata.counts.reset(); metadata.reportError = std::move(active).error(); }
+                            }
                         }
                         snapshot.elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::steady_clock::now() - job->startedAt);
@@ -961,6 +1050,13 @@ Domain::Result<Domain::ShellJobSnapshot> WindowsShellService::startOwnedJob(
                                 : result.timedOut ? Domain::ShellJobState::TimedOut
                                 : result.exitCode == 0 && result.terminationConfirmed
                                     ? Domain::ShellJobState::Completed : Domain::ShellJobState::Failed;
+                        }
+                        if (snapshot.cmakeTest && snapshot.cmakeTest->reportError &&
+                                (snapshot.state == Domain::ShellJobState::Completed || snapshot.cmakeTest->reportError->code == Domain::ErrorCodes::Cancelled ||
+                                    snapshot.cmakeTest->reportError->code == Domain::ErrorCodes::DeadlineExceeded)) {
+                            snapshot.error = snapshot.cmakeTest->reportError;
+                            snapshot.state = snapshot.error->code == Domain::ErrorCodes::Cancelled ? Domain::ShellJobState::Cancelled
+                                : snapshot.error->code == Domain::ErrorCodes::DeadlineExceeded ? Domain::ShellJobState::TimedOut : Domain::ShellJobState::Failed;
                         }
                         const auto persist = [&] {
                             if (!job->storage) return;
@@ -1027,6 +1123,41 @@ Domain::Result<Domain::ShellJobSnapshot> WindowsShellService::startOwnedJob(
     } catch (...) {
         return Outcome::failure(Domain::makeError(Domain::ErrorCodes::InternalFailure,
             "The tracked shell job could not be started."));
+    }
+}
+
+Domain::Result<Domain::CMakeTestRunStatus> WindowsShellService::getCMakeTestRun(
+    const std::string_view id, const std::uint64_t offset, const std::size_t limit,
+    const Contracts::WorkspaceAuthority& authority, const Domain::OperationContext& context) noexcept
+{
+    using Outcome = Domain::Result<Domain::CMakeTestRunStatus>;
+    try {
+        if (!Detail::containsAccess(authority.grants(), Domain::FileAccess::Read) || Detail::containsAccess(authority.denials(), Domain::FileAccess::Read))
+            return Outcome::failure(Domain::makeError(Domain::ErrorCodes::Unauthorized, "CTest status requires read authority."));
+        if (!limit || limit > Detail::MaximumCTestFailuresPerPage) return Outcome::failure(Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest, "CTest failure page must contain 1 through 32 cases."));
+        auto snapshot = getJob(id, authority, context);
+        if (!snapshot) return Outcome::failure(std::move(snapshot).error());
+        auto active = Detail::checkContext(context, "CMake/CTest status");
+        if (!active) return Outcome::failure(std::move(active).error());
+        if (!snapshot.value().cmakeTest) return Outcome::failure(Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest, "The owned job is not a structured CMake/CTest run."));
+        Domain::CMakeTestRunStatus result{std::move(snapshot).value(), {}, offset, offset, 0U, false};
+        const auto& metadata = *result.job.cmakeTest;
+        if (metadata.counts) {
+            if (offset > metadata.counts->failed) return Outcome::failure(Domain::makeError(
+                Domain::ErrorCodes::InvalidRequest, "CTest failure offset exceeds the report."));
+            auto report = Detail::readCTestReport(metadata, offset, limit, &context);
+            if (!report) return Outcome::failure(std::move(report).error());
+            result.failures = std::move(report).value().failures;
+            result.totalFailures = metadata.counts->failed;
+            result.nextFailureOffset += result.failures.size();
+            result.hasMore = result.nextFailureOffset < result.totalFailures;
+        } else if (offset) return Outcome::failure(Domain::makeError(Domain::ErrorCodes::InvalidRequest,
+            "A CTest failure offset requires an available completed report."));
+        return Outcome::success(std::move(result));
+    } catch (...) {
+        return Outcome::failure(Domain::makeError(Domain::ErrorCodes::InternalFailure, "CMake/CTest status could not be read."));
     }
 }
 

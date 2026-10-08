@@ -39,7 +39,7 @@ constexpr std::size_t MaximumInitializeInstructionsBytes = 32U * 1024U;
 constexpr auto VerificationTimeout = 15s;
 constexpr std::size_t VerificationStdoutBytesMaximum = 80'000U;
 constexpr std::size_t VerificationStderrBytesMaximum = 20'000U;
-constexpr std::array<std::string_view, 104U> CanonicalToolNames{
+constexpr std::array<std::string_view, 106U> CanonicalToolNames{
     "agent_cancel",
     "agent_context",
     "agent_get",
@@ -55,6 +55,8 @@ constexpr std::array<std::string_view, 104U> CanonicalToolNames{
     "clu.export_log",
     "clu.findings",
     "clu.resolve",
+    "cmake_test_run",
+    "cmake_test_status",
     "context_get",
     "context_list",
     "continuity.acknowledge_handoff",
@@ -150,7 +152,7 @@ constexpr std::size_t ExpectedToolCount = CanonicalToolNames.size();
 // embeds the fingerprint and exact ordered names rather than loading a test
 // fixture at runtime.
 constexpr std::string_view CanonicalToolDescriptorSha256 =
-    "eacb412724d00a40528496685f96d6138feb27f679a9bfefc7e93f20d35b7fcb";
+    "9b8402db922b7d0e9eed97662bfb7a017ae94d7500a647dc41e3846dfc145976";
 constexpr std::array<std::string_view, 5U> CluToolNames{
     "clu.evaluate", "clu.export_log", "clu.findings", "clu.resolve",
     "project_policy.read"};

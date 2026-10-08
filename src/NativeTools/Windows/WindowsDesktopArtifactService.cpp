@@ -1,6 +1,8 @@
 #include "ForgeConductor/NativeTools/Windows/WindowsDesktopArtifactService.h"
 
 #include "ForgeConductor/Domain/Utf8.h"
+#include "ForgeConductor/Domain/ManagedRunModels.h"
+#include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "NativeFileOperations.h"
 #include "Infrastructure/Windows/Detail/UtfConversion.h"
 
@@ -39,6 +41,7 @@ using Microsoft::WRL::ComPtr;
 namespace Conversion = ForgeConductor::Infrastructure::Windows::Detail;
 constexpr auto MaximumImageBytes = Contracts::IDesktopArtifactService::MaximumImageBytes;
 constexpr std::size_t MaximumDesktopInventoryBytes = 48U * 1024U;
+constexpr std::size_t MaximumDesktopReadBytes = 64U * 1024U;
 
 struct Failure final { Domain::Error error; };
 [[noreturn]] void reject(std::string_view code, std::string message) {
@@ -106,6 +109,65 @@ std::int64_t integer(const Json& arguments, std::string_view key, std::int64_t f
     const auto value = item->get<std::int64_t>();
     if (value < minimum || value > maximum) reject(Domain::ErrorCodes::InvalidRequest, std::string{key} + " is outside its bounds.");
     return value;
+}
+struct PixelSample final { UINT x{}; UINT y{}; };
+std::optional<std::vector<PixelSample>> pixelSamples(const Json& arguments) {
+    const auto item = arguments.find("samples");
+    if (item == arguments.end()) return std::nullopt;
+    if (!item->is_array() || item->empty() || item->size() > 64U)
+        reject(Domain::ErrorCodes::InvalidRequest, "samples must contain between 1 and 64 pixel coordinates.");
+    std::vector<PixelSample> samples;
+    samples.reserve(item->size());
+    for (const auto& sample : *item) {
+        if (!sample.is_object() || sample.size() != 2U || !sample.contains("x") || !sample.contains("y"))
+            reject(Domain::ErrorCodes::InvalidRequest, "Each pixel sample must contain exactly x and y.");
+        samples.push_back({static_cast<UINT>(integer(sample, "x", 0, 0, 4095)),
+            static_cast<UINT>(integer(sample, "y", 0, 0, 4095))});
+    }
+    return samples;
+}
+std::string digest(std::span<const std::byte> bytes, const Domain::OperationContext& context) {
+    check(context);
+    Infrastructure::Windows::BCryptSha256Hasher hasher;
+    auto hashed = hasher.sha256(bytes);
+    if (!hashed) throw Failure{hashed.error()};
+    check(context);
+    return hashed.value().value();
+}
+Json decodedPixelReceipt(IWICImagingFactory* factory, IWICBitmapFrameDecode* frame,
+    UINT width, UINT height, const std::optional<std::vector<PixelSample>>& samples,
+    const Domain::OperationContext& context) {
+    if (samples) for (const auto& sample : *samples) {
+        if (sample.x >= width || sample.y >= height)
+            reject(Domain::ErrorCodes::InvalidRequest, "Pixel sample coordinates must be inside decoded frame 0.");
+    }
+    ComPtr<IWICFormatConverter> converter;
+    requireHr(factory->CreateFormatConverter(&converter), "Create RGBA8 pixel converter");
+    requireImageHr(converter->Initialize(frame, GUID_WICPixelFormat32bppRGBA, WICBitmapDitherTypeNone,
+        nullptr, 0.0, WICBitmapPaletteTypeCustom), "Convert decoded frame to RGBA8");
+    const UINT stride = width * 4U;
+    std::vector<std::byte> rgba(static_cast<std::size_t>(stride) * height);
+    for (UINT top = 0U; top < height; top += 64U) {
+        check(context);
+        const auto rows = (std::min)(64U, height - top);
+        const WICRect region{0, static_cast<INT>(top), static_cast<INT>(width), static_cast<INT>(rows)};
+        requireImageHr(converter->CopyPixels(&region, stride, rows * stride,
+            reinterpret_cast<BYTE*>(rgba.data() + static_cast<std::size_t>(top) * stride)), "Read decoded RGBA8 pixels");
+    }
+    Json result{{"decoded_frame_index", 0}, {"decoded_pixel_format", "RGBA8"},
+        {"decoded_width", width}, {"decoded_height", height}, {"decoded_row_stride_bytes", stride},
+        {"decoded_rgba8_sha256", digest(rgba, context)}};
+    if (samples) {
+        auto values = Json::array();
+        for (const auto& sample : *samples) {
+            const auto offset = static_cast<std::size_t>(sample.y) * stride + sample.x * 4U;
+            values.push_back(Json{{"x", sample.x}, {"y", sample.y}, {"rgba", Json::array({
+                std::to_integer<unsigned>(rgba[offset]), std::to_integer<unsigned>(rgba[offset + 1U]),
+                std::to_integer<unsigned>(rgba[offset + 2U]), std::to_integer<unsigned>(rgba[offset + 3U])})}});
+        }
+        result["pixel_samples"] = std::move(values);
+    }
+    return result;
 }
 class Apartment final {
 public:
@@ -215,17 +277,34 @@ std::string base64(std::span<const std::byte> bytes) {
     }
     return result;
 }
-Json preview(Surface& image) {
-    const double scale = (std::min)(1.0, 256.0 / static_cast<double>((std::max)(image.width, image.height)));
-    const int width = (std::max)(1, static_cast<int>(image.width * scale));
-    const int height = (std::max)(1, static_cast<int>(image.height * scale));
-    Surface thumbnail{width, height};
-    ::SetStretchBltMode(thumbnail.dc, HALFTONE);
-    if (!::StretchBlt(thumbnail.dc, 0, 0, width, height, image.dc, 0, 0, image.width, image.height, SRCCOPY))
-        reject(Domain::ErrorCodes::HostCapabilityUnavailable, "Create image preview failed.");
-    const auto bytes = png(thumbnail);
-    return Json{{"image_base64", base64(bytes)}, {"image_mime_type", "image/png"},
-        {"preview_width", width}, {"preview_height", height}};
+Json preview(Surface& image, const int maximumDimension, const Domain::OperationContext& context, bool includePngDigest = false) {
+    double scale = (std::min)(1.0, static_cast<double>(maximumDimension) /
+        static_cast<double>((std::max)(image.width, image.height)));
+    bool reducedForBytes{};
+    for (;;) {
+        check(context);
+        const int width = (std::max)(1, static_cast<int>(image.width * scale));
+        const int height = (std::max)(1, static_cast<int>(image.height * scale));
+        Surface thumbnail{width, height};
+        ::SetStretchBltMode(thumbnail.dc, HALFTONE);
+        if (!::StretchBlt(thumbnail.dc, 0, 0, width, height, image.dc, 0, 0, image.width, image.height, SRCCOPY))
+            reject(Domain::ErrorCodes::HostCapabilityUnavailable, "Create image preview failed.");
+        const auto bytes = png(thumbnail);
+        const auto encodedBytes = (bytes.size() + 2U) / 3U * 4U;
+        if (encodedBytes <= Domain::MaximumManagedImagePreviewBase64Bytes) {
+            Json result{{"image_base64", base64(bytes)}, {"image_mime_type", "image/png"},
+                {"preview_width", width}, {"preview_height", height},
+                {"preview_max_dimension_requested", maximumDimension}, {"preview_encoded_bytes", encodedBytes},
+                {"preview_encoded_byte_limit", Domain::MaximumManagedImagePreviewBase64Bytes},
+                {"preview_reduced_for_byte_limit", reducedForBytes}};
+            if (includePngDigest) result["preview_png_sha256"] = digest(bytes, context);
+            return result;
+        }
+        if (width == 1 && height == 1)
+            reject(Domain::ErrorCodes::PayloadTooLarge, "The image preview cannot fit its encoded transport byte limit.");
+        reducedForBytes = true;
+        scale *= 0.75;
+    }
 }
 HWND window(const Json& arguments) {
     if (!arguments.contains("window_id") || !arguments.contains("pid"))
@@ -349,6 +428,7 @@ Json controlText(IUIAutomationElement& element) {
 }
 Json readWindow(HWND selected, const Json& arguments, const Domain::OperationContext& context) {
     const int limit = static_cast<int>(integer(arguments, "limit", 100, 1, 300));
+    const int offset = static_cast<int>(integer(arguments, "offset", 0, 0, (std::numeric_limits<int>::max)()));
     ComPtr<IUIAutomation> automation;
     requireHr(::CoCreateInstance(CLSID_CUIAutomation8, nullptr, CLSCTX_INPROC_SERVER,
         IID_PPV_ARGS(&automation)), "Create desktop accessibility client");
@@ -364,19 +444,32 @@ Json readWindow(HWND selected, const Json& arguments, const Domain::OperationCon
     requireHr(root->FindAll(TreeScope_Descendants, condition.Get(), &elements), "Read window controls");
     int count{};
     requireHr(elements->get_Length(&count), "Read control count");
+    if (offset > count) reject(Domain::ErrorCodes::InvalidRequest, "offset exceeds the current accessibility control count.");
     const auto geometry = bounds(selected);
     Json items = Json::array();
     std::size_t totalText{};
-    for (int index{}; index < (std::min)(count, limit); ++index) {
+    int index = offset;
+    const int end = offset + (std::min)(count - offset, limit);
+    const auto result = [&](const int next) {
+        const bool hasMore = next < count;
+        return Json{{"ok", true}, {"elements", items}, {"total_elements", count}, {"offset", offset},
+            {"scanned_elements", next - offset}, {"returned_elements", items.size()},
+            {"next_offset", hasMore ? Json(next) : Json(nullptr)}, {"has_more", hasMore}, {"truncated", hasMore}};
+    };
+    while (index < end) {
         check(context);
         ComPtr<IUIAutomationElement> element;
-        if (FAILED(elements->GetElement(index, &element))) continue;
+        if (FAILED(elements->GetElement(index, &element))) {
+            if (result(index + 1).dump().size() > MaximumDesktopReadBytes) break;
+            ++index; continue;
+        }
         BSTR rawName{};
-        if (FAILED(element->get_CurrentName(&rawName))) continue;
+        if (FAILED(element->get_CurrentName(&rawName))) {
+            if (result(index + 1).dump().size() > MaximumDesktopReadBytes) break;
+            ++index; continue;
+        }
         const std::unique_ptr<wchar_t, decltype(&::SysFreeString)> ownedName{rawName, &::SysFreeString};
         auto [label, labelTruncated] = boundedAccessibilityText(rawName);
-        totalText += label.size();
-        if (totalText > 32U * 1024U) break;
         CONTROLTYPEID type{};
         RECT position{};
         BOOL enabled{}, offscreen{};
@@ -385,16 +478,21 @@ Json readWindow(HWND selected, const Json& arguments, const Domain::OperationCon
         element->get_CurrentIsEnabled(&enabled);
         element->get_CurrentIsOffscreen(&offscreen);
         auto value = controlText(*element.Get());
-        if (value.contains("text")) totalText += value.at("text").get_ref<const std::string&>().size();
-        if (totalText > 32U * 1024U) break;
-        value.update(Json{{"name", label}, {"name_truncated", labelTruncated}, {"control_type", type}, {"enabled", enabled != FALSE},
+        const auto textBytes = label.size() + (value.contains("text") ? value.at("text").get_ref<const std::string&>().size() : 0U);
+        if (textBytes > 32U * 1024U - totalText) break;
+        value.update(Json{{"index", index}, {"name", label}, {"name_truncated", labelTruncated}, {"control_type", type}, {"enabled", enabled != FALSE},
             {"offscreen", offscreen != FALSE}, {"x", position.left - geometry.left},
             {"y", position.top - geometry.top}, {"width", position.right - position.left},
             {"height", position.bottom - position.top}});
         items.push_back(std::move(value));
+        if (result(index + 1).dump().size() > MaximumDesktopReadBytes) {
+            items.erase(items.size() - 1U);
+            break;
+        }
+        totalText += textBytes;
+        ++index;
     }
-    return Json{{"ok", true}, {"elements", std::move(items)}, {"total_elements", count},
-        {"truncated", count > limit || totalText > 32U * 1024U}};
+    return result(index);
 }
 void send(std::span<INPUT> inputs) {
     if (inputs.size() > MAXDWORD || ::SendInput(static_cast<UINT>(inputs.size()), inputs.data(), sizeof(INPUT)) != inputs.size())
@@ -507,7 +605,8 @@ void render(Surface& image, const Json& arguments, const Domain::OperationContex
             if (!oldBrush || oldBrush == HGDI_ERROR) { ::DeleteObject(shape); reject(Domain::ErrorCodes::HostCapabilityUnavailable, "Select shape brush failed."); }
             const auto oldPen = ::SelectObject(image.dc, ::GetStockObject(NULL_PEN));
             if (!oldPen || oldPen == HGDI_ERROR) { ::SelectObject(image.dc, oldBrush); ::DeleteObject(shape); reject(Domain::ErrorCodes::HostCapabilityUnavailable, "Select shape pen failed."); }
-            const BOOL drawn = type == "rectangle" ? ::Rectangle(image.dc, x, y, x + width, y + height) : ::Ellipse(image.dc, x, y, x + width, y + height);
+            const RECT bounds{x, y, x + width, y + height};
+            const BOOL drawn = type == "rectangle" ? ::FillRect(image.dc, &bounds, shape) != 0 : ::Ellipse(image.dc, x, y, x + width, y + height);
             ::SelectObject(image.dc, oldBrush); ::SelectObject(image.dc, oldPen); ::DeleteObject(shape);
             if (!drawn) reject(Domain::ErrorCodes::HostCapabilityUnavailable, "Draw image shape failed.");
         } else if (type == "line") {
@@ -613,8 +712,10 @@ Domain::Result<std::string> WindowsDesktopArtifactService::execute(
             else if (toolName == "desktop_type") result = typeWindow(selected, arguments, context);
             else result = pressWindow(selected, arguments, context);
         } else if (toolName == "desktop_capture" || toolName == "image_write" || toolName == "image_read") {
-            const auto requested = requestedImagePath(workspaceAuthority_, authority, arguments, context);
+            const auto previewDimension = static_cast<int>(integer(arguments, "preview_max_dimension", 256, 128, 2048));
             const bool read = toolName == "image_read";
+            const auto samples = read ? pixelSamples(arguments) : std::nullopt;
+            const auto requested = requestedImagePath(workspaceAuthority_, authority, arguments, context);
             auto authorized = read ? workspaceAuthority_.authorize(authority,
                 {requested, std::nullopt, Domain::FileAccess::Read, false}, context) :
                 Domain::Result<Contracts::AuthorizedPath>::success(destination(workspaceAuthority_, authority, requested, context));
@@ -647,6 +748,7 @@ Domain::Result<std::string> WindowsDesktopArtifactService::execute(
                 requireImageHr(frame->GetSize(&width, &height), "Read image dimensions");
                 if (width == 0 || height == 0 || width > 4096U || height > 4096U)
                     reject(Domain::ErrorCodes::PayloadTooLarge, "Image dimensions must be at most 4096 by 4096.");
+                result.update(decodedPixelReceipt(factory.Get(), frame.Get(), width, height, samples, context));
                 image = std::make_unique<Surface>(static_cast<int>(width), static_cast<int>(height));
                 ComPtr<IWICFormatConverter> converter;
                 requireHr(factory->CreateFormatConverter(&converter), "Create image pixel converter");
@@ -679,7 +781,7 @@ Domain::Result<std::string> WindowsDesktopArtifactService::execute(
                     render(*image, arguments, context);
                 }
                 const auto bytes = png(*image);
-                result.update(preview(*image));
+                result.update(preview(*image, previewDimension, context));
                 check(context);
                 auto parents = Detail::ensureAuthorizedParentDirectories(authorized.value(), context);
                 if (!parents) throw Failure{parents.error()};
@@ -688,7 +790,7 @@ Domain::Result<std::string> WindowsDesktopArtifactService::execute(
                 result["bytes_written"] = bytes.size();
             }
             if (result.is_null()) result = Json::object();
-            if (read) result.update(preview(*image));
+            if (read) result.update(preview(*image, previewDimension, context, true));
             result["ok"] = true;
             result["path"] = authorized.value().canonicalPath().value();
             result["width"] = image->width;

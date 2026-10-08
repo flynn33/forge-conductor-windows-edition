@@ -63,7 +63,7 @@ void testCanonicalCatalog()
     static_assert(!std::is_copy_constructible_v<Mcp::McpToolCatalog>);
     static_assert(!std::is_move_constructible_v<Mcp::McpToolCatalog>);
 
-    constexpr std::array<std::string_view, 104U> ExpectedNames{
+    constexpr std::array<std::string_view, 106U> ExpectedNames{
         "agent_cancel",
         "agent_context",
         "agent_get",
@@ -79,6 +79,8 @@ void testCanonicalCatalog()
         "clu.export_log",
         "clu.findings",
         "clu.resolve",
+        "cmake_test_run",
+        "cmake_test_status",
         "context_get",
         "context_list",
         "continuity.acknowledge_handoff",
@@ -197,8 +199,8 @@ void testCanonicalCatalog()
             ++writeEffects;
         }
     }
-    REQUIRE(readEffects == 48U);
-    REQUIRE(writeEffects == 56U);
+    REQUIRE(readEffects == 49U);
+    REQUIRE(writeEffects == 57U);
     REQUIRE(descriptor(tools, "agent_run_status").tool.effect == Domain::ToolEffect::Write);
     REQUIRE(descriptor(tools, "agent_run_start").tool.requiresProject);
     REQUIRE(descriptor(tools, "agent_run_status").tool.requiresProject);
@@ -227,6 +229,29 @@ void testCanonicalCatalog()
     REQUIRE(analysisSchema.at("properties").at("receive_timeout_sec").at("default") == 600);
     REQUIRE(analysisSchema.at("properties").at("receive_timeout_sec").at("maximum") == 3600);
     REQUIRE(schema(tools, "image_read").at("required") == Json::array({"path"}));
+    const auto sampleSchema = schema(tools, "image_read").at("properties").at("samples");
+    REQUIRE(sampleSchema.at("type") == "array" && sampleSchema.at("minItems") == 1 && sampleSchema.at("maxItems") == 64);
+    REQUIRE(sampleSchema.at("items").at("required") == Json::array({"x", "y"}));
+    REQUIRE(sampleSchema.at("items").at("additionalProperties") == false);
+    for (const auto coordinate : {"x", "y"}) {
+        const auto bounds = sampleSchema.at("items").at("properties").at(coordinate);
+        REQUIRE(bounds.at("type") == "integer" && bounds.at("minimum") == 0 && bounds.at("maximum") == 4095);
+    }
+    const auto desktopReadSchema = schema(tools, "desktop_read");
+    REQUIRE(desktopReadSchema.at("required") == Json::array({"window_id", "pid"}));
+    REQUIRE(desktopReadSchema.at("additionalProperties") == false);
+    REQUIRE(desktopReadSchema.at("properties").at("offset").at("minimum") == 0);
+    REQUIRE(desktopReadSchema.at("properties").at("offset").at("maximum") == 2147483647);
+    REQUIRE(desktopReadSchema.at("properties").at("limit").at("maximum") == 300);
+    REQUIRE(descriptor(tools, "desktop_read").tool.description.find("next_offset") != std::string::npos);
+    for (const auto toolName : {"image_read", "image_write", "desktop_capture", "image_analyze"}) {
+        const auto imageSchema = schema(tools, toolName);
+        const auto& dimension = imageSchema.at("properties").at("preview_max_dimension");
+        REQUIRE(dimension.at("minimum") == 128 && dimension.at("maximum") == 2048 && dimension.at("default") == 256);
+        REQUIRE(imageSchema.at("additionalProperties") == false);
+        REQUIRE(std::find(imageSchema.at("required").begin(), imageSchema.at("required").end(), "preview_max_dimension") ==
+            imageSchema.at("required").end());
+    }
 }
 
 void testSourceSchemasAndWindowsDelta()
@@ -312,6 +337,22 @@ void testSourceSchemasAndWindowsDelta()
         Json::array({"project_id", "predecessor_session_id", "mission"}));
     REQUIRE(checkpoint.at("properties").at("constraints").at("maxItems") == 128U);
     REQUIRE(checkpoint.at("properties").at("next_actions").at("maxItems") == 128U);
+
+    const auto testRun = schema(tools, "cmake_test_run");
+    REQUIRE(testRun.at("additionalProperties") == false);
+    REQUIRE(testRun.at("required") == Json::array({"build_dir"}));
+    REQUIRE(testRun.at("properties").at("mode").at("default") == "test");
+    REQUIRE(testRun.at("properties").at("timeout_sec").at("default") == 1800);
+    REQUIRE(testRun.at("properties").at("timeout_sec").at("maximum") == 3600);
+    REQUIRE(descriptor(tools, "cmake_test_run").tool.effect == Domain::ToolEffect::Write);
+    REQUIRE(descriptor(tools, "cmake_test_run").tool.requiresShell);
+    REQUIRE(descriptor(tools, "cmake_test_run").tool.requiresProject);
+    REQUIRE(descriptor(tools, "cmake_test_status").tool.effect == Domain::ToolEffect::Read);
+    REQUIRE(!descriptor(tools, "cmake_test_status").tool.requiresShell);
+    const auto testStatus = schema(tools, "cmake_test_status");
+    REQUIRE(testStatus.at("required") == Json::array({"job_id"}));
+    REQUIRE(testStatus.at("properties").at("max_failures").at("default") == 16);
+    REQUIRE(testStatus.at("properties").at("max_failures").at("maximum") == 32);
 
     const auto shell = schema(tools, "shell_exec");
     REQUIRE(shell.at("properties").at("timeout_sec").at("exclusiveMinimum") == 0);

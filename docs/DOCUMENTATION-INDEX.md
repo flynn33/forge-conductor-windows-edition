@@ -2,6 +2,8 @@
 
 ## Current product documentation
 
+The current source implementation is 1.3.20 with 106 Primary/Fallback tools; final qualification is pending. Earlier release and verification entries retain their named artifact identities.
+
 - [README](../README.md)
 - [Product status](STATUS.md)
 - [Roadmap](../ROADMAP.md)
@@ -12,12 +14,15 @@
 - [Architecture](ARCHITECTURE.md)
 - [Capability map](PARITY.md)
 - [Dedicated host capability guide](HOST-CAPABILITIES.md)
+- [Native CMake/CTest job contracts and examples](CMAKE-CTEST.md)
 - [Wiki publication sources](wiki/README.md)
 - [Windows toolchain](WINDOWS_TOOLCHAIN.md)
 - [Post-1.0 enhancements](DEFERRED.md)
 - [Packaging inputs](../packaging/README.md)
-- [Release 1.3.19](releases/1.3.19.md)
-- [Release 1.3.19 installed capability verification](validation/HOST-CAPABILITIES-1.3.19.md)
+- [1.3.20 implementation notes — qualification pending](releases/1.3.20.md)
+- [1.3.20 pending qualification record](validation/HOST-CAPABILITIES-1.3.20.md)
+- [Historical published release 1.3.19](releases/1.3.19.md)
+- [Historical 1.3.19 installed capability verification](validation/HOST-CAPABILITIES-1.3.19.md)
 - [Unpublished 1.3.18 source/CI/install investigation](releases/1.3.18.md)
 - [1.3.18 incomplete native acceptance and retained CI failure](validation/HOST-CAPABILITIES-1.3.18.md)
 - [Unpublished 1.3.17 installed investigation](releases/1.3.17.md)

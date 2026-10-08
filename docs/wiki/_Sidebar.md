@@ -4,7 +4,7 @@
 
 **Forge Conductor**
 
-<sub>Windows · 1.3.19</sub>
+<sub>Windows · 1.3.20 · qualification pending</sub>
 
 ---
 
@@ -12,7 +12,8 @@
 * [Home](Home)
 * [Workspace Guide](Guided-Setup)
 * [CLU Governance](Setup-and-Governance)
-* [Release 1.3.19](Release-1.3.19)
+* [1.3.20 implementation — qualification pending](Release-1.3.20)
+* [Historical published release 1.3.19](Release-1.3.19)
 * [Unpublished 1.3.18 investigation](Release-1.3.18)
 * [Unpublished 1.3.17 investigation](Release-1.3.17)
 * [Unpublished 1.3.16 candidate](Release-1.3.16)
@@ -34,6 +35,7 @@
 * [LM Studio MCP](MCP-Protocol)
 * [Windows Workflow Capabilities](Windows-workflow-capabilities)
 * [Tool Catalog](Tool-Catalog)
+* [CMake/CTest source guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/CMAKE-CTEST.md)
 * [Native Tools](Native-Tools)
 * [Project Memory](Project-Memory)
 * [Continuity](Continuity)

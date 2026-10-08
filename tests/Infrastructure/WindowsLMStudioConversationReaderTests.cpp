@@ -1,12 +1,24 @@
 #include "TestSupport.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioConversationReader.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioChatContinuity.h"
+#include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
+#include "Infrastructure/Windows/LMStudioChatContinuityControl.h"
+#include "Infrastructure/Windows/LMStudioChatCheckpoint.h"
+#include "Fakes/ConfigurationStoreFake.h"
+#include "Fakes/ProjectRepositoryFakes.h"
+#include "Fakes/RecordingProjectMemoryService.h"
 
 #include <Windows.h>
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
+#include <memory>
+#include <thread>
 
 namespace ForgeConductor::Tests {
 namespace {
@@ -174,6 +186,776 @@ void missingSelectionAndCancellation()
         fixture.path(), context.active());
     requireError(cancelled, Domain::ErrorCodes::Cancelled,
         "cancelled observation attempted to read the conversation");
+}
+
+class UnusedLegacyContinuity final : public Contracts::ILegacyContextContinuityService {
+public:
+    Domain::Result<Domain::LegacyContinuityPersistOutcome> checkpoint(
+        const Domain::LegacyContinuityWriteRequest&, const Domain::ClientId&,
+        Domain::LegacyHandoffSource, const Domain::OperationContext&) noexcept override
+    { return unused<Domain::LegacyContinuityPersistOutcome>(); }
+    Domain::Result<Domain::LegacyContinuityPersistOutcome> handoff(
+        const Domain::LegacyContinuityWriteRequest&, const Domain::ClientId&,
+        Domain::LegacyHandoffSource, const Domain::OperationContext&) noexcept override
+    { return unused<Domain::LegacyContinuityPersistOutcome>(); }
+    Domain::Result<Domain::LegacyContinuityPersistOutcome> automaticPersist(
+        const Domain::LegacyContinuityAutomaticRequest&, const Domain::ClientId&,
+        const Domain::OperationContext&) noexcept override
+    { return unused<Domain::LegacyContinuityPersistOutcome>(); }
+    Domain::Result<Domain::LegacyContinuityPersistOutcome> budgetHandoff(
+        const Domain::ClientId&, std::string_view, const Domain::OperationContext&,
+        const Domain::LegacyContinuityPatch&, std::optional<Domain::LegacyHandoffId>) noexcept override
+    { return unused<Domain::LegacyContinuityPersistOutcome>(); }
+    Domain::Result<Domain::LegacyContinuityGetOutcome> get(
+        const Domain::LegacyContinuityGetRequest& request, const Domain::OperationContext&) noexcept override
+    {
+        if(record && request.handoffId && *request.handoffId==record->packet.id)
+            return Domain::Result<Domain::LegacyContinuityGetOutcome>::success({record,true});
+        return unused<Domain::LegacyContinuityGetOutcome>();
+    }
+    Domain::Result<Domain::LegacyContinuityListOutcome> list(
+        const Domain::LegacyContinuityListRequest&, const Domain::OperationContext&) noexcept override
+    { return unused<Domain::LegacyContinuityListOutcome>(); }
+    Domain::Result<Domain::LegacyContinuityProjectionRepairOutcome> repairProjections(
+        const Domain::OperationContext&) noexcept override
+    { return unused<Domain::LegacyContinuityProjectionRepairOutcome>(); }
+    Domain::Result<Domain::LegacyContinuityResetOutcome> reset(
+        const Domain::DestructiveConfirmation&, const Domain::OperationContext&) noexcept override
+    { return unused<Domain::LegacyContinuityResetOutcome>(); }
+    void shutdown() noexcept override {}
+    std::optional<Domain::LegacyContinuityRecord> record;
+private:
+    template <typename T> static Domain::Result<T> unused()
+    {
+        return Domain::Result<T>::failure(Domain::makeError(
+            Domain::ErrorCodes::InternalFailure, "Unexpected handoff during observation test."));
+    }
+};
+
+class ContinuityObservationFixture final {
+public:
+    ContinuityObservationFixture()
+    {
+        const auto home = fileFixture.root() / "home";
+        std::filesystem::create_directory(home);
+        const auto homeText = home.generic_u8string();
+        ConversationFixture::write(fileFixture.root() / "mcp.json", Json{{"mcpServers", {
+            {"forge-conductor", {{"env", {{"FORGE_CONDUCTOR_HOME", std::string{
+                reinterpret_cast<const char*>(homeText.data()), homeText.size()}}}}}},
+            {"forge-conductor-fallback", Json::object()}, {"forge-conductor-clu", Json::object()}}}});
+        const auto homePath = take(Domain::PathText::create(std::string{
+            reinterpret_cast<const char*>(homeText.data()), homeText.size()}));
+        configuration.reloadResult.set(Domain::Result<Domain::AppConfig>::success({}));
+        projects.listRecentResult.set(Domain::Result<Domain::MemoryPage>::success(
+            Domain::MemoryPage{project, {}, std::nullopt, false, 0U, 0U}));
+        observer = std::make_unique<Infrastructure::Windows::WindowsLMStudioChatContinuity>(
+            project, fileFixture.path(), homePath, fileFixture.path(), fileFixture.path(),
+            Domain::LocalModelConfig{}, memory, legacyContinuity, projects, clock, uuid, configuration, true);
+    }
+    void partial() const
+    {
+        std::ofstream output{fileFixture.root() / "conversations" / "project" /
+            "chat.conversation.json", std::ios::binary | std::ios::trunc};
+        output << "{\"messages\":[";
+        require(static_cast<bool>(output), "partial observation fixture write failed");
+    }
+    void complete() const
+    {
+        fileFixture.save(conversation(Json::array({message(Json::array({
+            version(Json::array({generation(100U, 32768U)}))}))})));
+    }
+    Json await(const std::function<bool(const Json&)>& predicate) const
+    {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds{10};
+        do {
+            auto status = Json::parse(observer->status());
+            if (predicate(status)) return status;
+            std::this_thread::sleep_for(std::chrono::milliseconds{20});
+        } while (std::chrono::steady_clock::now() < deadline);
+        throw TestFailure{"Continuity observation did not reach expected status: " + observer->status()};
+    }
+    ConversationFixture fileFixture;
+    Domain::ProjectId project{parse<Domain::ProjectId>("5c06c108-26c9-4008-8123-2720fc8c9d97")};
+    Infrastructure::Windows::SystemClock clock;
+    Infrastructure::Windows::WindowsUuidGenerator uuid;
+    Fakes::RecordingConfigurationStoreFake configuration;
+    Fakes::RecordingProjectMemoryService projects;
+    Fakes::LegacyMemoryServiceFake memory{8U, {"purge_legacy_memory", "all", "test-token"}};
+    UnusedLegacyContinuity legacyContinuity;
+    std::unique_ptr<Infrastructure::Windows::WindowsLMStudioChatContinuity> observer;
+};
+
+void noSelection(ContinuityObservationFixture& fixture, const std::optional<Json>& configuration)
+{
+    const auto path = fixture.fileFixture.root() / ".internal" / "conversation-config.json";
+    if (configuration) ConversationFixture::write(path, *configuration);
+    else require(std::filesystem::remove(path), "private conversation selection fixture was not removed");
+}
+
+Json awaitMeasured(ContinuityObservationFixture& fixture)
+{
+    return fixture.await([](const Json& status) {
+        return status.contains("context_telemetry") && status["context_telemetry"].value("available", false);
+    });
+}
+
+Json awaitNoSelection(ContinuityObservationFixture& fixture)
+{
+    return fixture.await([](const Json& status) {
+        return status.contains("context_telemetry") &&
+            !status["context_telemetry"].value("available", true) &&
+            status["context_telemetry"].at("conversation_id").is_null();
+    });
+}
+
+void noSelectionInvalidatesMeasuredTelemetry(const std::optional<Json>& configuration)
+{
+    ContinuityObservationFixture fixture;
+    fixture.complete();fixture.observer->start();
+    auto before = awaitMeasured(fixture);
+    fixture.observer->shutdown();
+    noSelection(fixture, configuration);
+    fixture.observer->start();
+    auto after = awaitNoSelection(fixture);
+    fixture.observer->shutdown();
+    const auto& telemetry = after.at("context_telemetry");
+    for (const char* key : {"tokens_used", "context_capacity", "generation_reference", "headroom_tokens"})
+        require(telemetry.at(key).is_null(), "no selection retained a previous generation measurement");
+    require(!telemetry.at("overflow").get<bool>() && !telemetry.at("tools_active").get<bool>(),
+        "no selection retained stale generation or active-tool state");
+    require(telemetry.at("observed_at_unix_ms") > before.at("context_telemetry").at("observed_at_unix_ms"),
+        "no-selection telemetry retained its old observation time");
+    require(!telemetry.at("reason").get<std::string>().empty(), "unavailable no-selection telemetry has no reason");
+    before.erase("context_telemetry");after.erase("context_telemetry");
+    require(after == before, "no selection changed visible handoff availability, state, or binding status");
+}
+
+void noSelectionRecoversPreviousReadError()
+{
+    ContinuityObservationFixture fixture;
+    fixture.partial();fixture.observer->start();
+    fixture.await([](const Json& status) {
+        return status.value("error", std::string{}).find("incomplete or invalid JSON") != std::string::npos;
+    });
+    fixture.observer->shutdown();
+    noSelection(fixture, Json{{"selectedConversation", nullptr}});
+    fixture.observer->start();
+    const auto status = fixture.await([](const Json& observed) {
+        return observed.contains("context_telemetry") &&
+            !observed["context_telemetry"].value("available", true) && !observed.contains("error");
+    });
+    fixture.observer->shutdown();
+    require(!status.contains("error"), "a successful null observation retained its previous read error");
+}
+
+void noSelectionPreservesOngoingPreferenceError()
+{
+    ContinuityObservationFixture fixture;
+    fixture.complete();
+    fixture.projects.listRecentResult.set(Domain::Result<Domain::MemoryPage>::failure(
+        Domain::makeError(Domain::ErrorCodes::InternalFailure, "Ongoing no-selection preference failure.")));
+    fixture.observer->start();
+    fixture.await([](const Json& status) {
+        return status.value("error", std::string{}) == "Ongoing no-selection preference failure.";
+    });
+    fixture.observer->shutdown();
+    noSelection(fixture, Json{{"selectedConversation", nullptr}});
+    fixture.observer->start();
+    const auto status = awaitNoSelection(fixture);
+    fixture.observer->shutdown();
+    require(status.value("error", std::string{}) == "Ongoing no-selection preference failure.",
+        "no selection hid an ongoing preference failure");
+}
+
+void noSelectionRefreshesContinuityPreference()
+{
+    ContinuityObservationFixture fixture;
+    fixture.complete();fixture.observer->start();
+    const auto before = awaitMeasured(fixture);
+    fixture.observer->shutdown();
+    require(before.at("enabled") == true, "private observation fixture did not start with continuity enabled");
+    const auto body = Json{{"provider_id", "lmstudio://http/127.0.0.1:1234/<automatic>"}, {"enabled", false}}.dump();
+    Domain::ProjectMemoryRecord preference{
+        parse<Domain::MemoryRecordId>("eb0a5ea3-c5cf-4f2a-a8be-4b484de62a6f"), fixture.project, 1U,
+        "automatic_continuity_preference", "Private continuity preference", "Disable private continuity", body,
+        {}, 1.0, 1.0, "test", std::nullopt, std::nullopt, {}, {}, {}, std::nullopt,
+        parse<Domain::Sha256Digest>(std::string(64U, '0')), false};
+    fixture.projects.listRecentResult.set(Domain::Result<Domain::MemoryPage>::success(
+        Domain::MemoryPage{fixture.project, {{std::move(preference), 1.0}}, std::nullopt, false, body.size(), 256U * 1024U}));
+    noSelection(fixture, Json{{"selectedConversation", nullptr}});
+    fixture.observer->start();
+    const auto status = fixture.await([](const Json& observed) {
+        return observed.contains("context_telemetry") &&
+            !observed["context_telemetry"].value("available", true) && observed.at("enabled") == false;
+    });
+    fixture.observer->shutdown();
+    require(status.at("enabled") == false, "no selection retained a stale continuity preference");
+}
+
+void noSelectionPreservesWorkspaceControlError()
+{
+    ContinuityObservationFixture fixture;
+    fixture.complete();
+    const auto traceDirectory = fixture.fileFixture.root() / "home" / "continuity";
+    {
+        std::ofstream blocker{traceDirectory};blocker << "Private failed workspace binding trace.";
+        require(static_cast<bool>(blocker), "private workspace binding blocker write failed");
+    }
+    const auto rebound = parse<Domain::ProjectId>("083f1a53-cda8-438e-9e04-5aaefb275a44");
+    fixture.observer->bindWorkspace(rebound, fixture.fileFixture.path());fixture.observer->start();
+    const auto before = fixture.await([&](const Json& status) {
+        return status.contains("error") && status.value("project_id", std::string{}) == rebound.value();
+    });
+    fixture.observer->shutdown();
+    require(std::filesystem::remove(traceDirectory), "private workspace binding blocker was not removed");
+    noSelection(fixture, Json{{"selectedConversation", nullptr}});
+    fixture.observer->start();
+    const auto after = awaitNoSelection(fixture);
+    fixture.observer->shutdown();
+    for (const char* key : {"error", "state", "available", "project_id", "binding_source"})
+        require(after.at(key) == before.at(key), "no selection changed an unresolved operational failure or binding state");
+}
+
+void noSelectionPreservesPendingWorkspaceBinding()
+{
+    ContinuityObservationFixture fixture;
+    fixture.complete();fixture.observer->start();
+    const auto before = awaitMeasured(fixture);fixture.observer->shutdown();
+    const auto pending = parse<Domain::ProjectId>("aebbe194-23c9-4407-bd7a-228e26f31caa");
+    fixture.observer->bindWorkspace(pending, fixture.fileFixture.path());
+    noSelection(fixture, Json{{"selectedConversation", nullptr}});
+    fixture.observer->start();const auto empty = awaitNoSelection(fixture);fixture.observer->shutdown();
+    require(!empty.contains("project_id") && empty.at("state") == before.at("state"),
+        "no selection applied or abandoned the pending authorized workspace binding");
+    ConversationFixture::write(fixture.fileFixture.root() / ".internal" / "conversation-config.json",
+        Json{{"selectedConversation", "project/chat.conversation.json"}});
+    fixture.observer->start();
+    const auto bound = fixture.await([&](const Json& status) {
+        return status.value("project_id", std::string{}) == pending.value() &&
+            status.contains("context_telemetry") && status["context_telemetry"].value("available", false);
+    });
+    fixture.observer->shutdown();
+    require(bound.at("binding_source") == "authorized_mcp_workspace",
+        "reselecting the chat lost the pending authorized workspace binding");
+}
+
+void selectedEmptyConversationRetainsIdentityWithoutUsage()
+{
+    ContinuityObservationFixture fixture;
+    fixture.complete();fixture.observer->start();awaitMeasured(fixture);fixture.observer->shutdown();
+    fixture.fileFixture.save(conversation(Json::array()));fixture.observer->start();
+    const auto status = fixture.await([](const Json& observed) {
+        return observed.contains("context_telemetry") &&
+            !observed["context_telemetry"].value("available", true) &&
+            observed["context_telemetry"].at("conversation_id") == "project/chat.conversation.json";
+    });
+    fixture.observer->shutdown();
+    require(status.at("context_telemetry").at("tokens_used").is_null(),
+        "a selected empty chat fabricated provider usage");
+}
+
+void successfulNullObservationStatusesAndRecovery()
+{
+    std::vector<std::string> failures;
+    const auto run = [&](const char* name, const std::function<void()>& exercise) {
+        try {exercise();std::cout << "[CASE PASS] continuity-null." << name << '\n';}
+        catch (const std::exception& error) {
+            failures.push_back(std::string{name} + ": " + error.what());
+            std::cerr << "[CASE FAIL] continuity-null." << failures.back() << '\n';
+        }
+    };
+    run("null_selector", [] {noSelectionInvalidatesMeasuredTelemetry(Json{{"selectedConversation", nullptr}});});
+    run("missing_selector", [] {noSelectionInvalidatesMeasuredTelemetry(Json::object());});
+    run("empty_selector", [] {noSelectionInvalidatesMeasuredTelemetry(Json{{"selectedConversation", ""}});});
+    run("missing_config", [] {noSelectionInvalidatesMeasuredTelemetry(std::nullopt);});
+    run("read_error_recovery", noSelectionRecoversPreviousReadError);
+    run("ongoing_preference_failure", noSelectionPreservesOngoingPreferenceError);
+    run("preference_refresh", noSelectionRefreshesContinuityPreference);
+    run("operational_error_preserved", noSelectionPreservesWorkspaceControlError);
+    run("pending_binding_preserved", noSelectionPreservesPendingWorkspaceBinding);
+    run("selected_empty_chat_distinction", selectedEmptyConversationRetainsIdentityWithoutUsage);
+    require(failures.empty(), "Successful-null continuity cases failed; inspect the per-case evidence above.");
+}
+
+void observerReconstructionRetainsWaitingPacketWithoutResending()
+{
+    using namespace Infrastructure::Windows;
+    ContinuityObservationFixture fixture;
+    {
+        const auto encoded=(fixture.fileFixture.root()/"home").generic_u8string();
+        const auto home=take(Domain::PathText::create(std::string{reinterpret_cast<const char*>(encoded.data()),encoded.size()}));
+        const Json suppliedScope{{"current_caller","private-observer-reconstruction"}};
+        TestContext operation;
+        Detail::LMStudioChatCheckpoint checkpoint{home,fixture.project,suppliedScope,operation.active()};
+        require(checkpoint.scope().is_object() && checkpoint.scope()==suppliedScope,
+            "checkpoint list initialization wrapped the freshly supplied authority-evidence scope");
+    }
+    std::size_t sentMessages{};
+    auto controls=std::make_shared<Detail::LMStudioChatControlActions>();
+    controls->activate=[](const auto&,const auto&) {return Domain::Result<void>::success();};
+    controls->idle=[](const auto&,const auto&) {return Domain::Result<bool>::success(true);};
+    controls->pause=[](const auto&,std::string_view,const auto&) {return Domain::Result<bool>::success(true);};
+    controls->send=[&](const Domain::PathText&,std::string_view text,bool newChat,
+        const Domain::OperationContext& operation,std::optional<std::string_view> expected,
+        const std::function<void(std::string_view)>&,const LMStudioChatEffectObserver& receipt) {
+        require(!newChat && expected==std::optional<std::string_view>{"project/chat.conversation.json"},
+            "private packet request addressed the wrong chat or created a successor");
+        const auto observed=take(WindowsLMStudioConversationReader::read(fixture.fileFixture.path(),operation));
+        require(observed.has_value(),"private packet request had no selected chat");
+        const auto boundary=observed->userMessages.size();
+        if(receipt) {
+            auto recorded=receipt({LMStudioChatEffect::Send,LMStudioChatEffectStage::BeforeDispatch,observed->conversationId,boundary});
+            if(!recorded) return recorded;
+        }
+        std::ifstream input{fixture.fileFixture.root()/"conversations"/"project"/"chat.conversation.json",std::ios::binary};
+        auto saved=Json::parse(input);
+        saved["messages"].push_back(message(Json::array({Json{{"type","singleStep"},{"role","user"},
+            {"content",Json::array({Json{{"type","text"},{"text",text}}})}}})));
+        fixture.fileFixture.save(saved);++sentMessages;
+        if(receipt) return receipt({LMStudioChatEffect::Send,LMStudioChatEffectStage::Confirmed,observed->conversationId,boundary});
+        return Domain::Result<void>::success();
+    };
+    const auto create=[&] {
+        const auto encoded=(fixture.fileFixture.root()/"home").generic_u8string();
+        auto home=take(Domain::PathText::create(std::string{reinterpret_cast<const char*>(encoded.data()),encoded.size()}));
+        return Detail::LMStudioChatContinuityAccess::create(controls,fixture.project,fixture.fileFixture.path(),home,
+            fixture.fileFixture.path(),fixture.fileFixture.path(),Domain::LocalModelConfig{},fixture.memory,
+            fixture.legacyContinuity,fixture.projects,fixture.clock,fixture.uuid,fixture.configuration,true);
+    };
+    fixture.observer.reset();fixture.observer=create();
+    fixture.fileFixture.save(conversation(Json::array({message(Json::array({version(Json::array({generation(31000U,32768U)}))}))})));
+    fixture.observer->start();
+    const auto waiting=fixture.await([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet";});
+    fixture.observer->shutdown();
+    require(sentMessages==1U,"private observer did not dispatch exactly one confirmed packet request");
+    TestContext readContext;
+    const auto persisted=take(WindowsLMStudioConversationReader::read(fixture.fileFixture.path(),readContext.active()));
+    require(persisted && persisted->userMessages.size()==1U && persisted->userMessages.front().starts_with("Auto Continuity:"),
+        "private confirmed packet request was not persisted as native user evidence");
+    fixture.observer.reset();fixture.observer=create();fixture.observer->start();
+    fixture.await([&](const Json& status) {
+        return status.value("state",std::string{})=="waiting_for_model_packet" &&
+            status.contains("context_telemetry") && status["context_telemetry"]["observed_at_unix_ms"]>
+                waiting["context_telemetry"]["observed_at_unix_ms"];
+    });
+    fixture.observer->shutdown();
+    require(sentMessages==1U,"reconstructing the observer lost its verified waiting phase and sent the packet request again");
+}
+
+class VisibleHandoffFixture final {
+public:
+    using Effect=Infrastructure::Windows::LMStudioChatEffect;
+    using Stage=Infrastructure::Windows::LMStudioChatEffectStage;
+    enum class Fault {None,AmbiguousRequest,BeforeDispatchStorage,AfterDispatchStorage,UncertainNew,StableNewUndelivered,AmbiguousDelivery};
+    VisibleHandoffFixture() {
+        controls=std::make_shared<Infrastructure::Windows::Detail::LMStudioChatControlActions>();
+        controls->activate=[](const auto&,const auto&) {return Domain::Result<void>::success();};
+        controls->idle=[](const auto&,const auto&) {return Domain::Result<bool>::success(true);};
+        controls->pause=[](const auto&,std::string_view,const auto&) {return Domain::Result<bool>::success(true);};
+        controls->send=[this](const Domain::PathText&,std::string_view text,bool newChat,
+            const Domain::OperationContext& operation,std::optional<std::string_view> expected,
+            const std::function<void(std::string_view)>& successor,
+            const Infrastructure::Windows::LMStudioChatEffectObserver& receipt) {
+            require(receipt && expected==selected,"private durable control lost its receipt or exact target");
+            const auto acknowledge=[&](Effect effect,Stage stage,const std::string& id,std::size_t boundary) {
+                return receipt({effect,stage,id,boundary});
+            };
+            if(newChat) {
+                auto recorded=acknowledge(Effect::NewChat,Stage::BeforeDispatch,selected,0U);
+                if(!recorded) return recorded;
+                ++creations;
+                select("project/successor.conversation.json",conversation(Json::array()));
+                if(fault==Fault::UncertainNew) return ambiguous();
+                recorded=acknowledge(Effect::NewChat,Stage::Confirmed,selected,0U);
+                if(!recorded) return recorded;
+                if(successor) successor(selected);
+                if(fault==Fault::StableNewUndelivered) return ambiguous();
+            }
+            const auto chat=take(WindowsLMStudioConversationReader::read(fixture.fileFixture.path(),operation));
+            require(chat && chat->conversationId==selected,"private durable Send observed another target");
+            const auto boundary=chat->userMessages.size();
+            if(fault==Fault::BeforeDispatchStorage) denyCheckpointPublication();
+            auto recorded=acknowledge(Effect::Send,Stage::BeforeDispatch,selected,boundary);
+            if(!recorded) return recorded;
+            ++sends;lastText=text;
+            if(fault==Fault::AmbiguousRequest || fault==Fault::AmbiguousDelivery) return ambiguous();
+            append(message(Json::array({Json{{"type","singleStep"},{"role","user"},
+                {"content",Json::array({Json{{"type","text"},{"text",std::string{text}}}})}}})));
+            if(fault==Fault::AfterDispatchStorage) denyCheckpointPublication();
+            return acknowledge(Effect::Send,Stage::Confirmed,selected,boundary);
+        };
+        reconstruct();
+    }
+    ~VisibleHandoffFixture() {if(fixture.observer) fixture.observer->shutdown();publicationBlock.reset();}
+    std::unique_ptr<Infrastructure::Windows::WindowsLMStudioChatContinuity> create(bool confirmed=true) {
+        const auto encoded=(fixture.fileFixture.root()/"home").generic_u8string();
+        auto home=take(Domain::PathText::create(std::string{reinterpret_cast<const char*>(encoded.data()),encoded.size()}));
+        return Infrastructure::Windows::Detail::LMStudioChatContinuityAccess::create(controls,fixture.project,
+            fixture.fileFixture.path(),home,fixture.fileFixture.path(),fixture.fileFixture.path(),Domain::LocalModelConfig{},
+            fixture.memory,fixture.legacyContinuity,fixture.projects,fixture.clock,fixture.uuid,fixture.configuration,confirmed);
+    }
+    void reconstruct(bool confirmed=true) {
+        fixture.observer.reset();fixture.observer=create(confirmed);
+    }
+    Json run(const std::function<bool(const Json&)>& predicate) {
+        fixture.observer->start();auto status=fixture.await(predicate);fixture.observer->shutdown();return status;
+    }
+    Json pending() {return run([](const Json& status) {return status.value("state",std::string{})=="recovery_pending";});}
+    void waiting() {
+        fixture.fileFixture.save(conversation(Json::array({message(Json::array({version(Json::array({generation(31000U,32768U)}))}))})));
+        run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet";});
+        require(sends==1U && creations==0U,"private fixture did not acknowledge one initial packet request");
+    }
+    std::filesystem::path checkpointPath() const {
+        return fixture.fileFixture.root()/"home"/"continuity"/("lmstudio-visible-"+fixture.project.value()+".checkpoint");
+    }
+    Json checkpoint() const {
+        std::ifstream input{checkpointPath(),std::ios::binary};
+        std::vector<char> bytes{std::istreambuf_iterator<char>{input},{}};
+        require(!bytes.empty(),"private durable checkpoint is missing");
+        return take(Infrastructure::Windows::Detail::LMStudioChatCheckpoint::open(std::as_bytes(std::span{bytes})));
+    }
+    void writeCheckpoint(const Json& value) {
+        const auto stored=take(Infrastructure::Windows::Detail::LMStudioChatCheckpoint::seal(value));
+        std::ofstream output{checkpointPath(),std::ios::binary|std::ios::trunc};
+        output.write(reinterpret_cast<const char*>(stored.data()),static_cast<std::streamsize>(stored.size()));
+        require(static_cast<bool>(output),"private checkpoint rewrite failed");
+    }
+    void append(const Json& value) {
+        const auto path=fixture.fileFixture.root()/"conversations"/std::filesystem::path{selected};
+        std::ifstream input{path,std::ios::binary};auto saved=Json::parse(input);input.close();
+        saved["messages"].push_back(value);ConversationFixture::write(path,saved);
+    }
+    void select(const std::string& id,const Json& value) {
+        selected=id;ConversationFixture::write(fixture.fileFixture.root()/"conversations"/std::filesystem::path{id},value);
+        ConversationFixture::write(fixture.fileFixture.root()/".internal"/"conversation-config.json",Json{{"selectedConversation",id}});
+    }
+    static Json tool(std::string_view name,const Json& payload,unsigned call) {
+        const auto id="durable-native-"+std::to_string(call);
+        return Json{{"type","contentBlock"},{"content",Json::array({
+            Json{{"type","toolCallRequest"},{"callId",call},{"name",name},{"toolCallRequestId",id},{"pluginIdentifier","mcp/forge-conductor"}},
+            Json{{"type","toolCallResult"},{"callId",call},{"toolCallRequestId",id},
+                {"content",Json::array({Json{{"type","text"},{"text",payload.dump()}}}).dump()}}})}};
+    }
+    void saveModelPacket() {
+        Domain::LegacyHandoffPacket packet{parse<Domain::LegacyHandoffId>("durable-native-packet")};
+        packet.resumeReady=true;packet.goal="Recover the exact original task after the visible connector restart";
+        packet.narrative="The private observer has measured a real selected provider generation, sent exactly one packet request, and retained the original project folder and Forge integrations. The next step must preserve native tool evidence, pending actions and explicit constraints while resuming the same durable packet after reconstruction.";
+        packet.resumeSeed=packet.narrative+" Read this packet with context_get and run agent_list afterward.";
+        packet.keyFiles={fixture.fileFixture.path().value()};packet.decisions={"Do not repeat uncertain New chat or Send effects"};
+        packet.nextActions={"Read the retained packet with context_get","Run agent_list after recovery"};
+        Json body{{"meta",{{"id",packet.id.value()},{"source","model"},{"resume_ready",true}}},
+            {"task",{{"goal",packet.goal},{"status",packet.status},{"next_actions",packet.nextActions},{"blockers",packet.blockers}}},
+            {"working_set",{{"key_files",packet.keyFiles},{"decisions",packet.decisions}}},
+            {"resume",{{"seed",packet.resumeSeed}}},{"narrative",packet.narrative},{"agents",Json::array()}};
+        fixture.legacyContinuity.record=Domain::LegacyContinuityRecord{packet,1U,{}};
+        TestContext operation;
+        const auto savedPointer=take(fixture.memory.set({"continuity/project/"+fixture.project.value(),packet.id.value(),{}},operation.active()));
+        require(savedPointer.stored && savedPointer.note.body==packet.id.value(),"private model packet pointer was not saved exactly");
+        append(message(Json::array({version(Json::array({tool("session_handoff",Json{{"ok",true},
+            {"handoff_id",packet.id.value()},{"resume_seed",packet.resumeSeed},{"packet",body}},1U)}))})));
+    }
+    void nativeResume() {
+        append(message(Json::array({version(Json::array({
+            tool("context_get",Json{{"ok",true},{"found",true},{"handoff_id","durable-native-packet"}},2U),
+            tool("agent_list",Json{{"ok",true}},3U),generation(3000U,32768U)}))})));
+    }
+    void denyCheckpointPublication() {
+        publicationBlock.reset(::CreateFileW(checkpointPath().c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,
+            OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr));
+        require(static_cast<bool>(publicationBlock),"private storage failure could not lock the old checkpoint");
+    }
+    static Domain::Result<void> ambiguous() {return Domain::Result<void>::failure(Domain::makeError(
+        Domain::ErrorCodes::AcknowledgementTimeout,"Private control dispatch acknowledgement is uncertain.",true));}
+    ContinuityObservationFixture fixture;
+    std::shared_ptr<Infrastructure::Windows::Detail::LMStudioChatControlActions> controls;
+    std::atomic<std::size_t> sends{},creations{};
+    std::string selected{"project/chat.conversation.json"},lastText;
+    Fault fault{Fault::None};
+    Infrastructure::Windows::Detail::UniqueHandle publicationBlock;
+};
+
+void durableVisibleHandoffRecoveryCases()
+{
+    std::vector<std::string> failures;
+    const auto run=[&](const char* name,const std::function<void()>& exercise) {
+        try {exercise();std::cout<<"[CASE PASS] continuity-durable."<<name<<'\n';}
+        catch(const std::exception& error) {failures.push_back(std::string{name}+": "+error.what());std::cerr<<"[CASE FAIL] continuity-durable."<<failures.back()<<'\n';}
+    };
+    run("uncertain_send_never_replayed",[] {
+        VisibleHandoffFixture f;f.fault=VisibleHandoffFixture::Fault::AmbiguousRequest;
+        f.fixture.fileFixture.save(conversation(Json::array({message(Json::array({version(Json::array({generation(31000U,32768U)}))}))})));
+        f.pending();require(f.sends==1U,"uncertain request was not dispatched once");
+        f.fault=VisibleHandoffFixture::Fault::None;f.reconstruct();f.pending();
+        require(f.sends==1U,"reconstructed observer repeated an uncertain Send");
+        f.append(message(Json::array({Json{{"type","singleStep"},{"role","user"},
+            {"content",Json::array({Json{{"type","text"},{"text",f.lastText}}})}}})));
+        f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet";});
+        require(f.sends==1U && f.checkpoint()["state"]["effect"]["stage"]=="confirmed","exact native evidence did not reconcile the uncertain request without replay");
+    });
+    run("pre_dispatch_storage_failure",[] {
+        VisibleHandoffFixture f;f.fault=VisibleHandoffFixture::Fault::BeforeDispatchStorage;
+        f.fixture.fileFixture.save(conversation(Json::array({message(Json::array({version(Json::array({generation(31000U,32768U)}))}))})));
+        f.pending();require(f.sends==0U && f.creations==0U,"storage failure did not stop the pending native effect");
+        f.publicationBlock.reset();
+        f.fault=VisibleHandoffFixture::Fault::None;f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet";});
+        require(f.sends==1U,"a definitely undispatched request did not recover after storage became writable");
+    });
+    run("post_dispatch_storage_failure",[] {
+        VisibleHandoffFixture f;f.fault=VisibleHandoffFixture::Fault::AfterDispatchStorage;
+        f.fixture.fileFixture.save(conversation(Json::array({message(Json::array({version(Json::array({generation(31000U,32768U)}))}))})));
+        f.pending();require(f.sends==1U,"private post-dispatch failure did not dispatch one effect");
+        f.publicationBlock.reset();require(f.checkpoint()["state"]["effect"]["stage"]=="uncertain","failed post-write replaced the last durable uncertain receipt");
+        f.fault=VisibleHandoffFixture::Fault::None;f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet";});
+        require(f.sends==1U,"post-write recovery repeated an acknowledged native message");
+    });
+    run("overlapping_writer",[] {
+        VisibleHandoffFixture f;f.waiting();f.fixture.observer->start();
+        auto first=std::move(f.fixture.observer);f.fixture.observer=f.create();f.pending();first->shutdown();
+        require(f.sends==1U,"overlapping observers both dispatched into the same LM Studio home");
+        f.run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet" && !status.contains("error");});
+        require(f.sends==1U,"the previously denied observer replayed a request after writer reacquisition");
+    });
+    run("saved_scope_never_grants_authority",[] {
+        VisibleHandoffFixture f;f.waiting();f.reconstruct(false);f.fixture.observer->start();
+        std::this_thread::sleep_for(std::chrono::milliseconds{600});f.fixture.observer->shutdown();
+        require(Json::parse(f.fixture.observer->status())["state"]=="awaiting_bound_workspace" && f.sends==1U,
+            "persisted checkpoint granted workspace/control authority");
+        f.fixture.observer->bindWorkspace(f.fixture.project,f.fixture.fileFixture.path());
+        f.run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet";});
+        require(f.sends==1U,"fresh authorized binding lost the retained waiting phase");
+    });
+    run("null_selection_retained",[] {
+        VisibleHandoffFixture f;f.waiting();noSelection(f.fixture,Json{{"selectedConversation",nullptr}});f.reconstruct();
+        const auto status=f.pending();require(!status["context_telemetry"]["available"].get<bool>() && f.sends==1U,
+            "null selection discarded the handoff or repeated a request");
+    });
+    run("third_chat_rejected",[] {
+        VisibleHandoffFixture f;f.waiting();f.select("project/third.conversation.json",conversation(Json::array()));f.reconstruct();f.pending();
+        require(f.sends==1U && f.creations==0U,"an unrelated selected chat was adopted as the saved predecessor");
+    });
+    for(const auto kind:{"schema_drift","source_drift","malformed_state","scope_drift","tampered_blob","oversized_phase"}) run(kind,[kind] {
+        VisibleHandoffFixture f;f.waiting();auto document=f.checkpoint();
+        if(std::string_view{kind}=="schema_drift") document["schema_version"]=2U;
+        else if(std::string_view{kind}=="source_drift") document["source_contract"]="different-source-contract";
+        else if(std::string_view{kind}=="malformed_state") document["state"].erase("predecessor");
+        else if(std::string_view{kind}=="scope_drift") document["scope"]["project_root"]="C:/untrusted-replacement";
+        else if(std::string_view{kind}=="oversized_phase") document["state"]["phase"]=std::uint64_t{4294967296ULL};
+        if(std::string_view{kind}=="tampered_blob") {
+            std::fstream output{f.checkpointPath(),std::ios::binary|std::ios::in|std::ios::out};
+            output.seekg(-1,std::ios::end);char last{};output.get(last);output.seekp(-1,std::ios::end);
+            output.put(static_cast<char>(static_cast<unsigned char>(last)^1U));require(static_cast<bool>(output),"private checkpoint tamper fixture failed");
+        } else f.writeCheckpoint(document);
+        f.reconstruct();f.pending();require(f.sends==1U && f.creations==0U,"invalid checkpoint reset Observe and replayed control");
+    });
+    run("provider_drift",[] {
+        VisibleHandoffFixture f;f.waiting();Domain::AppConfig configuration;configuration.localModel.port=1235U;
+        f.fixture.configuration.reloadResult.set(Domain::Result<Domain::AppConfig>::success(configuration));f.reconstruct();f.pending();
+        require(f.sends==1U,"provider drift replayed a saved packet request");
+    });
+    run("route_drift",[] {
+        VisibleHandoffFixture f;f.waiting();
+        std::ifstream input{f.fixture.fileFixture.root()/"mcp.json",std::ios::binary};auto route=Json::parse(input);input.close();
+        route["mcpServers"]["forge-conductor"]["args"]=Json::array({"serve","--role","fallback"});
+        ConversationFixture::write(f.fixture.fileFixture.root()/"mcp.json",route);f.reconstruct();f.pending();
+        require(f.sends==1U,"changed primary route replayed a saved packet request");
+    });
+    run("checkpoint_byte_bounds",[] {
+        const auto oversized=Infrastructure::Windows::Detail::LMStudioChatCheckpoint::seal(
+            Json{{"oversized",std::string(Infrastructure::Windows::Detail::LMStudioChatCheckpoint::MaximumPlainBytes,'x')}});
+        requireError(oversized,Domain::ErrorCodes::PayloadTooLarge,"oversized checkpoint plaintext was accepted");
+        std::vector<std::byte> stored(Infrastructure::Windows::Detail::LMStudioChatCheckpoint::MaximumStoredBytes+1U);
+        requireError(Infrastructure::Windows::Detail::LMStudioChatCheckpoint::open(stored),Domain::ErrorCodes::IntegrityFailure,
+            "oversized stored checkpoint was decoded");
+    });
+    run("stable_successor_undispatched_delivery",[] {
+        VisibleHandoffFixture f;f.waiting();f.saveModelPacket();f.fault=VisibleHandoffFixture::Fault::StableNewUndelivered;
+        f.run([](const Json& status) {return status.contains("error") && status.value("state",std::string{})=="recovery_pending";});
+        require(f.creations==1U && f.sends==1U,"private stable creation dispatched a delivery unexpectedly");
+        f.fault=VisibleHandoffFixture::Fault::None;f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="resuming";});
+        require(f.creations==1U && f.sends==2U,"stable recorded successor was recreated or not delivered exactly once");
+        f.nativeResume();f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="resumed";});
+        f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="resumed" && status.value("available",false) && !status.contains("handoff_recovery");});
+        require(f.creations==1U && f.sends==2U && f.checkpoint()["state"]["phase"]==4U,"completed native recovery was replayed or lost across reconstruction");
+    });
+    run("packet_revision_drift",[] {
+        VisibleHandoffFixture f;f.waiting();f.saveModelPacket();f.fault=VisibleHandoffFixture::Fault::StableNewUndelivered;
+        f.run([](const Json& status) {return status.contains("error") && status.value("state",std::string{})=="recovery_pending";});
+        ++f.fixture.legacyContinuity.record->writeSequence;f.fault=VisibleHandoffFixture::Fault::None;f.reconstruct();f.pending();
+        require(f.creations==1U && f.sends==1U,"a changed stored packet revision was silently delivered into the successor");
+    });
+    run("uncertain_new_chat_never_replayed",[] {
+        VisibleHandoffFixture f;f.waiting();f.saveModelPacket();f.fault=VisibleHandoffFixture::Fault::UncertainNew;
+        f.run([](const Json& status) {return status.contains("error") && status.value("state",std::string{})=="recovery_pending";});
+        f.fault=VisibleHandoffFixture::Fault::None;f.reconstruct();f.pending();
+        require(f.creations==1U && f.sends==1U,"an empty unconfirmed successor caused New chat or Send replay");
+        f.nativeResume();f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="resumed";});
+        require(f.creations==1U && f.sends==1U,"actual native packet recovery repeated an uncertain creation/delivery");
+    });
+    run("uncertain_delivery_never_replayed",[] {
+        VisibleHandoffFixture f;f.waiting();f.saveModelPacket();f.fault=VisibleHandoffFixture::Fault::AmbiguousDelivery;
+        f.run([](const Json& status) {return status.contains("error") && status.value("state",std::string{})=="recovery_pending";});
+        f.fault=VisibleHandoffFixture::Fault::None;f.reconstruct();f.pending();
+        require(f.creations==1U && f.sends==2U,"reconstruction repeated the uncertain successor Send");
+    });
+    require(failures.empty(),"Durable visible handoff cases failed; inspect the per-case evidence above.");
+}
+
+void continuityObservationRecoversAfterPartialWrite()
+{
+    ContinuityObservationFixture fixture;
+    fixture.partial();
+    fixture.observer->start();
+    fixture.await([](const Json& status) {
+        return status.value("error", std::string{}).find("incomplete or invalid JSON") != std::string::npos;
+    });
+    fixture.observer->shutdown();
+    fixture.complete();
+    fixture.observer->start();
+    const auto recovered = fixture.await([](const Json& status) {
+        return status.contains("context_telemetry") && status["context_telemetry"].value("available", false) &&
+            !status.contains("error");
+    });
+    fixture.observer->shutdown();
+    require(!recovered.contains("error"), "successful observation retained a recovered partial-write error");
+    require(recovered.at("state") == "observing" && !recovered.at("available").get<bool>(),
+        "observation recovery changed the verified visible-handoff availability contract");
+    require(recovered.at("context_telemetry").at("tokens_used") == 100U,
+        "recovered observation did not retain actual provider usage");
+}
+
+void continuityObservationPipelineRecovery()
+{
+    ContinuityObservationFixture fixture;
+    fixture.projects.listRecentResult.set(Domain::Result<Domain::MemoryPage>::failure(
+        Domain::makeError(Domain::ErrorCodes::InternalFailure, "Continuity preference read failed.")));
+    fixture.complete();
+    fixture.observer->start();
+    const auto first = fixture.await([](const Json& status) {
+        return status.value("error", std::string{}) == "Continuity preference read failed.";
+    });
+    const auto firstObservation = first.at("context_telemetry").at("observed_at_unix_ms").get<std::int64_t>();
+    fixture.await([&](const Json& status) {
+        return status.at("context_telemetry").at("observed_at_unix_ms").get<std::int64_t>() > firstObservation &&
+            status.value("error", std::string{}) == "Continuity preference read failed.";
+    });
+    fixture.observer->shutdown();
+    fixture.partial();
+    fixture.observer->start();
+    fixture.await([](const Json& status) {
+        return status.value("error", std::string{}).find("incomplete or invalid JSON") != std::string::npos;
+    });
+    fixture.observer->shutdown();
+    fixture.complete();
+    fixture.observer->start();
+    const auto ongoing = fixture.await([&](const Json& status) {
+        return status.at("context_telemetry").at("observed_at_unix_ms").get<std::int64_t>() > firstObservation &&
+            status.value("error", std::string{}) == "Continuity preference read failed.";
+    });
+    fixture.observer->shutdown();
+    require(ongoing.contains("error"), "successful file read hid an ongoing preference failure");
+    const auto lastObservation = ongoing.at("context_telemetry").at("observed_at_unix_ms").get<std::int64_t>();
+    fixture.projects.listRecentResult.set(Domain::Result<Domain::MemoryPage>::success(
+        Domain::MemoryPage{fixture.project, {}, std::nullopt, false, 0U, 0U}));
+    fixture.observer->start();
+    const auto recovered = fixture.await([&](const Json& status) {
+        return status.at("context_telemetry").at("observed_at_unix_ms").get<std::int64_t>() > lastObservation &&
+            !status.contains("error");
+    });
+    fixture.observer->shutdown();
+    require(!recovered.contains("error"), "successful observation pipeline retained a recovered preference error");
+}
+
+void continuityConfigurationReadRecovery()
+{
+    ContinuityObservationFixture fixture;
+    fixture.complete();
+    fixture.configuration.reloadResult.set(Domain::Result<Domain::AppConfig>::failure(
+        Domain::makeError(Domain::ErrorCodes::InternalFailure, "Continuity configuration read failed.")));
+    fixture.observer->start();
+    fixture.await([](const Json& status) {
+        return status.value("error", std::string{}) == "Continuity configuration read failed.";
+    });
+    fixture.observer->shutdown();
+    fixture.configuration.reloadResult.set(Domain::Result<Domain::AppConfig>::success({}));
+    fixture.observer->start();
+    const auto recovered = fixture.await([](const Json& status) {
+        return status.contains("context_telemetry") && status["context_telemetry"].value("available", false) &&
+            !status.contains("error");
+    });
+    fixture.observer->shutdown();
+    require(!recovered.contains("error"), "successful observation pipeline retained a recovered configuration error");
+}
+
+void continuityMcpRouteReadRecovery()
+{
+    ContinuityObservationFixture fixture;
+    fixture.complete();
+    const auto routes = fixture.fileFixture.root() / "mcp.json";
+    std::string saved;
+    {
+        std::ifstream input{routes, std::ios::binary};
+        require(input.good(), "private MCP route fixture could not be opened");
+        saved.assign(std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{});
+    }
+    {
+        std::ofstream output{routes, std::ios::binary | std::ios::trunc};
+        output << "{\"mcpServers\":";
+        require(static_cast<bool>(output), "partial MCP route fixture write failed");
+    }
+    fixture.observer->start();
+    fixture.await([](const Json& status) { return status.contains("error"); });
+    fixture.observer->shutdown();
+    {
+        std::ofstream output{routes, std::ios::binary | std::ios::trunc};
+        output << saved;
+        require(static_cast<bool>(output), "private MCP route fixture could not be completed");
+    }
+    fixture.observer->start();
+    const auto recovered = fixture.await([](const Json& status) {
+        return status.contains("context_telemetry") && status["context_telemetry"].value("available", false) &&
+            !status.contains("error");
+    });
+    fixture.observer->shutdown();
+    require(!recovered.contains("error"), "successful observation pipeline retained a recovered MCP route error");
+}
+
+void observationRecoveryPreservesWorkspaceControlFailure()
+{
+    ContinuityObservationFixture fixture;
+    fixture.complete();
+    const auto traceDirectory = fixture.fileFixture.root() / "home" / "continuity";
+    {
+        std::ofstream blocker{traceDirectory, std::ios::binary};
+        blocker << "Private fixture blocks workspace binding trace creation.";
+        require(static_cast<bool>(blocker), "workspace control trace blocker could not be created");
+    }
+    const auto rebound = parse<Domain::ProjectId>("fd975f4a-6252-42a1-b28a-d422d8a34c24");
+    fixture.observer->bindWorkspace(rebound, fixture.fileFixture.path());
+    fixture.observer->start();
+    const auto failed = fixture.await([&](const Json& status) {
+        return status.contains("error") && status.value("project_id", std::string{}) == rebound.value();
+    });
+    fixture.observer->shutdown();
+    const auto controlError = failed.at("error").get<std::string>();
+    require(failed.at("binding_source") == "authorized_mcp_workspace",
+        "test did not fail inside the authorized workspace binding control path");
+    require(std::filesystem::remove(traceDirectory), "private trace blocker could not be removed");
+    fixture.partial();
+    fixture.observer->start();
+    fixture.await([](const Json& status) {
+        return status.value("error", std::string{}).find("incomplete or invalid JSON") != std::string::npos;
+    });
+    fixture.observer->shutdown();
+    fixture.complete();
+    fixture.observer->start();
+    const auto restored = fixture.await([&](const Json& status) {
+        return status.contains("context_telemetry") && status["context_telemetry"].value("available", false) &&
+            status.value("error", std::string{}) == controlError;
+    });
+    fixture.observer->shutdown();
+    require(restored.value("error", std::string{}) == controlError,
+        "observation recovery swallowed an unresolved workspace control failure");
 }
 
 
@@ -447,6 +1229,22 @@ void registerWindowsLMStudioConversationReaderTests(TestRegistry& tests)
         partialFilesAndSelectionBoundary);
     addTest(tests, "LMStudioConversationReader.missing_selection_and_cancel",
         missingSelectionAndCancellation);
+    addTest(tests, "LMStudioChatContinuity.partial_write_recovery_status",
+        continuityObservationRecoversAfterPartialWrite);
+    addTest(tests, "LMStudioChatContinuity.preference_pipeline_recovery",
+        continuityObservationPipelineRecovery);
+    addTest(tests, "LMStudioChatContinuity.configuration_read_recovery",
+        continuityConfigurationReadRecovery);
+    addTest(tests, "LMStudioChatContinuity.mcp_route_read_recovery",
+        continuityMcpRouteReadRecovery);
+    addTest(tests, "LMStudioChatContinuity.observation_recovery_preserves_workspace_control_error",
+        observationRecoveryPreservesWorkspaceControlFailure);
+    addTest(tests, "LMStudioChatContinuity.successful_null_observation_statuses",
+        successfulNullObservationStatusesAndRecovery);
+    addTest(tests, "LMStudioChatContinuity.reconstruction_preserves_waiting_packet",
+        observerReconstructionRetainsWaitingPacketWithoutResending);
+    addTest(tests, "LMStudioChatContinuity.durable_recovery_cases",
+        durableVisibleHandoffRecoveryCases);
     addTest(tests, "LMStudioConversationReader.native_delivery_and_result_evidence",
         nativeDeliveryAndMatchedToolEvidence);
     addTest(tests, "LMStudioConversationReader.fragmented_native_continuity",

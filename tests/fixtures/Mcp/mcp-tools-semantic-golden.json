@@ -267,6 +267,105 @@
       "name": "clu.resolve"
     },
     {
+      "description": "Start a durable CTest job in an explicit initialized CMake build directory. mode=build_and_test first runs cmake --build and runs CTest only after a successful build; default mode=test. Returns a job ID; cmake_test_status provides actual phase results, sealed JUnit counts and paged failures. No implicit configure step. Use process_read_log/wait/kill for logs, bounded waiting and cancellation.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "properties": {
+              "mode": {
+                "const": "build_and_test"
+              }
+            },
+            "required": [
+              "mode"
+            ]
+          },
+          {
+            "not": {
+              "required": [
+                "target"
+              ]
+            },
+            "properties": {
+              "mode": {
+                "const": "test"
+              }
+            }
+          }
+        ],
+        "properties": {
+          "build_dir": {
+            "maxLength": 32768,
+            "minLength": 1,
+            "type": "string"
+          },
+          "config": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "filter": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "mode": {
+            "default": "test",
+            "enum": [
+              "test",
+              "build_and_test"
+            ],
+            "type": "string"
+          },
+          "target": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "timeout_sec": {
+            "default": 1800,
+            "maximum": 3600,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "build_dir"
+        ],
+        "type": "object"
+      },
+      "name": "cmake_test_run"
+    },
+    {
+      "description": "Read a project-owned CMake/CTest job with actual build/test exit status, sealed JUnit counts and bounded failure paging. A successful status read does not mean the tests passed. Follow next_failure_offset while has_more; absent phase results and counts remain null. Use process_read_log for complete retained logs.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "failure_offset": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "job_id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "type": "string"
+          },
+          "max_failures": {
+            "default": 16,
+            "maximum": 32,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "cmake_test_status"
+    },
+    {
       "description": "Load latest (or id) handoff packet — call first in every new chat bootstrap.",
       "inputSchema": {
         "properties": {
@@ -791,7 +890,7 @@
       "name": "continuity.status"
     },
     {
-      "description": "Capture the visible desktop region of a listed window/PID to an authorized PNG and return a model-visible image preview. Overlapping windows may appear; this is visible-screen capture.",
+      "description": "Capture the visible desktop region of a listed window/PID to an authorized PNG and return an image preview. Optional preview_max_dimension (128..2048, default 256) preserves more detail; adaptive resizing retains the 512 KiB encoded bound. Overlapping windows may appear; this is visible-screen capture.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -802,6 +901,12 @@
           "pid": {
             "maximum": 4294967295,
             "minimum": 1,
+            "type": "integer"
+          },
+          "preview_max_dimension": {
+            "default": 256,
+            "maximum": 2048,
+            "minimum": 128,
             "type": "integer"
           },
           "window_id": {
@@ -917,13 +1022,18 @@
       "name": "desktop_list"
     },
     {
-      "description": "Read bounded Windows accessibility controls for an exact listed visible window/PID, with window-relative rectangles and enabled/offscreen states.",
+      "description": "Read bounded Windows accessibility controls for an exact listed visible window/PID, with window-relative rectangles and enabled/offscreen states. Optional zero-based offset defaults to 0; follow next_offset while has_more to reach later controls. Row indices refer to the freshly observed tree and may change when the UI changes.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "limit": {
             "maximum": 300,
             "minimum": 1,
+            "type": "integer"
+          },
+          "offset": {
+            "maximum": 2147483647,
+            "minimum": 0,
             "type": "integer"
           },
           "pid": {
@@ -1381,48 +1491,85 @@
       "name": "http_request"
     },
     {
-      "name": "image_analyze",
-      "description": "Start a fresh independent read-only visual review of an authorized decoded image with explicit authorization. Returns an asynchronous run ID; use reviewer_status for the actual model analysis, usage, sealed outcome and infrastructure errors. Use this when LM Studio displays an image preview without supplying pixels to its chat model. No executor history or policy approval is included.",
+      "description": "Start a fresh independent read-only visual review of an authorized decoded image with explicit authorization. Returns an asynchronous run ID; use reviewer_status for the actual model analysis, usage, sealed outcome and infrastructure errors. Optional preview_max_dimension (128..2048, default 256) requests more image detail within the 512 KiB encoded bound. Use this when LM Studio displays an image preview without supplying pixels to its chat model. No executor history or policy approval is included.",
       "inputSchema": {
-        "type": "object",
+        "additionalProperties": false,
         "properties": {
-          "path": {
-            "type": "string",
-            "maxLength": 32768,
-            "minLength": 1
-          },
           "authorization": {
-            "type": "string",
             "maxLength": 1024,
-            "minLength": 1
+            "minLength": 1,
+            "type": "string"
+          },
+          "path": {
+            "maxLength": 32768,
+            "minLength": 1,
+            "type": "string"
+          },
+          "preview_max_dimension": {
+            "default": 256,
+            "maximum": 2048,
+            "minimum": 128,
+            "type": "integer"
           },
           "question": {
-            "type": "string",
             "maxLength": 4096,
-            "minLength": 1
+            "minLength": 1,
+            "type": "string"
           },
           "receive_timeout_sec": {
-            "type": "integer",
-            "minimum": 1,
+            "default": 600,
             "maximum": 3600,
-            "default": 600
+            "minimum": 1,
+            "type": "integer"
           }
         },
         "required": [
           "path",
           "authorization"
         ],
-        "additionalProperties": false
-      }
+        "type": "object"
+      },
+      "name": "image_analyze"
     },
     {
-      "description": "Decode an authorized local PNG/JPEG/GIF/BMP/TIFF/ICO using native Windows codecs and return a PNG preview with original dimensions. Preview display does not prove that the chat model received pixels; use image_analyze and reviewer_status for independent visual interpretation.",
+      "description": "Decode an authorized local PNG/JPEG/GIF/BMP/TIFF/ICO using native Windows codecs and return a PNG preview with original dimensions. Optional samples (1..64 exact source x/y pixel coordinates) return measured RGBA8 values; decoded-frame and emitted-preview SHA-256 identify the actual bytes. Optional preview_max_dimension (128..2048, default 256) requests more detail; adaptive resizing retains the 512 KiB encoded bound. These measurements do not establish the chat model's inference input; use image_analyze and reviewer_status for independent visual interpretation.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
           "path": {
             "maxLength": 32768,
             "type": "string"
+          },
+          "preview_max_dimension": {
+            "default": 256,
+            "maximum": 2048,
+            "minimum": 128,
+            "type": "integer"
+          },
+          "samples": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "x": {
+                  "maximum": 4095,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "y": {
+                  "maximum": 4095,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "x",
+                "y"
+              ],
+              "type": "object"
+            },
+            "maxItems": 64,
+            "minItems": 1,
+            "type": "array"
           }
         },
         "required": [
@@ -1433,7 +1580,7 @@
       "name": "image_read"
     },
     {
-      "description": "Render rectangles, ellipses, lines and Unicode text to an authorized native PNG, returning an image preview. Supports diagrams/charts; generative artwork requires a separate image provider.",
+      "description": "Render rectangles, ellipses, lines and Unicode text to an authorized native PNG, returning an image preview. Optional preview_max_dimension (128..2048, default 256) requests more detail within the 512 KiB encoded bound; the written image keeps its full dimensions. Supports diagrams/charts; generative artwork requires a separate image provider.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1519,6 +1666,12 @@
           "path": {
             "maxLength": 32768,
             "type": "string"
+          },
+          "preview_max_dimension": {
+            "default": 256,
+            "maximum": 2048,
+            "minimum": 128,
+            "type": "integer"
           },
           "width": {
             "maximum": 4096,

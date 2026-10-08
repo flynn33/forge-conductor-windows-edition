@@ -1493,6 +1493,32 @@ void optionalTimestamp(
     }
     value["error"] = job.error ? Json{{"code", job.error->code},
         {"message", job.error->message}, {"retryable", job.error->retryable}} : Json(nullptr);
+    if (job.cmakeTest) {
+        const auto& test = *job.cmakeTest;
+        const auto phase = [&](const std::optional<Domain::ProcessResult>& result) {
+            if (!result) return Json(nullptr);
+            auto value = processJson(*result, test.buildDirectory);
+            value.erase("stdout");
+            value.erase("stderr");
+            return value;
+        };
+        value["cmake_test"] = Json{
+            {"build_dir", test.buildDirectory}, {"mode", test.buildRequested ? "build_and_test" : "test"},
+            {"target", test.target ? Json(*test.target) : Json(nullptr)},
+            {"filter", test.filter ? Json(*test.filter) : Json(nullptr)},
+            {"config", test.configuration ? Json(*test.configuration) : Json(nullptr)},
+            {"build_result", phase(test.buildResult)}, {"test_result", phase(test.testResult)},
+            {"counts", test.counts ? Json{{"tests", test.counts->tests}, {"passed", test.counts->passed},
+                {"failed", test.counts->failed}, {"skipped", test.counts->skipped}, {"disabled", test.counts->disabled}}
+                : Json(nullptr)},
+            {"report_path", test.reportPath},
+            {"report_sha256", test.reportSha256.empty() ? Json(nullptr) : Json(test.reportSha256)},
+            {"report_bytes", test.reportBytes},
+            {"report_unverified", test.reportUnverified},
+            {"report_error", test.reportError ? Json{{"code", test.reportError->code},
+                {"message", test.reportError->message}, {"retryable", test.reportError->retryable}} : Json(nullptr)},
+            {"logs_tool", "process_read_log"}};
+    }
     return value;
 }
 
@@ -2335,6 +2361,9 @@ public:
                     "shell_job_status(job_id) on this same connector every 5 seconds or longer until done=true. "
                     "Running is not failure; final result.ok, exit_code and timeout/cancellation flags determine success. "
                     "Jobs default to 1800 seconds, maximum 3600, with two active jobs and sixteen retained results. "
+                    "cmake_test_run(build_dir,mode,filter,config,target) runs CTest in an initialized CMake build tree; "
+                    "mode=build_and_test first builds and only then tests after success. cmake_test_status returns actual "
+                    "phase results, sealed JUnit counts and paged failures; missing results remain null. "
                     "process_launch(command,args,cwd,env) uses exact argv and returns a stable job_id, PID and named logs; "
                     "process_wait/poll/read_log/list/kill/adopt support reconnects when the persistent Manager is available. "
                     "Read durable output with process_read_log, and inspect memory_attached after completion. "
@@ -2771,7 +2800,8 @@ private:
             if (!path) return propagate<Json>(std::move(path));
             if (!dependencies_.desktopArtifacts) return failure<Json>(Domain::ErrorCodes::HostCapabilityUnavailable,
                 "Native image decoding is unavailable in this composition.");
-            const auto imageArguments = Json{{"path", path.value().canonicalPath().value()}};
+            auto imageArguments = Json{{"path", path.value().canonicalPath().value()}};
+            if (arguments.contains("preview_max_dimension")) imageArguments["preview_max_dimension"] = arguments.at("preview_max_dimension");
             auto decoded = dependencies_.desktopArtifacts->execute("image_read", imageArguments.dump(), authority, context);
             if (!decoded) return propagate<Json>(std::move(decoded));
             auto image = Json::parse(decoded.value());
@@ -2786,6 +2816,7 @@ private:
             const auto imageAnalysis = Json{{"kind", "fresh_independent_readonly_reviewer"},
                 {"path", path.value().canonicalPath().value()}, {"width", image.at("width")}, {"height", image.at("height")},
                 {"format", image.at("format")}, {"poll_tool", "reviewer_status"}, {"asynchronous", true},
+                {"preview_max_dimension_requested", arguments.value("preview_max_dimension", 256)},
                 {"executor_history_included", false}, {"source_read_policy", "authorized_path_read_at_provider_image_read"},
                 {"tool_scope", "existing_project_authorized_read_only_reviewer_catalog"}};
             const auto reviewArguments = Json{
@@ -2812,7 +2843,8 @@ private:
             if (!reviewed) return propagate<Json>(std::move(reviewed));
             auto result = std::move(reviewed).value();
             result["image_analysis"] = imageAnalysis;
-            for (const auto field : {"image_base64", "image_mime_type", "preview_width", "preview_height"})
+            for (const auto field : {"image_base64", "image_mime_type", "preview_width", "preview_height",
+                "preview_max_dimension_requested", "preview_encoded_bytes", "preview_encoded_byte_limit", "preview_reduced_for_byte_limit"})
                 if (image.contains(field)) result[field] = image.at(field);
             return Domain::Result<Json>::success(std::move(result));
         }
@@ -2896,7 +2928,7 @@ private:
             return Domain::Result<Json>::success(Json::parse(captured.value()));
         }
         if (name.starts_with("process_") || name.starts_with("reviewer_") ||
-            name.starts_with("verification_env_") || name.starts_with("shell_job_")) {
+            name.starts_with("verification_env_") || name.starts_with("shell_job_") || name.starts_with("cmake_test_")) {
             if (dependencies_.durableToolBroker) {
                 auto brokerArguments = arguments;
                 if (name == "process_launch" || name == "shell_job_start") {
@@ -2905,6 +2937,11 @@ private:
                         false, context, &observation, ContinuityPathRole::WorkingDirectory);
                     if (!cwd) return propagate<Json>(std::move(cwd));
                     brokerArguments["cwd"] = cwd.value().canonicalPath().value();
+                }
+                if (name == "cmake_test_run") {
+                    auto directory = cmakeTestDirectory(authority, arguments, context, observation);
+                    if (!directory) return propagate<Json>(std::move(directory));
+                    brokerArguments["build_dir"] = directory.value().value();
                 }
                 if (name == "reviewer_start" && arguments.contains("opening_message_path")) {
                     auto openingPath = authorizePath(dependencies_.workspaceAuthority, authority,
@@ -2919,6 +2956,7 @@ private:
                 result["broker"] = "persistent_manager";
                 return Domain::Result<Json>::success(std::move(result));
             }
+            if (name.starts_with("cmake_test_")) return cmakeTest(name, authority, arguments, context, observation);
             if (name.starts_with("process_")) return process(name, authority, arguments, context, observation);
             if (name.starts_with("reviewer_")) return reviewer(name, authority, arguments, context, observation);
             if (name.starts_with("verification_env_")) return verificationEnvironment(name, authority, arguments, context, observation);
@@ -4272,6 +4310,69 @@ private:
             {"count", matches.value().size()}});
     }
 
+
+    [[nodiscard]] Domain::Result<Domain::PathText> cmakeTestDirectory(
+        const Contracts::WorkspaceAuthority& authority, const Json& arguments,
+        const Domain::OperationContext& context, ToolContinuityObservationBuilder& observation)
+    {
+        if (!authority.shellEnabled()) return failure<Domain::PathText>(Domain::ErrorCodes::ShellDisabled,
+            "CMake/CTest execution requires enabled shell policy.");
+        if (arguments.contains("target") && arguments.value("mode", std::string{"test"}) != "build_and_test")
+            return failure<Domain::PathText>(Domain::ErrorCodes::InvalidRequest,
+                "A build target requires build_and_test mode.");
+        std::optional<Domain::PathText> directory;
+        for (const auto access : {Domain::FileAccess::Read, Domain::FileAccess::Write, Domain::FileAccess::Execute}) {
+            auto authorized = authorizePath(dependencies_.workspaceAuthority, authority,
+                directory ? directory->value() : arguments.at("build_dir").get<std::string>(),
+                access, false, context, &observation, ContinuityPathRole::WorkingDirectory);
+            if (!authorized) return propagate<Domain::PathText>(std::move(authorized));
+            directory = authorized.value().canonicalPath();
+        }
+        return Domain::Result<Domain::PathText>::success(*directory);
+    }
+
+    [[nodiscard]] Domain::Result<Json> cmakeTest(
+        const std::string_view name, const Contracts::WorkspaceAuthority& authority,
+        const Json& arguments, const Domain::OperationContext& context,
+        ToolContinuityObservationBuilder& observation)
+    {
+        if (name == "cmake_test_run") {
+            auto directory = cmakeTestDirectory(authority, arguments, context, observation);
+            if (!directory) return propagate<Json>(std::move(directory));
+            Domain::CMakeTestRequest request{directory.value()};
+            const auto mode = arguments.value("mode", std::string{"test"});
+            if (mode != "test" && mode != "build_and_test") return failure<Json>(Domain::ErrorCodes::InvalidRequest,
+                "CMake/CTest mode must be test or build_and_test.");
+            request.build = mode == "build_and_test";
+            if (arguments.contains("target")) request.target = arguments.at("target").get<std::string>();
+            if (arguments.contains("filter")) request.filter = arguments.at("filter").get<std::string>();
+            if (arguments.contains("config")) request.configuration = arguments.at("config").get<std::string>();
+            if (!request.build && request.target) return failure<Json>(Domain::ErrorCodes::InvalidRequest,
+                "A build target requires build_and_test mode.");
+            request.timeout = std::chrono::seconds{arguments.value("timeout_sec", 1800U)};
+            auto started = dependencies_.shell.startCMakeTestRun(request, authority, context);
+            if (!started) return propagate<Json>(std::move(started));
+            auto value = shellJobJson(started.value(), false);
+            value["lifetime"] = dependencies_.reviewerRuns ? "manager_process" : "connector_process";
+            value["durable_across_mcp_reconnect"] = static_cast<bool>(dependencies_.reviewerRuns);
+            return Domain::Result<Json>::success(std::move(value));
+        }
+        auto status = dependencies_.shell.getCMakeTestRun(arguments.at("job_id").get<std::string>(),
+            arguments.value("failure_offset", std::uint64_t{}), arguments.value("max_failures", std::size_t{16}),
+            authority, context);
+        if (!status) return propagate<Json>(std::move(status));
+        auto value = shellJobJson(status.value().job, false);
+        Json failures = Json::array();
+        for (const auto& item : status.value().failures) failures.push_back(Json{
+            {"name", item.name}, {"status", item.status}, {"message", item.message},
+            {"output", item.output}, {"output_truncated", item.outputTruncated}});
+        value["failures"] = std::move(failures);
+        value["failure_offset"] = status.value().failureOffset;
+        value["next_failure_offset"] = status.value().nextFailureOffset;
+        value["total_failures"] = status.value().totalFailures;
+        value["has_more"] = status.value().hasMore;
+        return Domain::Result<Json>::success(std::move(value));
+    }
 
     [[nodiscard]] Domain::Result<Json> process(
         const std::string_view name, const Contracts::WorkspaceAuthority& authority,

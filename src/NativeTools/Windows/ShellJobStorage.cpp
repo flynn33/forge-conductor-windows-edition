@@ -1,4 +1,5 @@
 #include "ShellJobStorage.h"
+#include "CMakeTestSupport.h"
 
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "ForgeConductor/Domain/Utf8.h"
@@ -156,6 +157,7 @@ void atomicText(const std::filesystem::path& path, const std::string_view value)
         {"receipt_path", snapshot.receiptPath}, {"log_hash", snapshot.logHash},
         {"log_truncated", snapshot.logTruncated}, {"arguments", snapshot.arguments},
         {"memory_attached", snapshot.memoryAttached}};
+    if (snapshot.cmakeTest) value["cmake_test"] = encodeCMakeTestMetadata(*snapshot.cmakeTest);
     if (snapshot.result) {
         const auto& result = *snapshot.result;
         value["result"] = Json{{"exit_code", result.exitCode}, {"stdout", result.stdoutUtf8},
@@ -263,7 +265,7 @@ Domain::Result<std::shared_ptr<ShellJobStorage>> ShellJobStorage::create(const D
         while (!completed.empty() && completed.size() + occupied >= MaximumPersistedJobs) {
             checkAdmission(context);
             const auto id = utf8(completed.front().path().stem());
-            for (const auto* suffix : {".json.sha256", ".stdout.log", ".stderr.log", ".json"}) {
+            for (const auto* suffix : {".json.sha256", ".stdout.log", ".stderr.log", ".ctest.xml", ".ctest.xml.tmp", ".json"}) {
                 const auto stale = path / (id + suffix);
                 rejectReparse(stale);
                 std::error_code error;
@@ -429,6 +431,7 @@ Domain::Result<Domain::ShellJobSnapshot> ShellJobStorage::load(const Domain::Pat
         snapshot.logHash = value.at("log_hash").get<std::string>(); snapshot.logTruncated = value.at("log_truncated").get<bool>();
         snapshot.arguments = value.value("arguments", std::vector<std::string>{});
         snapshot.memoryAttached = value.value("memory_attached", false);
+        if (value.contains("cmake_test")) snapshot.cmakeTest = decodeCMakeTestMetadata(value.at("cmake_test"));
         if (value.contains("memory_attach_error")) {
             const auto& error = value.at("memory_attach_error");
             snapshot.memoryAttachError = Domain::makeError(error.at("code").get<std::string>(),
@@ -452,7 +455,9 @@ Domain::Result<Domain::ShellJobSnapshot> ShellJobStorage::load(const Domain::Pat
             snapshot.error = Domain::makeError(error.at("code").get<std::string>(),
                 error.at("message").get<std::string>(), error.at("retryable").get<bool>());
         }
-        if (snapshot.state == Domain::ShellJobState::Running) {
+        const bool interrupted = snapshot.state == Domain::ShellJobState::Running;
+        validateCTestReceipt(snapshot, folder);
+        if (interrupted) {
             if (exactProcessAlive(value.at("job_host_pid").get<std::uint32_t>(),
                     value.at("job_host_creation_time").get<std::uint64_t>()) ||
                 exactProcessAlive(snapshot.processId, snapshot.processCreationTime)) {
@@ -463,6 +468,13 @@ Domain::Result<Domain::ShellJobSnapshot> ShellJobStorage::load(const Domain::Pat
             snapshot.error = Domain::makeError(Domain::ErrorCodes::ProcessTerminationUnconfirmed,
                 "The job host ended without a final process receipt. The exit code is unknown.");
             snapshot.logHash = logDigest(native(snapshot.stdoutPath), native(snapshot.stderrPath));
+            if (snapshot.cmakeTest) {
+                // No final phase/report facts were published by the ended job host.
+                snapshot.cmakeTest->counts.reset(); snapshot.cmakeTest->buildResult.reset(); snapshot.cmakeTest->testResult.reset();
+                snapshot.cmakeTest->reportSha256.clear(); snapshot.cmakeTest->reportBytes = 0U;
+                snapshot.cmakeTest->reportUnverified = false;
+                snapshot.cmakeTest->reportError = snapshot.error;
+            }
         } else if (snapshot.logHash != logDigest(native(snapshot.stdoutPath), native(snapshot.stderrPath))) {
             throw std::runtime_error{"Process evidence log hash mismatch."};
         }

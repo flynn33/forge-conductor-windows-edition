@@ -6,7 +6,7 @@
 
 Forge Conductor's project tools are native Windows implementations behind application contracts and workspace authority.
 
-Version 1.3.19 retains the original tools and expands Primary/Fallback to 104 descriptors. Dedicated WinHTTP search/fetch/HTTP, native DOCX/XLSX/PPTX writers, desktop/browser observation/input/capture, PNG drawing/image previews, independent model workers and persistent schedules have explicit native contracts. See [Windows Workflow Capabilities](Windows-workflow-capabilities) for current bounds and [Release 1.3.19](Release-1.3.19) for executed verification.
+The current 1.3.20 source retains every original tool and provides 106 Primary/Fallback descriptors. Native CMake/CTest jobs, offset-paged accessibility reads and optional higher-resolution bounded previews extend dedicated WinHTTP search/fetch/HTTP, DOCX/XLSX/PPTX writers, desktop/browser input/capture, PNG drawing/image analysis, independent model workers and persistent schedules. Source, package, installed-tool and live-model qualification are pending. See [Windows Workflow Capabilities](Windows-workflow-capabilities), [CMake/CTest source guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/CMAKE-CTEST.md) and [1.3.20 implementation notes](Release-1.3.20); [published 1.3.19 qualification](Release-1.3.19) remains historical.
 
 Host filesystem mode covers ordinary available local volumes using existing native ACL/path/reparse checks; workspace mode retains registered/configured roots. Both keep the selected project directory as the default for relative artifact paths. Models cannot change the owner's filesystem mode. Generative image models and cloud accounts require separately configured providers/accounts or authorized APIs.
 
@@ -40,6 +40,16 @@ There is no remote `git_push` tool.
 ## PowerShell
 
 `shell_exec` requires owner-enabled shell policy, project authority, shell permission, execute intent, a bounded command, and a 1–120 second timeout. Forge Conductor prefers PowerShell 7 (`pwsh.exe`) by PATH or the standard Program Files location and falls back to Windows PowerShell only when PowerShell 7 is unavailable. The child process tree is contained in a kill-on-close Job Object.
+
+## CMake and CTest
+
+`cmake_test_run` requires an explicit initialized build tree and enabled shell policy with current Read/Write/Execute authority. Default `mode: "test"` runs CTest; `build_and_test` first runs an optional target and starts testing only after confirmed uninterrupted build success. Configuration and test-name filter are separate. One shared timeout covers build, test and report parsing. `cmake_test_status` exposes actual phase results, nullable validated JUnit counts and UTF-8 failure pages; outer `ok` means retrieval. Use the job ID with existing log/wait/kill tools. Report seals detect changes against the receipt without authenticating producer text; unknown crash/cancellation outcomes are not promoted to counts. The tools do not configure a project implicitly or add clangd. See [CMake/CTest source guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/CMAKE-CTEST.md).
+
+## Desktop and image detail
+
+`desktop_read` accepts zero-based `offset` (default 0) and `limit` 1–300 (default 100 scanned positions). Follow `next_offset` while `has_more`; row `index` values belong to each freshly observed tree. Pages retain 32 KiB aggregate text and 64 KiB encoded native JSON bounds, exclude password text and do not activate the target window. `preview_max_dimension` 128–2,048 (default 256) applies to `image_read`, `image_write`, `desktop_capture` and `image_analyze`. Adaptive downscaling respects the 512 KiB base64 bound and reports actual dimensions and reduction metadata. Invalid values are rejected before image-write/capture effects. Filled rectangles use exact requested pixel width/height, including one-pixel shapes and canvas clipping; ellipse behavior remains. Larger previews do not fix the stock LM Studio metadata boundary or establish exact OCR.
+
+`image_read` accepts optional `samples` with 1–64 integer source-coordinate pairs. Its `pixel_samples` return measured RGBA8 channels in request order; that field is absent by default. `decoded_rgba8_sha256` identifies the tightly packed, top-to-bottom WIC frame-0 RGBA8 buffer, while `preview_png_sha256` identifies the emitted preview PNG bytes. Decoded dimensions, format and stride are explicit. Source alpha is measured separately from the existing opaque preview. These native measurements do not establish the stock chat model's inference input. See the [source capability guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/HOST-CAPABILITIES.md) for the complete receipt contract.
 
 ## PDF
 

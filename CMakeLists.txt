@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.3.19
+    VERSION 1.3.20
     LANGUAGES CXX RC
 )
 
@@ -340,6 +340,7 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsLMStudioConversationReader.cpp
     src/Infrastructure/Windows/WindowsLMStudioChatControl.cpp
     src/Infrastructure/Windows/WindowsLMStudioChatContinuity.cpp
+    src/Infrastructure/Windows/LMStudioChatCheckpoint.cpp
     src/Infrastructure/Windows/WindowsLMStudioHostActivator.cpp
     src/Infrastructure/Windows/WindowsLMStudioServeVerifier.cpp
     src/Infrastructure/Windows/WindowsManagerAuthentication.cpp
@@ -496,6 +497,7 @@ set(FORGE_NATIVE_TOOLS_WINDOWS_SOURCES
     src/NativeTools/Windows/WindowsDesktopArtifactService.cpp
     src/NativeTools/Windows/WindowsWebAccessService.cpp
     src/NativeTools/Windows/WindowsShellService.cpp
+    src/NativeTools/Windows/CMakeTestSupport.cpp
     src/NativeTools/Windows/ShellJobStorage.cpp
     src/NativeTools/Windows/WindowsTextSearchService.cpp
 )
@@ -506,7 +508,7 @@ forge_add_layer(ForgeConductor.NativeTools.Windows ForgeConductor::NativeTools.W
     ForgeConductor::Infrastructure.Windows)
 forge_configure_native_target(ForgeConductor.NativeTools.Windows)
 target_link_libraries(ForgeConductor.NativeTools.Windows PRIVATE nlohmann_json::nlohmann_json
-    ole32 oleaut32 user32 gdi32 windowscodecs uiautomationcore shell32 winhttp shlwapi)
+    ole32 oleaut32 user32 gdi32 windowscodecs uiautomationcore shell32 winhttp shlwapi xmllite)
 target_include_directories(ForgeConductor.NativeTools.Windows
     PUBLIC "${PROJECT_SOURCE_DIR}/include"
     PRIVATE "${PROJECT_SOURCE_DIR}/src")
@@ -3509,6 +3511,19 @@ if(BUILD_TESTING)
         LABELS "T-INTEGRATION;T-PROC;T-SEC;G13"
         TIMEOUT 60
     )
+
+    add_executable(ForgeConductor.NativeTools.CMakeTestTests
+        tests/NativeTools/WindowsCMakeTestServiceTests.cpp)
+    forge_configure_native_target(ForgeConductor.NativeTools.CMakeTestTests)
+    target_include_directories(ForgeConductor.NativeTools.CMakeTestTests PRIVATE src tests)
+    target_link_libraries(ForgeConductor.NativeTools.CMakeTestTests PRIVATE
+        ForgeConductor::NativeTools.Windows nlohmann_json::nlohmann_json)
+    add_test(NAME ForgeConductor.NativeTools.CMakeTestTests
+        COMMAND $<TARGET_FILE:ForgeConductor.NativeTools.CMakeTestTests>
+            "${FORGE_P13_POWERSHELL_EXECUTABLE}" "${CMAKE_COMMAND}"
+            "${CMAKE_GENERATOR}" "${CMAKE_GENERATOR_INSTANCE}")
+    set_tests_properties(ForgeConductor.NativeTools.CMakeTestTests PROPERTIES
+        LABELS "T-INTEGRATION;T-PROC;T-SEC;G13" TIMEOUT 120)
 
     add_executable(ForgeConductor.NativeTools.WebTests
         tests/NativeTools/WindowsWebAccessServiceTests.cpp)

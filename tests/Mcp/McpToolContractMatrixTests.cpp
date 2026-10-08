@@ -394,6 +394,7 @@ void runMatrix(const Json& fixture)
             "The tracked shell job extension must be registered exactly once; adapter and native job tests exercise its contracts.");
     }
     const std::vector<std::string> workflowExtensions{
+        "cmake_test_run", "cmake_test_status",
         "evidence_digest", "evidence_log_read", "github_read",
         "process_adopt", "process_kill", "process_launch", "process_list",
         "process_poll", "process_read_log", "process_status", "process_wait",

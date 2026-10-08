@@ -1,6 +1,28 @@
 # Native LM Studio chat Auto Continuity
 
-## Current 1.3.5 implementation
+## Current 1.3.20 source contract
+
+The Primary stdio MCP composition continues to own `WindowsLMStudioChatContinuity`; Fallback and CLU do not start competing native rollover workers. The current source adds durable phase reconstruction through `LMStudioChatCheckpoint` and New chat/Send effect receipts in `WindowsLMStudioChatControl`. Final reconstruction regression and installed interrupted-connector restart qualification are pending. The historical checks below do not qualify this new behavior.
+
+### Bounded checkpoint and writer ownership
+
+Each project checkpoint is stored under the routed Forge home at `continuity/lmstudio-visible-<project-id>.checkpoint`. The existing authorized atomic file store publishes a schema-versioned envelope with the source contract `selected-native-chat-effects-v1`, an incrementing revision, scope and state. Windows current-user DPAPI seals the content without a new credential or external service. Plaintext is limited to 8 MiB and stored content to 10 MiB; restored text and native evidence collections also have explicit bounds. This checkpoint is separate from the existing saved handoff packet.
+
+An exclusive Windows file handle on `continuity/lmstudio-visible-writer.lock` allows one native UI writer across projects sharing the routed home. Worker exit releases the handle; a persisted lock filename or PID does not grant ownership. Checkpoint and lock access use fresh authorized paths, and native controls are deferred when ownership or checkpoint publication cannot be confirmed.
+
+### Fresh scope and effect evidence
+
+Restored state does not grant workspace authority. The current connector must confirm its authorized project/root, routed home, LM Studio root/executable, provider configuration and exact Primary/Fallback/CLU route hash. The worker reloads provider configuration and checks the current workspace and routing scope again before a control dispatch. A fresh unconfirmed workspace remains `awaiting_bound_workspace`; saved changed or unreconciled scope, malformed/schema-drifted state, failed DPAPI integrity or unavailable storage yields `recovery_pending` and defers controls.
+
+The checkpoint retains the handoff phase, exact packet body/write sequence, predecessor and confirmed successor IDs, exact request/repair/delivery messages, relevant native evidence boundaries and effect receipts. Before New chat or Send dispatch, the worker durably records an `uncertain` effect; confirmation updates that receipt only after observed native evidence. Reconstruction reads the freshly selected native conversation and reconciles that evidence against the retained state. An uncertain control effect is not automatically replayed. An unrelated empty or third chat does not establish a successor.
+
+For the waiting-packet phase, reconciliation requires the recorded predecessor and exact new native request/repair message evidence. Later phases check the saved packet revision and the exact successor/message, or matching native `context_get` packet recovery followed by a successful Forge tool result. Completion still depends on native packet recovery and following work, rather than checkpoint existence. Missing selection retains unfinished state and dispatches no control. Inspect `get_forge_status.visible_chat_continuity.handoff_recovery` for the pending phase, identities, reason and `automatic_replay: false`.
+
+The relevant implementation is `src/Infrastructure/Windows/WindowsLMStudioChatContinuity.cpp`, `LMStudioChatCheckpoint.cpp` and `WindowsLMStudioChatControl.cpp`. Reconstruction regressions are in `tests/Infrastructure/WindowsLMStudioConversationReaderTests.cpp`. Source implementation and fixture coverage do not establish installed LM Studio restart, physical exhaustion or already-running agent reattachment results.
+
+## Historical 1.3.5 implementation
+
+This section preserves the original native implementation and qualification assertions. Its process-local limitation predates the current checkpoint source.
 
 The primary stdio MCP composition owns `WindowsLMStudioChatContinuity`; Fallback and CLU do not start competing rollover workers. `WindowsLMStudioConversationReader` reads selected native conversation identity, actual generation stats, active-tool state, and correlated tool requests/results. `WindowsLMStudioChatControl` uses native Windows UI Automation for a completed-tool-boundary pause, New chat, loaded-model/integration retention, and Send.
 

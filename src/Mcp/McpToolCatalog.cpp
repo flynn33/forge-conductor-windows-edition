@@ -55,6 +55,8 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"clu.export_log", "Export the redacted project-bound CLU governance log without full private policy content.", "CluGovernanceToolPack", Read, true, false},
         {"clu.findings", "List CLU findings, correction requests, notification receipts, and policy coverage state.", "CluGovernanceToolPack", Read, true, false},
         {"clu.resolve", "Attach correction evidence and resolve one exact CLU finding while retaining original evidence.", "CluGovernanceToolPack", Write, true, false},
+        {"cmake_test_run", "Start a durable CTest job in an explicit initialized CMake build directory. mode=build_and_test first runs cmake --build and runs CTest only after a successful build; default mode=test. Returns a job ID; cmake_test_status provides actual phase results, sealed JUnit counts and paged failures. No implicit configure step. Use process_read_log/wait/kill for logs, bounded waiting and cancellation.", "CMakeTestToolPack", Write, true, true},
+        {"cmake_test_status", "Read a project-owned CMake/CTest job with actual build/test exit status, sealed JUnit counts and bounded failure paging. A successful status read does not mean the tests passed. Follow next_failure_offset while has_more; absent phase results and counts remain null. Use process_read_log for complete retained logs.", "CMakeTestToolPack", Read, true, false},
         {"context_get", "Load latest (or id) handoff packet \xE2\x80\x94 call first in every new chat bootstrap.", "ContinuityToolPack", Read, false, false},
         {"context_list", "List recent context handoff packets.", "ContinuityToolPack", Read, false, false},
         {"continuity.acknowledge_handoff", "Compare-and-set acknowledgment for an exact successor and handoff.", "ContinuityLifecycleToolPack", Write, true, false},
@@ -64,11 +66,11 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"continuity.request_rollover", "Prepare rollover; reports memory-only readiness unless a host adapter confirms creation.", "ContinuityLifecycleToolPack", Write, true, false},
         {"continuity.resume", "Seal an acknowledged rollover and atomically select the successor.", "ContinuityLifecycleToolPack", Write, true, false},
         {"continuity.status", "Report durable continuity state, retry metadata, and active session.", "ContinuityLifecycleToolPack", Read, true, false},
-        {"desktop_capture", "Capture the visible desktop region of a listed window/PID to an authorized PNG and return a model-visible image preview. Overlapping windows may appear; this is visible-screen capture.", "DesktopToolPack", Write, true, false},
+        {"desktop_capture", "Capture the visible desktop region of a listed window/PID to an authorized PNG and return an image preview. Optional preview_max_dimension (128..2048, default 256) preserves more detail; adaptive resizing retains the 512 KiB encoded bound. Overlapping windows may appear; this is visible-screen capture.", "DesktopToolPack", Write, true, false},
         {"desktop_click", "Click a window-relative point in a listed visible window/PID. Requires task authorization and a fresh observation. Returns input submission; observe the resulting UI.", "DesktopToolPack", Write, true, false},
         {"desktop_key", "Submit a named key and optional ctrl/alt/shift modifiers to a listed foreground window/PID. Requires task authorization; observe the resulting UI.", "DesktopToolPack", Write, true, false},
         {"desktop_list", "List visible Windows windows with exact window_id/PID/title and screen geometry under the current Windows account.", "DesktopToolPack", Read, false, false},
-        {"desktop_read", "Read bounded Windows accessibility controls for an exact listed visible window/PID, with window-relative rectangles and enabled/offscreen states.", "DesktopToolPack", Read, false, false},
+        {"desktop_read", "Read bounded Windows accessibility controls for an exact listed visible window/PID, with window-relative rectangles and enabled/offscreen states. Optional zero-based offset defaults to 0; follow next_offset while has_more to reach later controls. Row indices refer to the freshly observed tree and may change when the UI changes.", "DesktopToolPack", Read, false, false},
         {"desktop_type", "Submit literal Unicode text to the focused control in an exact listed foreground window/PID. Requires task authorization; observe focus and the resulting UI.", "DesktopToolPack", Write, true, false},
         {"document_write", "Create a valid native Word DOCX ZIP package from a title and paragraphs. No Office installation or Python required. Does not render or approve its content.", "OfficeDocumentToolPack", Write, true, false},
         {"evidence_digest", "Hash authorized binary evidence and append a durable SHA256 capture chain; returns byte lengths and capture/head identities. This is an integrity record, not an identity signature.", "EvidenceToolPack", Write, true, false},
@@ -91,9 +93,9 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"github_read", "Read GitHub repository runs, artifacts, refs and pull requests via fixed HTTPS GET routes. Uses configured credentials when available; reports permission and network failures explicitly.", "GitHubReadToolPack", Read, true, false},
         {"host_capabilities", "Report actual dedicated capabilities, tool names, filesystem mode and root authority, and external services needing a connection. Consult before claiming a capability is absent.", "HostInspectionToolPack", Read, false, false},
         {"http_request", "Perform an explicit HTTP/HTTPS GET, HEAD, POST, PUT, PATCH, DELETE or OPTIONS with bounded caller-supplied headers/body. Mutating methods can change remote state and require task authorization; only GET/HEAD follow redirects. No ambient credentials/cookies; report actual HTTP status and truncation.", "WebAccessToolPack", Write, true, false},
-        {"image_analyze", "Start a fresh independent read-only visual review of an authorized decoded image with explicit authorization. Returns an asynchronous run ID; use reviewer_status for the actual model analysis, usage, sealed outcome and infrastructure errors. Use this when LM Studio displays an image preview without supplying pixels to its chat model. No executor history or policy approval is included.", "ImageToolPack", Write, true, false},
-        {"image_read", "Decode an authorized local PNG/JPEG/GIF/BMP/TIFF/ICO using native Windows codecs and return a PNG preview with original dimensions. Preview display does not prove that the chat model received pixels; use image_analyze and reviewer_status for independent visual interpretation.", "ImageToolPack", Read, true, false},
-        {"image_write", "Render rectangles, ellipses, lines and Unicode text to an authorized native PNG, returning an image preview. Supports diagrams/charts; generative artwork requires a separate image provider.", "ImageToolPack", Write, true, false},
+        {"image_analyze", "Start a fresh independent read-only visual review of an authorized decoded image with explicit authorization. Returns an asynchronous run ID; use reviewer_status for the actual model analysis, usage, sealed outcome and infrastructure errors. Optional preview_max_dimension (128..2048, default 256) requests more image detail within the 512 KiB encoded bound. Use this when LM Studio displays an image preview without supplying pixels to its chat model. No executor history or policy approval is included.", "ImageToolPack", Write, true, false},
+        {"image_read", "Decode an authorized local PNG/JPEG/GIF/BMP/TIFF/ICO using native Windows codecs and return a PNG preview with original dimensions. Optional samples (1..64 exact source x/y pixel coordinates) return measured RGBA8 values; decoded-frame and emitted-preview SHA-256 identify the actual bytes. Optional preview_max_dimension (128..2048, default 256) requests more detail; adaptive resizing retains the 512 KiB encoded bound. These measurements do not establish the chat model's inference input; use image_analyze and reviewer_status for independent visual interpretation.", "ImageToolPack", Read, true, false},
+        {"image_write", "Render rectangles, ellipses, lines and Unicode text to an authorized native PNG, returning an image preview. Optional preview_max_dimension (128..2048, default 256) requests more detail within the 512 KiB encoded bound; the written image keeps its full dimensions. Supports diagrams/charts; generative artwork requires a separate image provider.", "ImageToolPack", Write, true, false},
         {"instruction_package.read", "Read a selected instruction package by queue_row_id from get_forge_status. Returns its pinned text and coverage, with cursor and byte-offset paging.", "InstructionPackageToolPack", Read, true, false},
         {"memory_delete", "Delete a durable memory note by key.", "MemoryToolPack", Write, false, false},
         {"memory_get", "Read a durable memory note by key.", "MemoryToolPack", Read, false, false},
@@ -203,6 +205,7 @@ using Property = std::pair<std::string_view, Json>;
     const auto boundedInteger = [](const std::int64_t minimum, const std::int64_t maximum) {
         return Json{{"type", "integer"}, {"minimum", minimum}, {"maximum", maximum}};
     };
+    const Json imagePreviewDimension{{"type", "integer"}, {"minimum", 128}, {"maximum", 2048}, {"default", 256}};
     if (name == "agent_spawn") return objectSchema({{"task", boundedText(65'536U)},
         {"authorization", boundedText(4096U)}, {"agent_id", boundedText(128U)},
         {"timeout_sec", boundedInteger(1, 3600)}}, {"task", "authorization"}, AdditionalProperties::Denied);
@@ -265,8 +268,14 @@ using Property = std::pair<std::string_view, Json>;
         Json properties{{"window_id", boundedInteger(1, (std::numeric_limits<std::int64_t>::max)())},
             {"pid", boundedInteger(1, 4'294'967'295LL)}};
         Json required = Json::array({"window_id", "pid"});
-        if (name == "desktop_read") properties["limit"] = boundedInteger(1, 300);
-        if (name == "desktop_capture") { properties["path"] = boundedText(32'768U); required.push_back("path"); }
+        if (name == "desktop_read") {
+            properties["limit"] = boundedInteger(1, 300);
+            properties["offset"] = boundedInteger(0, (std::numeric_limits<int>::max)());
+        }
+        if (name == "desktop_capture") {
+            properties["path"] = boundedText(32'768U); properties["preview_max_dimension"] = imagePreviewDimension;
+            required.push_back("path");
+        }
         if (name == "desktop_click") {
             properties["x"] = boundedInteger(0, 8192); properties["y"] = boundedInteger(0, 8192);
             properties["button"] = Json{{"type", "string"}, {"enum", {"left", "right"}}};
@@ -286,11 +295,17 @@ using Property = std::pair<std::string_view, Json>;
         timeout["default"] = Domain::DefaultReviewerReceiveTimeoutSeconds;
         return objectSchema({{"path", nonempty(boundedText(32'768U))},
             {"authorization", nonempty(boundedText(1024U))},
-            {"question", nonempty(boundedText(4096U))}, {"receive_timeout_sec", std::move(timeout)}},
+            {"question", nonempty(boundedText(4096U))}, {"receive_timeout_sec", std::move(timeout)},
+            {"preview_max_dimension", imagePreviewDimension}},
             {"path", "authorization"}, AdditionalProperties::Denied);
     }
-    if (name == "image_read") return objectSchema({{"path", boundedText(32'768U)}},
-        {"path"}, AdditionalProperties::Denied);
+    if (name == "image_read") {
+        const auto sample = objectSchema({{"x", boundedInteger(0, 4095)}, {"y", boundedInteger(0, 4095)}},
+            {"x", "y"}, AdditionalProperties::Denied);
+        auto samples = arrayOf(sample, 64U); samples["minItems"] = 1;
+        return objectSchema({{"path", boundedText(32'768U)}, {"preview_max_dimension", imagePreviewDimension},
+            {"samples", std::move(samples)}}, {"path"}, AdditionalProperties::Denied);
+    }
     if (name == "image_write") {
         const auto shape = objectSchema({{"type", Json{{"type", "string"}, {"enum", {"rectangle", "ellipse", "line", "text"}}}},
             {"x", boundedInteger(-8192, 8192)}, {"y", boundedInteger(-8192, 8192)},
@@ -299,7 +314,8 @@ using Property = std::pair<std::string_view, Json>;
             {"stroke_width", boundedInteger(1, 128)}, {"color", boundedText(7U)},
             {"text", boundedText(16'384U)}, {"size", boundedInteger(6, 256)}}, {"type"}, AdditionalProperties::Denied);
         return objectSchema({{"path", boundedText(32'768U)}, {"width", boundedInteger(1, 4096)},
-            {"height", boundedInteger(1, 4096)}, {"background", boundedText(7U)}, {"elements", arrayOf(shape, 1000U)}},
+            {"height", boundedInteger(1, 4096)}, {"background", boundedText(7U)}, {"elements", arrayOf(shape, 1000U)},
+            {"preview_max_dimension", imagePreviewDimension}},
             {"path", "elements"}, AdditionalProperties::Denied);
     }
     if (name == "instruction_package.read") {
@@ -421,6 +437,27 @@ using Property = std::pair<std::string_view, Json>;
             {"per_page", Json{{"type", "integer"}, {"minimum", 1}, {"maximum", 100}}}},
             {"repository", "operation"}, AdditionalProperties::Denied);
     const auto jobId = Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 128}};
+    if (name == "cmake_test_run") {
+        auto schema = objectSchema({
+            {"build_dir", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 32768}}},
+            {"mode", Json{{"type", "string"}, {"enum", {"test", "build_and_test"}}, {"default", "test"}}},
+            {"target", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 1024}}},
+            {"filter", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 1024}}},
+            {"config", Json{{"type", "string"}, {"minLength", 1}, {"maxLength", 1024}}},
+            {"timeout_sec", Json{{"type", "integer"}, {"minimum", 1}, {"maximum", 3600}, {"default", 1800}}}},
+            {"build_dir"}, AdditionalProperties::Denied);
+        Json buildMode{{"required", {"mode"}}};
+        buildMode["properties"]["mode"]["const"] = "build_and_test";
+        Json testMode{{"not", Json{{"required", {"target"}}}}};
+        testMode["properties"]["mode"]["const"] = "test";
+        schema["oneOf"] = Json::array({std::move(buildMode), std::move(testMode)});
+        return schema;
+    }
+    if (name == "cmake_test_status")
+        return objectSchema({{"job_id", jobId},
+            {"failure_offset", Json{{"type", "integer"}, {"minimum", 0}}},
+            {"max_failures", Json{{"type", "integer"}, {"minimum", 1}, {"maximum", 32}, {"default", 16}}}},
+            {"job_id"}, AdditionalProperties::Denied);
     if (name == "process_poll" || name == "process_kill" || name == "process_adopt")
         return objectSchema({{"job_id", jobId}}, {"job_id"}, AdditionalProperties::Denied);
     if (name == "process_wait")

@@ -2392,7 +2392,8 @@ Domain::Result<void> WindowsLMStudioChatControl::send(
     const bool newChat,
     const Domain::OperationContext& context,
     const std::optional<std::string_view> expectedConversationId,
-    const std::function<void(std::string_view)> successorCreated) noexcept
+    const std::function<void(std::string_view)> successorCreated,
+    const LMStudioChatEffectObserver effectObserver) noexcept
 {
     try {
         if (auto error = interrupted(context)) {
@@ -2515,6 +2516,10 @@ Domain::Result<void> WindowsLMStudioChatControl::send(
             if (auto error = interrupted(context)) {
                 return Domain::Result<void>::failure(std::move(*error));
             }
+            if (effectObserver) {
+                auto recorded = effectObserver({LMStudioChatEffect::NewChat, LMStudioChatEffectStage::BeforeDispatch, predecessor, 0U});
+                if (!recorded) return recorded;
+            }
             auto created = invoke(*button.value().get(), "Invoking LM Studio New chat");
             if (!created) {
                 return created;
@@ -2550,6 +2555,10 @@ Domain::Result<void> WindowsLMStudioChatControl::send(
                         continue;
                     }
                     targetConversationId = selected.value()->conversationId;
+                    if (effectObserver) {
+                        auto recorded = effectObserver({LMStudioChatEffect::NewChat, LMStudioChatEffectStage::Confirmed, targetConversationId, 0U});
+                        if (!recorded) return recorded;
+                    }
                     if (successorCreated) {
                         successorCreated(targetConversationId);
                     }
@@ -2660,6 +2669,10 @@ Domain::Result<void> WindowsLMStudioChatControl::send(
                     }
                     const auto previousUserMessages = current.value()->userMessages.size();
                     const auto expectedMessage = normalizedNewlines(message.value());
+                    if (effectObserver) {
+                        auto recorded = effectObserver({LMStudioChatEffect::Send, LMStudioChatEffectStage::BeforeDispatch, targetConversationId, previousUserMessages});
+                        if (!recorded) return recorded;
+                    }
                     auto dispatched = invoke(*button.value().get(), "Invoking LM Studio Send");
                     if (!dispatched) { return dispatched; }
                     std::optional<Domain::Error> lastReadError;
@@ -2693,6 +2706,10 @@ Domain::Result<void> WindowsLMStudioChatControl::send(
                                     return Domain::Result<void>::failure(std::move(error));
                                 }
                                 if (normalizedNewlines(persisted.value()) == expectedMessage) {
+                                    if (effectObserver) {
+                                        auto recorded = effectObserver({LMStudioChatEffect::Send, LMStudioChatEffectStage::Confirmed, targetConversationId, previousUserMessages});
+                                        if (!recorded) return recorded;
+                                    }
                                     return Domain::Result<void>::success();
                                 }
                             }

@@ -220,10 +220,11 @@ void recoveredHostProjectKeepsOnlyCurrentVolumeAuthority()
         Domain::FileAccess::Write, {Domain::FileAccess::Read, Domain::FileAccess::Write, Domain::FileAccess::Create,
             Domain::FileAccess::Delete, Domain::FileAccess::Execute}};
     Mcp::McpExecutionContextResolver resolver{issuer, defaultProject(), clock, &recovered};
-    for (const auto& [name, effect] : std::array<std::pair<std::string_view, Domain::ToolEffect>, 6>{{
+    for (const auto& [name, effect] : std::array<std::pair<std::string_view, Domain::ToolEffect>, 8>{{
         {"fs_read", Domain::ToolEffect::Read}, {"fs_write", Domain::ToolEffect::Write},
         {"forge_status", Domain::ToolEffect::Read}, {"shell_exec", Domain::ToolEffect::Write},
-        {"shell_job_start", Domain::ToolEffect::Write}, {"process_launch", Domain::ToolEffect::Write}}}) {
+        {"shell_job_start", Domain::ToolEffect::Write}, {"process_launch", Domain::ToolEffect::Write},
+        {"cmake_test_run", Domain::ToolEffect::Write}, {"cmake_test_status", Domain::ToolEffect::Read}}}) {
         auto call = request(); call.toolName = name;
         const auto token = take(resolver.resolve(call, effect, context()));
         REQUIRE(token.projectId() == adoptedProject);
@@ -231,7 +232,7 @@ void recoveredHostProjectKeepsOnlyCurrentVolumeAuthority()
         REQUIRE(token.generation() == 7U);
         REQUIRE(issuer.lastAuthorizedAccess == (effect == Domain::ToolEffect::Read ? Domain::FileAccess::Read : Domain::FileAccess::Write));
     }
-    REQUIRE(issuer.authorizeCalls == 6U);
+    REQUIRE(issuer.authorizeCalls == 8U);
     REQUIRE(issuer.narrowCalls == 0U);
 
     ModeWorkspaceAuthorityFake readOnly{Domain::FileSystemAccessMode::Host, {systemVolume}, Domain::FileAccess::Read,
@@ -419,7 +420,8 @@ void recoveredWorkspaceRetainsOnlyExplicitBindingsAndOwnerActivationScope()
     const auto scoped = take(resolver.resolve(request(), Domain::ToolEffect::Read, context()));
     REQUIRE(scoped.trustedRoots() == std::vector<Domain::PathText>{selected});
     issuer.setBoundConfiguredRoots({evidence, evidence, absent});
-    for (const auto name : {"fs_read", "fs_write", "forge_status", "shell_exec", "shell_job_start", "process_launch"}) {
+    for (const auto name : {"fs_read", "fs_write", "forge_status", "shell_exec", "shell_job_start", "process_launch",
+            "cmake_test_run", "cmake_test_status"}) {
         auto call = request();
         call.toolName = name;
         const auto retained = take(resolver.resolve(call, Domain::ToolEffect::Read, context()));

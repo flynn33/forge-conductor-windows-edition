@@ -25,6 +25,12 @@ public:
     using JobCompletionSink = std::function<void(const Domain::ProjectId&, const Domain::ShellJobSnapshot&)>;
     void setJobCompletionSink(JobCompletionSink sink);
     [[nodiscard]] bool supportsJobs() const noexcept override { return true; }
+    [[nodiscard]] Domain::Result<Domain::ShellJobSnapshot> startCMakeTestRun(
+        const Domain::CMakeTestRequest&, const Contracts::WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept override;
+    [[nodiscard]] Domain::Result<Domain::CMakeTestRunStatus> getCMakeTestRun(
+        std::string_view, std::uint64_t, std::size_t, const Contracts::WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept override;
     [[nodiscard]] Domain::Result<Domain::ShellJobSnapshot> startProcess(
         const Domain::ProcessRequest&, const Contracts::WorkspaceAuthority&,
         const Domain::OperationContext&) noexcept override;
@@ -81,7 +87,8 @@ private:
         bool directProcess = false) noexcept;
     [[nodiscard]] Domain::Result<Domain::ShellJobSnapshot> startOwnedJob(
         const Domain::ProcessRequest&, const Contracts::WorkspaceAuthority&,
-        const Domain::OperationContext&, bool directProcess) noexcept;
+        const Domain::OperationContext&, bool directProcess,
+        std::optional<Domain::CMakeTestRequest> cmakeTest = std::nullopt) noexcept;
     std::shared_ptr<Impl> implementation_;
 };
 

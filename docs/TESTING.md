@@ -24,7 +24,13 @@ Production publication replaces `-DevelopmentSigning` with an approved PFX and p
 - Simulated lifecycle tests use disposable roots and copied fixtures. Tests and packaging must never mutate the operator's live `%LOCALAPPDATA%\Forge Conductor` store.
 - Provider-dependent productive inference is reported separately when LM Studio and a loaded model are available; provider absence must produce an actionable disconnected state rather than fabricated success.
 
-## Current 1.3.19 verification
+## Current 1.3.20 verification — pending
+
+The current source catalog contains 106 Primary/Fallback tools. Final source/build, full configured CTest, static gates, package, installed-tool and live-model qualification remain pending in [the 1.3.20 record](validation/HOST-CAPABILITIES-1.3.20.md); no earlier measurement qualifies these binaries.
+
+The new regression coverage targets initialized-tree authority, sequential CMake/CTest phases and shared deadlines, actual phase outcomes, validated JUnit counts/schema, report seals and uncertain crash recovery, UTF-8 failure paging and existing log/cancellation routes. Desktop/image coverage targets later accessibility controls and encoded page bounds, default and requested preview dimensions, adaptive encoded-byte reduction, rejection before write/capture effects, and exact one-/two-pixel rectangle fills with canvas clipping. Continuity coverage targets clearing only read-pipeline failures after a complete successful read while preserving unrelated diagnostics. These are coverage descriptions, not final passing results. See [CMake/CTest contracts](CMAKE-CTEST.md) and [capability limits](HOST-CAPABILITIES.md).
+
+## Historical published 1.3.19 verification
 
 Both native WinHTTP timeout diagnostics consistently report the selected receive budget, with unchanged timeout, deadline and cancellation behavior. The managed-context legacy-lease fix is retained. The exact 1.3.19 source passed 162/162 Release tests in 74.37 seconds, Product All, all three static gates and package persistence. Windows CI separately passed 162/162 in 126.04 seconds. Installed/staging/MSIX hashes matched all four executables, and actual catalogs returned 104/104/5. The existing selected Qwen conversation passed 9 bounded cases, including the formerly denied Host read and fresh sealed blind image analysis. The dedicated real-model managed recovery returned the exact seeded packet and unseen file in 2 captured native calls with verified sealed output. [Published release](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.19) contains seven assets verified by size and SHA-256. [Windows package](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.19/ForgeConductor-1.3.19.0-x64.msix) and [installation bundle](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.19/ForgeConductor-1.3.19.0-x64.zip).
 

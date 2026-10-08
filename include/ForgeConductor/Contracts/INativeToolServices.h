@@ -66,6 +66,19 @@ public:
 
     [[nodiscard]] virtual bool supportsJobs() const noexcept { return false; }
 
+    [[nodiscard]] virtual Domain::Result<Domain::ShellJobSnapshot> startCMakeTestRun(
+        const Domain::CMakeTestRequest&, const WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept { return unavailableJob(); }
+
+    [[nodiscard]] virtual Domain::Result<Domain::CMakeTestRunStatus> getCMakeTestRun(
+        std::string_view, std::uint64_t, std::size_t, const WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept
+    {
+        return Domain::Result<Domain::CMakeTestRunStatus>::failure(Domain::makeError(
+            Domain::ErrorCodes::HostCapabilityUnavailable,
+            "Structured CMake/CTest jobs are unavailable from this shell service."));
+    }
+
     [[nodiscard]] virtual Domain::Result<Domain::ShellJobSnapshot> startJob(
         const Domain::ProcessRequest&,
         const WorkspaceAuthority&,

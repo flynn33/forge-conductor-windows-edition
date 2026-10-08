@@ -41,6 +41,13 @@ public:
     DeterministicResult<Domain::ShellJobSnapshot> getJobResult;
     DeterministicResult<Domain::ShellJobSnapshot> cancelJobResult;
     DeterministicResult<std::vector<Domain::ShellJobSnapshot>> listJobsResult;
+    DeterministicResult<Domain::ShellJobSnapshot> startCMakeTestResult;
+    DeterministicResult<Domain::CMakeTestRunStatus> getCMakeTestResult;
+    std::optional<Domain::CMakeTestRequest> lastCMakeTestRequest;
+    std::uint64_t lastFailureOffset{};
+    std::size_t lastMaximumFailures{};
+    std::size_t cmakeTestStartCalls{};
+    std::size_t cmakeTestStatusCalls{};
     std::optional<Domain::ProcessRequest> lastJobRequest;
     std::string lastJobId;
     std::size_t jobStartCalls{};
@@ -48,6 +55,25 @@ public:
     bool jobsEnabled{true};
 
     [[nodiscard]] bool supportsJobs() const noexcept override { return jobsEnabled; }
+    [[nodiscard]] Domain::Result<Domain::ShellJobSnapshot> startCMakeTestRun(
+        const Domain::CMakeTestRequest& request,
+        const Contracts::WorkspaceAuthority&,
+        const Domain::OperationContext&) noexcept override
+    {
+        ++cmakeTestStartCalls;
+        lastCMakeTestRequest = request;
+        return startCMakeTestResult.get();
+    }
+    [[nodiscard]] Domain::Result<Domain::CMakeTestRunStatus> getCMakeTestRun(
+        const std::string_view id, const std::uint64_t offset, const std::size_t maximum,
+        const Contracts::WorkspaceAuthority&, const Domain::OperationContext&) noexcept override
+    {
+        ++cmakeTestStatusCalls;
+        lastJobId = id;
+        lastFailureOffset = offset;
+        lastMaximumFailures = maximum;
+        return getCMakeTestResult.get();
+    }
     [[nodiscard]] Domain::Result<Domain::ShellJobSnapshot> startJob(
         const Domain::ProcessRequest& request,
         const Contracts::WorkspaceAuthority&,

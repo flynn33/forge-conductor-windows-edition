@@ -36,9 +36,21 @@ Choose a policy repository folder to bind it immediately. Use **Inspect findings
 
 A saved packet or local connection ID alone is not native successor proof. Inspect the selected native conversation state and continuity status. The product must verify the exact handed message and enabled integrations in a new native chat, then packet retrieval and a following Forge result. CLU is governance and cannot repair chat creation by itself.
 
+### Historical native qualification through 1.3.19
+
+The next two paragraphs record the earlier implementation and its measured limits; they do not describe the current 1.3.20 checkpoint source.
+
 Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 
 If the primary MCP worker was evicted during handoff, durable packet records may still exist but automatic recovery of the interrupted UI phase is not implemented. Do not describe that state as completed. Physical exhaustion and already-running agent reattachment were not exercised by the 1.3.5 reserve-pressure verification.
+
+### Current 1.3.20 checkpoint recovery
+
+The source now checkpoints the native phase, exact packet revision, conversation identities and New chat/Send receipts. Inspect `get_forge_status.visible_chat_continuity.state` and `handoff_recovery` for `recovery_pending`, its recorded phase, reason, packet ID, predecessor/successor IDs and `automatic_replay: false`. That state retains unfinished work; it is not a completed rollover.
+
+Confirm the intended current project/provider and Primary/Fallback/CLU routes, then select the recorded predecessor or exact successor identified by the recovery reason. Reconstruction compares fresh selected-chat message/tool evidence with the checkpoint. An uncertain New chat or Send is never automatically repeated. A different empty chat, a saved packet alone, or a UI success label cannot settle an ambiguous dispatch. Exact packet recovery through `context_get` followed by a successful Forge tool in the successor can provide reconciliation evidence.
+
+Checkpoint schema, integrity, scope, ownership or storage failures defer native controls. Keep the reported error and retained packet; do not clear the checkpoint or resend an uncertain mutation as routine repair. Final reconstruction regression and installed interrupted-connector restart qualification are pending. See [Auto Continuity](Continuity) for storage bounds and the evidence contract.
 
 ## Recovered packet has no actionable goal
 
