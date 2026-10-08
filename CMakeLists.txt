@@ -2604,9 +2604,20 @@ if(BUILD_TESTING)
 
     add_test(
         NAME ForgeConductor.Infrastructure.UnitTests
-        COMMAND $<TARGET_FILE:ForgeConductor.Infrastructure.UnitTests>
+        COMMAND $<TARGET_FILE:ForgeConductor.Infrastructure.UnitTests> --suite core
     )
-    set_tests_properties(ForgeConductor.Infrastructure.UnitTests PROPERTIES
+    add_test(
+        NAME ForgeConductor.Infrastructure.TerminalPacketRecoveryTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Infrastructure.UnitTests> --suite terminal-repair
+    )
+    add_test(
+        NAME ForgeConductor.Infrastructure.ExplicitRouteRecoveryTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Infrastructure.UnitTests> --suite route-recovery
+    )
+    set_tests_properties(
+        ForgeConductor.Infrastructure.UnitTests
+        ForgeConductor.Infrastructure.TerminalPacketRecoveryTests
+        ForgeConductor.Infrastructure.ExplicitRouteRecoveryTests PROPERTIES
         LABELS "T-UNIT;T-SEC;T-LMS;G06;G15"
         TIMEOUT 180
     )

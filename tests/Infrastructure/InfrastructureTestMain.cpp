@@ -73,6 +73,22 @@ int main(int argc, char** argv)
         if(!result) {std::cerr<<result.error().code<<": "<<result.error().message<<'\n';return 1;}
         std::cout<<(closing?"LM Studio verification window closed normally.\n":"Predecessor LM Studio chat request sent through product controller.\n");return 0;
     }
+    std::string_view suite;
+    bool listTests = false;
+    for (int index = 1; index < argc; ++index) {
+        const std::string_view argument{argv[index]};
+        if (argument == "--suite" && suite.empty() && index + 1 < argc) {
+            suite = argv[++index];
+            if (suite == "core" || suite == "terminal-repair" || suite == "route-recovery") {
+                continue;
+            }
+        } else if (argument == "--list-tests" && !listTests) {
+            listTests = true;
+            continue;
+        }
+        std::cerr << "Use --suite core|terminal-repair|route-recovery and/or --list-tests.\n";
+        return 2;
+    }
     ForgeConductor::Tests::TestRegistry tests;
     ForgeConductor::Tests::registerFoundationWindowsTests(tests);
     ForgeConductor::Tests::registerStorageWindowsTests(tests);
@@ -85,6 +101,29 @@ int main(int argc, char** argv)
     ForgeConductor::Tests::registerWindowsLMStudioConversationReaderTests(tests);
     ForgeConductor::Tests::registerWindowsLMStudioChatControlTests(tests);
     ForgeConductor::Tests::registerWindowsLMStudioHostActivatorTests(tests);
+
+    if (!suite.empty()) {
+        std::erase_if(tests, [suite](const auto& test) {
+            const bool terminalRepair = test.first ==
+                "LMStudioChatContinuity.terminal_confirmed_packet_repair_native_recovery";
+            const bool routeRecovery = test.first ==
+                "LMStudioChatContinuity.explicit_route_recovery_cases";
+            if (suite == "core") {
+                return terminalRepair || routeRecovery;
+            }
+            return suite == "terminal-repair" ? !terminalRepair : !routeRecovery;
+        });
+        if (tests.empty()) {
+            std::cerr << "The selected infrastructure suite has no registered tests.\n";
+            return 2;
+        }
+    }
+    if (listTests) {
+        for (const auto& test : tests) {
+            std::cout << test.first << '\n';
+        }
+        return 0;
+    }
 
     std::size_t passed = 0U;
     for (const auto& [name, run] : tests) {

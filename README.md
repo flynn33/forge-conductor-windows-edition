@@ -115,6 +115,8 @@ Ordinary launches use `%LOCALAPPDATA%\Forge Conductor`; disposable verification 
 
 ## Build and verify
 
+Repository verification now schedules 169 CTest entries, preserving all 141 Infrastructure groups in three separately bounded processes. The released 1.3.28 package retains its exact artifact-source 167-entry results; the repository test registration is documented separately in [Testing](docs/TESTING.md).
+
 Requirements and commands are in [Build](docs/BUILD.md) and [Testing](docs/TESTING.md):
 
 ```powershell

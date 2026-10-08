@@ -14,7 +14,7 @@ Removed: Managed Run/readback, Export selected project, Import verify first, Act
 
 The 1.3.14 Rig controls use the existing Manager handlers. Finish owned work or confirm terminal cancellation before restarting/stopping Manager; scheduled triggers require it to remain running. Their presence is established from the App source, while final installed UI acceptance remains pending until executed.
 
-Optional image-provider setup adds no new frontend or server-start action. Configure the existing owner-managed provider block explicitly and inspect actual image_provider_status; integrated installed qualification remains pending. See [the provider contract](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
+Optional image-provider setup adds no new frontend or server-start action. Configure the existing owner-managed provider block explicitly and inspect actual image_provider_status; the 1.3.28 verification record contains separately measured public Manager/MCP and selected native image-provider scopes. See [the provider contract](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
 
 ## Retained native continuity source
 
