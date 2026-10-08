@@ -588,11 +588,15 @@ public:
     }
     ~VisibleHandoffFixture() {if(fixture.observer) fixture.observer->shutdown();publicationBlock.reset();}
     std::unique_ptr<Infrastructure::Windows::WindowsLMStudioChatContinuity> create(bool confirmed=true) {
+        return create(fixture.projects,fixture.configuration,confirmed);
+    }
+    std::unique_ptr<Infrastructure::Windows::WindowsLMStudioChatContinuity> create(
+        Contracts::IProjectMemoryService& projects,Contracts::IConfigurationStore& configuration,bool confirmed=true) {
         const auto encoded=(fixture.fileFixture.root()/"home").generic_u8string();
         auto home=take(Domain::PathText::create(std::string{reinterpret_cast<const char*>(encoded.data()),encoded.size()}));
         return Infrastructure::Windows::Detail::LMStudioChatContinuityAccess::create(controls,fixture.project,
             fixture.fileFixture.path(),home,fixture.fileFixture.path(),fixture.fileFixture.path(),Domain::LocalModelConfig{},
-            fixture.memory,fixture.legacyContinuity,fixture.projects,fixture.clock,fixture.uuid,fixture.configuration,confirmed);
+            fixture.memory,fixture.legacyContinuity,projects,fixture.clock,fixture.uuid,configuration,confirmed);
     }
     void reconstruct(bool confirmed=true) {
         fixture.observer.reset();fixture.observer=create(confirmed);
@@ -608,6 +612,21 @@ public:
     }
     std::filesystem::path checkpointPath() const {
         return fixture.fileFixture.root()/"home"/"continuity"/("lmstudio-visible-"+fixture.project.value()+".checkpoint");
+    }
+    void awaitWriterOwnership() const {
+        const auto path=checkpointPath().parent_path()/"lmstudio-visible-writer.lock";
+        require(std::filesystem::is_regular_file(path),"private initialized writer lock is missing");
+        const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds{10};
+        do {
+            Infrastructure::Windows::Detail::UniqueHandle probe{::CreateFileW(path.c_str(),GENERIC_READ|GENERIC_WRITE,
+                0U,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL|FILE_FLAG_OPEN_REPARSE_POINT,nullptr)};
+            const auto error=probe ? ERROR_SUCCESS : ::GetLastError();
+            if(!probe && error==ERROR_SHARING_VIOLATION) return;
+            require(static_cast<bool>(probe),"private writer ownership probe failed unexpectedly: "+std::to_string(error));
+            probe.reset();
+            std::this_thread::sleep_for(std::chrono::milliseconds{20});
+        } while(std::chrono::steady_clock::now()<deadline);
+        throw TestFailure{"First observer did not acquire the private native writer lease."};
     }
     Json checkpoint() const {
         std::ifstream input{checkpointPath(),std::ios::binary};
@@ -710,8 +729,14 @@ void durableVisibleHandoffRecoveryCases()
         require(f.sends==1U,"post-write recovery repeated an acknowledged native message");
     });
     run("overlapping_writer",[] {
-        VisibleHandoffFixture f;f.waiting();f.fixture.observer->start();
-        auto first=std::move(f.fixture.observer);f.fixture.observer=f.create();f.pending();first->shutdown();
+        Fakes::RecordingConfigurationStoreFake contenderConfiguration;
+        Fakes::RecordingProjectMemoryService contenderProjects;
+        VisibleHandoffFixture f;f.waiting();
+        contenderConfiguration.reloadResult.set(f.fixture.configuration.reloadResult.get());
+        contenderProjects.listRecentResult.set(f.fixture.projects.listRecentResult.get());
+        f.fixture.observer->start();f.awaitWriterOwnership();
+        auto first=std::move(f.fixture.observer);
+        f.fixture.observer=f.create(contenderProjects,contenderConfiguration);f.pending();first->shutdown();
         require(f.sends==1U,"overlapping observers both dispatched into the same LM Studio home");
         f.run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet" && !status.contains("error");});
         require(f.sends==1U,"the previously denied observer replayed a request after writer reacquisition");
