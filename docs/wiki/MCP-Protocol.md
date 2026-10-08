@@ -4,7 +4,7 @@
 
 # MCP Protocol
 
-Forge Conductor speaks newline-delimited JSON-RPC 2.0 over stdio for LM Studio. The 1.3.20 source catalog contains **106 tool descriptors** and is filtered by deployment role. All original 80 remain, with 26 additions including independent `image_analyze` and native `cmake_test_run`/`cmake_test_status`. Source, package, installed-tool and live-model qualification are pending. See [Tool Catalog](Tool-Catalog), [Windows Workflow Capabilities](Windows-workflow-capabilities) and [1.3.20 implementation notes](Release-1.3.20).
+Forge Conductor speaks newline-delimited JSON-RPC 2.0 over stdio for LM Studio. The 1.3.21 source catalog contains **106 tool descriptors** and is filtered by deployment role. All original 80 remain, with 26 additions including independent `image_analyze` and native `cmake_test_run`/`cmake_test_status`. Source, package, installed-tool and live-model qualification are pending. See [Tool Catalog](Tool-Catalog), [Windows Workflow Capabilities](Windows-workflow-capabilities) and [1.3.21 implementation notes](Release-1.3.21).
 
 ## Roles
 
@@ -14,7 +14,7 @@ Forge Conductor speaks newline-delimited JSON-RPC 2.0 over stdio for LM Studio. 
 | Fallback | `forge-conductor-fallback` | Independent general catalog and health |
 | CLU | `forge-conductor-clu` | Governance-only `clu.evaluate`, `clu.export_log`, `clu.findings`, `clu.resolve`, and `project_policy.read` |
 
-All three registrations share an exact deployment revision while retaining distinct role, health, process, and presence evidence. The 1.3.20 implementation retains the exact integer `timeout: 180000` contract for every role.
+All three registrations share an exact deployment revision while retaining distinct role, health, process, and presence evidence. The 1.3.21 implementation retains the exact integer `timeout: 180000` contract for every role.
 
 ## Project context contract
 
@@ -47,7 +47,7 @@ Managed worker/reviewer provider Responses function outputs retain text-string c
 
 `desktop_read` accepts zero-based offset paging and reports observed row indices, `next_offset` and `has_more`. Native pages retain a 32 KiB aggregate text budget and 64 KiB encoded JSON budget before MCP framing; the accessibility tree is freshly observed per call. Optional `preview_max_dimension` 128–2,048, default 256, is passed through image reads/writes, capture and independent analysis. Adaptive sizing keeps base64-encoded preview data within 512 KiB and returns exact dimensions, requested limit and byte-reduction metadata. The stock LM Studio image-to-metadata boundary remains separate.
 
-`cmake_test_run` starts an owned durable job from an explicit initialized tree; optional sequential build/test phases share one deadline. `cmake_test_status` separates a successful read from actual phase success and nullable validated JUnit counts. UTF-8 failure pages, report integrity checks and existing job logs/waits/cancellation preserve actual outcomes and unknown interrupted status; unkeyed seals do not authenticate report text or approve a governance gate. No implicit configure or clangd service is added. See [CMake/CTest source guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/CMAKE-CTEST.md); final 1.3.20 qualification remains pending.
+`cmake_test_run` starts an owned durable job from an explicit initialized tree; optional sequential build/test phases share one deadline. `cmake_test_status` separates a successful read from actual phase success and nullable validated JUnit counts. UTF-8 failure pages, report integrity checks and existing job logs/waits/cancellation preserve actual outcomes and unknown interrupted status; unkeyed seals do not authenticate report text or approve a governance gate. No implicit configure or clangd service is added. See [CMake/CTest source guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/CMAKE-CTEST.md); final 1.3.21 qualification remains pending.
 
 ## Bounded native result delivery
 
@@ -104,7 +104,7 @@ Auto Continuity uses product Windows UI Automation to create and send a native s
 
 Historical native rollover was verified with reserve pressure while the primary MCP worker stayed alive. The 1.3.11 checks verify project-scoped pickup and native observing state, without adding a new rollover or physical-exhaustion qualification. Interrupted UI handoff after worker eviction remains process-local. See [Release 1.3.11](Release-1.3.11) and [Continuity](Continuity).
 
-The 1.3.20 source adds atomic DPAPI-protected visible-handoff checkpoints. Reconstructed observers require fresh authorized project/provider/route scope and exact native effect evidence before continuing. `get_forge_status` exposes `recovery_pending` and its recorded chat/packet IDs when reconciliation is incomplete; uncertain Send or New chat effects are not replayed. Final reconstruction and installed connector-restart qualification remain pending.
+The 1.3.21 source adds atomic DPAPI-protected visible-handoff checkpoints. Reconstructed observers require fresh authorized project/provider/route scope and exact native effect evidence before continuing. `get_forge_status` exposes `recovery_pending` and its recorded chat/packet IDs when reconciliation is incomplete; uncertain Send or New chat effects are not replayed. Final reconstruction and installed connector-restart qualification remain pending.
 
 A live 1.3.2 validation call requested a 90-second `shell_exec` limit, slept for 70 seconds, and returned after 70,312 milliseconds of command time and 70,545 milliseconds of LM Studio tool status time. This host observation proves the repaired outer deadline exceeded the former 60-second cutoff; it is not a latency guarantee.
 

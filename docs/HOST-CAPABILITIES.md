@@ -1,6 +1,6 @@
-# Host workflows in 1.3.20
+# Host workflows in 1.3.21
 
-The measurement block below is historical 1.3.19 qualification; it does not qualify the current 1.3.20 implementation.
+The measurement block below is historical 1.3.19 qualification; it does not qualify the current 1.3.21 implementation.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,7 +8,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-The current 1.3.20 source catalog defines 106 Primary/Fallback tools, adding `cmake_test_run` and `cmake_test_status` while retaining all previous tools, five CLU governance tools and ten specialist playbooks. Qualification of the final source, package, installed tools and live Qwen workflows is pending. Call `host_capabilities` before deciding that a category is unavailable: it reports actual tool names, filesystem mode, Manager-backed capabilities, and external connection requirements. `get_forge_status` also reports the selected project's directory and detailed active authority. The full catalog remains available through the existing MCP protocol.
+The current 1.3.21 source catalog defines 106 Primary/Fallback tools, adding `cmake_test_run` and `cmake_test_status` while retaining all previous tools, five CLU governance tools and ten specialist playbooks. Qualification of the final source, package, installed tools and live Qwen workflows is pending. Call `host_capabilities` before deciding that a category is unavailable: it reports actual tool names, filesystem mode, Manager-backed capabilities, and external connection requirements. `get_forge_status` also reports the selected project's directory and detailed active authority. The full catalog remains available through the existing MCP protocol.
 
 Rig's corrected display shows the native conversation observed by the App and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. The preference does not establish live rollover availability. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for the native worker's actual state; its `available` flag becomes true after a successor conversation and handed message are verified. The 1.3.19 App includes this correction from the earlier candidate; final installed/readback and current-chat results are recorded in the versioned verification record. Earlier tests and package evidence retain their recorded source identities.
 
@@ -17,6 +17,8 @@ Rig's corrected display shows the native conversation observed by the App and th
 The owner selects `filesystem_access` in Settings/configuration. `host` grants ordinary local fixed, removable and RAM-disk volumes available to the current Windows account. `workspace` limits native file tools to registered workspace roots and explicitly bound owner-configured roots. A model tool cannot change this owner setting or invent a new grant. Existing workspace-only profiles remain supported.
 
 Host access retains the selected project's original directory as the default for relative artifact paths. Absolute paths use the active authorized local-volume roots. UNC/device namespaces, alternate streams, reparse traversal and native ACL failures retain the Windows path checks; selecting host mode does not grant administrator rights. A missing/unavailable volume is reported as unavailable. Inspect `workspace_authority` in status for the effective roots and mode. Shell-enabled commands execute with the current Windows account's OS permissions; cwd authorization is separate from an OS sandbox.
+
+Native shell and executable jobs explicitly supply bounded `SystemDrive`, `ProgramFiles`, `ProgramFiles(x86)` and `ProgramData` defaults from the Windows host. Case-insensitive explicit caller overrides remain authoritative; absent or oversized defaults are omitted. `SystemDrive` supports Windows/.NET known-folder resolution used by MSBuild; arbitrary host environment variables remain excluded.
 
 Continuity recovery retains the registered project's identity and canonical directory when host authorization uses a broader volume root. The native issuer must authorize both the registered alias and recovered candidate for Read, and the candidate's canonical path must remain within that registered directory. Unregistered paths, canonical sibling escapes and revoked access cannot substitute another project during adoption. The focused recovery tests are described in [testing](TESTING.md); a successful test does not establish completion of a live chat rollover.
 
@@ -64,7 +66,7 @@ Use `desktop_list` to observe exact visible `window_id`/`pid` pairs, titles and 
 
 `desktop_capture` captures the visible screen region of a selected window into an authorized PNG and returns an image preview. Other windows overlapping that region can appear in the capture. `image_read` uses native Windows codecs to decode an authorized PNG/JPEG/GIF/BMP/TIFF/ICO and returns a bounded PNG preview with original dimensions. `image_write` draws structured rectangles, ellipses, lines and Unicode text to a native PNG and returns its preview. These primitives support diagrams/charts; generative artwork requires a separately connected image model/provider. No external image or account connection is fabricated.
 
-In the 1.3.20 implementation, rectangle fills use the requested width and height as exact pixel dimensions, clipped at the canvas edges. This adjusts earlier rendering: GDI `Rectangle` with `NULL_PEN` reduced each dimension by one pixel, making a requested 1×1 rectangle empty. Ellipse rendering keeps its existing behavior. Qualification of the new exact-size PNG/pixel regression remains pending.
+In the 1.3.21 implementation, rectangle fills use the requested width and height as exact pixel dimensions, clipped at the canvas edges. This adjusts earlier rendering: GDI `Rectangle` with `NULL_PEN` reduced each dimension by one pixel, making a requested 1×1 rectangle empty. Ellipse rendering keeps its existing behavior. Qualification of the new exact-size PNG/pixel regression remains pending.
 
 All four tools `desktop_capture`, `image_read`, `image_write` and `image_analyze` accept optional integer `preview_max_dimension` from 128 through 2,048, defaulting to 256. It requests the preview's longest dimension without enlarging a smaller source. Adaptive downscaling keeps the base64-encoded PNG preview within 512 KiB; the written/captured full image keeps its original dimensions. Inspect the exact `preview_width`/`preview_height`, `preview_max_dimension_requested`, `preview_encoded_bytes`, `preview_encoded_byte_limit` and `preview_reduced_for_byte_limit` instead of assuming the request was delivered at full size. Invalid preview parameters are rejected before image-write or capture file effects. Larger previews do not establish exact OCR or pixel recognition, and do not change LM Studio's stock MCP image-to-metadata boundary.
 
@@ -124,4 +126,4 @@ Manager reports meaningful transitions through its local notification callback, 
 
 ## Verification and remaining external requirements
 
-Qualification of the current 1.3.20 implementation is pending. See the historical [1.3.19 release notes](releases/1.3.19.md) and [verification](validation/HOST-CAPABILITIES-1.3.19.md) for that artifact's executed checks and exact scope. A listed tool, accepted input, queued schedule, opened browser or submitted input is not proof that the user's final task completed. Inspect actual receipts, output, observed UI and error state. Generative image models, cloud accounts and their credentials remain configured external services; the dedicated native workflows above do not remove existing shell/process or integration routes.
+Qualification of the current 1.3.21 implementation is pending. See the historical [1.3.19 release notes](releases/1.3.19.md) and [verification](validation/HOST-CAPABILITIES-1.3.19.md) for that artifact's executed checks and exact scope. A listed tool, accepted input, queued schedule, opened browser or submitted input is not proof that the user's final task completed. Inspect actual receipts, output, observed UI and error state. Generative image models, cloud accounts and their credentials remain configured external services; the dedicated native workflows above do not remove existing shell/process or integration routes.

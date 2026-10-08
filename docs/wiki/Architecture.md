@@ -18,11 +18,13 @@ Workspace, Rig, Continuity, Activity, and Settings retain the existing native de
 
 Existing persistence migrations and stable MSIX identity remain. Historical Manager-owned Responses run records describe earlier versions, not the current native chat handoff guarantee.
 
-## Dedicated host workflows in 1.3.20
+## Dedicated host workflows in 1.3.21
 
-The current source catalog contains 106 Primary/Fallback tools. Native web, Office and desktop/image services reuse operation contexts, project authority issuers and atomic storage. Office writers build complete OOXML packages before publication; PNG drawing uses Windows primitives/codecs. Production adds no Office/Python runtime. Owner-selected host/workspace filesystem modes retain the registered project as the relative-path default. Source, package, installed-tool and live-model qualification are pending. See [1.3.20 implementation notes](Release-1.3.20).
+The current source catalog contains 106 Primary/Fallback tools. Native web, Office and desktop/image services reuse operation contexts, project authority issuers and atomic storage. Office writers build complete OOXML packages before publication; PNG drawing uses Windows primitives/codecs. Production adds no Office/Python runtime. Owner-selected host/workspace filesystem modes retain the registered project as the relative-path default. Source, package, installed-tool and live-model qualification are pending. See [1.3.21 implementation notes](Release-1.3.21).
 
 Native CMake/CTest jobs reuse the shell-service owner and typed durable job receipts. An explicitly initialized build tree is authorized before launch; sequential build/test/report phases share one deadline. Status retains actual nullable phase outcomes and validated JUnit counts with bounded UTF-8 failure paging. Report path/length/SHA-256 checks detect changes against the receipt; they do not authenticate producer text. Crash recovery preserves unknown outcomes without automatic replay. Existing named log/wait/kill routes remain. See [CMake/CTest source guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/CMAKE-CTEST.md).
+
+Native shell and executable jobs explicitly supply bounded `SystemDrive`, `ProgramFiles`, `ProgramFiles(x86)` and `ProgramData` defaults from the Windows host. Case-insensitive explicit caller overrides remain authoritative; absent or oversized defaults are omitted. `SystemDrive` supports Windows/.NET known-folder resolution used by MSBuild; arbitrary host environment variables remain excluded.
 
 Accessibility paging observes a fresh tree for each call and retains zero-based offsets, row indices, 32 KiB text and 64 KiB native JSON bounds. Image previews optionally request 128–2,048 pixels, default 256, and adaptively downscale to the 512 KiB base64 bound with actual dimension/reduction metadata. Filled rectangles honor exact requested pixel width/height, including one-pixel shapes; ellipse behavior remains. Higher resolution does not establish exact OCR or change LM Studio's stock metadata-only image result.
 

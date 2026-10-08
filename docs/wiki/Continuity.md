@@ -2,7 +2,7 @@
 
 The primary `forge-conductor` MCP worker owns native visible LM Studio chat rollover. Workspace saves **Auto Continuity** for the exact project/provider pair. CLU remains governance; Fallback remains an independent general-catalog integration. No fourth plugin or Forge credential is introduced.
 
-## Current 1.3.20 checkpoint source
+## Current 1.3.21 checkpoint source
 
 The Primary worker now persists the interrupted native handoff phase alongside the existing saved packet. Final reconstruction regression and installed interrupted-connector restart qualification are pending; the historical 1.3.5/1.3.11 checks below do not qualify the new reconstruction path.
 
@@ -37,7 +37,7 @@ The accepted 1.3.11 installed checks verify enabled, unblocked native observing 
 
 ## Historical durability limits through 1.3.19
 
-The next paragraph preserves the earlier in-process limitation; it predates the current 1.3.20 checkpoint implementation. Physical exhaustion and already-running agent reattachment remain separate qualification work.
+The next paragraph preserves the earlier in-process limitation; it predates the current 1.3.21 checkpoint implementation. Physical exhaustion and already-running agent reattachment remain separate qualification work.
 
 The packet is persisted, but the in-flight UI handoff phase is process-local. Recovery of that interrupted phase after MCP worker eviction/restart is unfinished. Historical rollover qualification did not exercise physical exhaustion or reattachment of an already-running agent. A fresh CLU initialize was not exercised in that historical native rollover; its packet context uses the shared bootstrap path, and Primary/Fallback provide recovery tools.
 

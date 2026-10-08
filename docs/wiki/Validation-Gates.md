@@ -1,4 +1,8 @@
-# Current version 1.3.19
+# Current 1.3.21 verification - pending
+
+The current source/package identity is 1.3.21 / 1.3.21.0 with 106 Primary/Fallback tools. Final clean-source, package, installed/native-model and publication qualification are pending. The focused environment regressions do not qualify final artifacts. See [the current source notes](Release-1.3.21). Historical measurements below retain their original identities.
+
+## Historical published 1.3.19 verification
 
 Both native WinHTTP timeout diagnostics consistently report the selected receive budget, with unchanged timeout, deadline and cancellation behavior. The managed-context legacy-lease fix is retained. The exact 1.3.19 source passed 162/162 Release tests in 74.37 seconds, Product All, all three static gates and package persistence. Windows CI separately passed 162/162 in 126.04 seconds. Installed/staging/MSIX hashes matched all four executables, and actual catalogs returned 104/104/5. The existing selected Qwen conversation passed 9 bounded cases, including the formerly denied Host read and fresh sealed blind image analysis. The dedicated real-model managed recovery returned the exact seeded packet and unseen file in 2 captured native calls with verified sealed output. [Published release](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.19) contains seven assets verified by size and SHA-256. [Windows package](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.19/ForgeConductor-1.3.19.0-x64.msix) and [installation bundle](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.19/ForgeConductor-1.3.19.0-x64.zip).
 
@@ -159,4 +163,4 @@ The source-bound staging and package manifests record exact commit/tree and file
 .\scripts\package.ps1 -DevelopmentSigning
 ```
 
-**Next:** [Release 1.3.11](Release-1.3.11) · [Developer Setup](Getting-Started) · [Roadmap](Roadmap)
+**Next:** [Release 1.3.21](Release-1.3.21) · [Developer Setup](Getting-Started) · [Roadmap](Roadmap)

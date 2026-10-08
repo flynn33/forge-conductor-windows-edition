@@ -1,6 +1,6 @@
 # Product surfaces
 
-Version 1.3.20 retains the native app design and the 1.3.5 run/action/maintenance removals. The shared Manager diagnostic remains collapsed during 500 ms telemetry observations, so its single-line and multiline status updates no longer move the visible page. Settings retains the owner's host/workspace filesystem selection; dedicated model workflows retain explicit native receipts through the MCP tools.
+Version 1.3.21 retains the native app design and the 1.3.5 run/action/maintenance removals. The shared Manager diagnostic remains collapsed during 500 ms telemetry observations, so its single-line and multiline status updates no longer move the visible page. Settings retains the owner's host/workspace filesystem selection; dedicated model workflows retain explicit native receipts through the MCP tools.
 
 | Destination | Actions |
 |---|---|
@@ -20,7 +20,7 @@ The Primary MCP worker checkpoints the native handoff phase for reconstruction a
 
 ## Historical App and native qualification
 
-The following source/build and native-check observations retain their original qualification scope. The process-local handoff limitation below describes the earlier implementation, before the 1.3.20 checkpoint source.
+The following source/build and native-check observations retain their original qualification scope. The process-local handoff limitation below describes the earlier implementation, before the 1.3.21 checkpoint source.
 
 The source-`7b3e154` App displays the actual observed native conversation in Rig and the Manager's enabled/disabled continuity preference, distinguishing a read from a save. It directs live rollover inspection to Primary MCP's `get_forge_status`, replacing the unconditional unavailable warning and obsolete selected-run label. The updated App has been rebuilt into a valid signed candidate; its installed readback remains pending.
 

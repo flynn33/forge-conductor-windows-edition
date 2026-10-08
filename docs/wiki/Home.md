@@ -1,6 +1,6 @@
 <p align="center"><img src="images/mark-conductor.jpg" width="132" alt="Forge Conductor mark"></p>
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.20 implementation.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.21 implementation.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -12,7 +12,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 A native Windows 11 workspace and MCP server for project work with local models in LM Studio.
 
-The current source version **1.3.20** provides **106 tools** in Primary/Fallback while preserving all original 80 tools, ten specialist playbooks, and five CLU tools. Native CMake/CTest jobs, paged accessibility reads and optional higher-resolution bounded previews extend dedicated web, native DOCX/XLSX/PPTX creation, visible desktop/browser input and capture, PNG drawing/image analysis, independent managed workers, and persistent schedules. Owner-selected host/workspace access, native app design, live telemetry and the existing Primary, Fallback, and CLU integrations remain. Sessions stay LM Studio chats. Source, package, installed-tool and live-model qualification are pending. See [1.3.20 implementation notes](Release-1.3.20).
+The current source version **1.3.21** provides **106 tools** in Primary/Fallback while preserving all original 80 tools, ten specialist playbooks, and five CLU tools. Native CMake/CTest jobs, paged accessibility reads and optional higher-resolution bounded previews extend dedicated web, native DOCX/XLSX/PPTX creation, visible desktop/browser input and capture, PNG drawing/image analysis, independent managed workers, and persistent schedules. Owner-selected host/workspace access, native app design, live telemetry and the existing Primary, Fallback, and CLU integrations remain. Sessions stay LM Studio chats. Source, package, installed-tool and live-model qualification are pending. See [1.3.21 implementation notes](Release-1.3.21).
 
 Historical published 1.3.19 qualification is recorded above. The installed, unpublished [1.3.18 investigation](Release-1.3.18) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact.
 
@@ -27,7 +27,7 @@ The installed, unpublished [1.3.17 investigation](Release-1.3.17) passed its exa
 | [Continuity](Continuity) | Recovery, native rollover path, and durability limits |
 | [Windows Workflow Capabilities](Windows-workflow-capabilities) | Dedicated tool contracts, actual receipts and external connection requirements |
 | [Tool Catalog](Tool-Catalog) | All 106 Primary/Fallback tool names and retained CLU scope |
-| [1.3.20 implementation](Release-1.3.20) | Current contracts and pending qualification |
+| [1.3.21 implementation](Release-1.3.21) | Current contracts and pending qualification |
 | [CMake/CTest source guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/CMAKE-CTEST.md) | Initialized-tree jobs, outcomes, failure paging, logs and recovery |
 | [Historical published release 1.3.19](Release-1.3.19) | Executed verification and its original artifact identity |
 | [Unpublished 1.3.18 investigation](Release-1.3.18) | Local source/install checks, CI failure and incomplete native acceptance |
@@ -45,4 +45,4 @@ Schedules require Manager to remain running. Future triggers restore after resta
 
 Historical Auto Continuity qualification used reserve pressure while the primary MCP worker stayed alive. The 1.3.11 native checks verify observing state and project-scoped recovery; they do not add a new rollover or physical-exhaustion qualification. Interrupted UI handoff after worker eviction remains process-local. See [Continuity](Continuity).
 
-The historical in-process limitation above applies to those named artifacts. The 1.3.20 source adds a bounded atomic DPAPI checkpoint and native-evidence reconciliation after observer reconstruction, with fresh project/provider/route authority and no replay of uncertain Send or New chat effects. Incomplete evidence is reported as `recovery_pending`; final reconstruction and installed connector-restart qualification are pending. See [1.3.20 implementation notes](Release-1.3.20).
+The historical in-process limitation above applies to those named artifacts. The 1.3.21 source adds a bounded atomic DPAPI checkpoint and native-evidence reconciliation after observer reconstruction, with fresh project/provider/route authority and no replay of uncertain Send or New chat effects. Incomplete evidence is reported as `recovery_pending`; final reconstruction and installed connector-restart qualification are pending. See [1.3.21 implementation notes](Release-1.3.21).

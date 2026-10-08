@@ -1,6 +1,6 @@
 # Roadmap
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.20 implementation.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.21 implementation.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,13 +8,13 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-## Current source version: 1.3.20
+## Current source version: 1.3.21
 
-Version 1.3.20 implements 106 Primary/Fallback tools while preserving all original tools, ten specialist playbooks and five CLU tools. Native CMake/CTest run/status jobs, paged accessibility reads, optional higher-resolution bounded image previews and measured source-pixel samples extend the dedicated workflows. Existing shell/process jobs, reviews, memory, policy, deployment and continuity remain. Source, package, installed-tool and live-model qualification are pending. See the [capability guide](Windows-workflow-capabilities) for implementation bounds.
+Version 1.3.21 implements 106 Primary/Fallback tools while preserving all original tools, ten specialist playbooks and five CLU tools. Native CMake/CTest run/status jobs, paged accessibility reads, optional higher-resolution bounded image previews and measured source-pixel samples extend the dedicated workflows. Existing shell/process jobs, reviews, memory, policy, deployment and continuity remain. Source, package, installed-tool and live-model qualification are pending. See the [capability guide](Windows-workflow-capabilities) for implementation bounds.
 
-The 1.3.20 source persists the interrupted native handoff phase in a bounded, current-user DPAPI checkpoint. A single writer owns native controls; reconstruction requires fresh project/provider/route confirmation and selected-chat evidence. Uncertain New chat or Send effects remain `recovery_pending` and are not replayed. Final reconstruction regression and installed interrupted-connector restart qualification are pending; implementation presence does not establish their runtime results. See [Auto Continuity](Continuity).
+The 1.3.21 source persists the interrupted native handoff phase in a bounded, current-user DPAPI checkpoint. A single writer owns native controls; reconstruction requires fresh project/provider/route confirmation and selected-chat evidence. Uncertain New chat or Send effects remain `recovery_pending` and are not replayed. Final reconstruction regression and installed interrupted-connector restart qualification are pending; implementation presence does not establish their runtime results. See [Auto Continuity](Continuity).
 
-The following limitation records the historical qualification through 1.3.19, before the 1.3.20 checkpoint implementation:
+The following limitation records the historical qualification through 1.3.19, before the 1.3.21 checkpoint implementation:
 
 Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 

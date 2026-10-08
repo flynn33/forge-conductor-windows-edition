@@ -830,7 +830,7 @@ void shellUsesFixedPowerShellAndClampedBudgets()
             normalized.maximumStdoutBytes == 80'000U &&
             normalized.maximumStderrBytes == 20'000U &&
             normalized.environment.size() >= 6U &&
-            normalized.environment.size() <= 16U &&
+            normalized.environment.size() <= 17U &&
             environmentValue(normalized.environment, "PYTHONUTF8") != nullptr &&
             *environmentValue(normalized.environment, "PYTHONUTF8") == "1" &&
             environmentValue(normalized.environment, "PYTHONIOENCODING") != nullptr &&
@@ -934,6 +934,7 @@ void shellProfileEnvironmentIsBoundedAndExplicit()
     const ShellEnvironmentVariableScope programfiles{L"ProgramFiles", L"C:\\forge-shell-programs"};
     const ShellEnvironmentVariableScope programfilesX86{L"ProgramFiles(x86)", L"C:\\forge-shell-programs-x86"};
     const ShellEnvironmentVariableScope programdata{L"ProgramData", L"C:\\forge-shell-program-data"};
+    const ShellEnvironmentVariableScope systemdrive{L"SystemDrive", L"Q:"};
     const ShellEnvironmentVariableScope secret{L"FORGE_SHELL_TEST_SECRET_TOKEN", L"canary-only"};
     const ShellEnvironmentVariableScope pythonUtf8{L"PYTHONUTF8", L"0"};
     const ShellEnvironmentVariableScope pythonEncoding{L"PYTHONIOENCODING", L"cp1252"};
@@ -957,6 +958,7 @@ void shellProfileEnvironmentIsBoundedAndExplicit()
              {"HOMEDRIVE", "C:"}, {"HOMEPATH", "\\forge-shell-profile"},
              {"ProgramFiles", "C:\\forge-shell-programs"},
              {"ProgramFiles(x86)", "C:\\forge-shell-programs-x86"}, {"ProgramData", "C:\\forge-shell-program-data"},
+             {"SystemDrive", "Q:"},
              {"PYTHONUTF8", "1"}, {"PYTHONIOENCODING", "utf-8"}}) {
         const auto* value = find(normalized, name);
         require(value != nullptr && *value == expected,
@@ -969,7 +971,7 @@ void shellProfileEnvironmentIsBoundedAndExplicit()
     explicitRequest.environment = {{"username", "explicit-user"},
         {"pythonutf8", "0"}, {"pythonioencoding", "ascii"},
         {"programfiles", "C:\\explicit-programs"}, {"programfiles(x86)", "C:\\explicit-programs-x86"},
-        {"programdata", "C:\\explicit-program-data"}};
+        {"programdata", "C:\\explicit-program-data"}, {"systemdrive", "R:"}};
     static_cast<void>(take(shell.execute(explicitRequest, fixture.authority, context(141U))));
     const auto& explicitNormalized = supervisor->requests().back();
     require(find(explicitNormalized, "username") != nullptr &&
@@ -986,7 +988,9 @@ void shellProfileEnvironmentIsBoundedAndExplicit()
             find(explicitNormalized, "programfiles(x86)") != nullptr && *find(explicitNormalized, "programfiles(x86)") == "C:\\explicit-programs-x86" &&
             find(explicitNormalized, "ProgramFiles(x86)") == nullptr &&
             find(explicitNormalized, "programdata") != nullptr && *find(explicitNormalized, "programdata") == "C:\\explicit-program-data" &&
-            find(explicitNormalized, "ProgramData") == nullptr,
+            find(explicitNormalized, "ProgramData") == nullptr &&
+            find(explicitNormalized, "systemdrive") != nullptr && *find(explicitNormalized, "systemdrive") == "R:" &&
+            find(explicitNormalized, "SystemDrive") == nullptr,
         "Shell changed explicit environment overrides or duplicated their names");
 
     const std::wstring oversized(Domain::MaximumProcessEnvironmentValueBytes + 1U, L'x');
@@ -1001,6 +1005,18 @@ void shellProfileEnvironmentIsBoundedAndExplicit()
     require(find(supervisor->requests().back(), "ProgramFiles") == nullptr &&
             find(supervisor->requests().back(), "ProgramData") == nullptr,
         "Shell imported an oversized OS directory or fabricated a missing directory default");
+    {
+        const ShellEnvironmentVariableScope oversizedSystemDrive{L"SystemDrive", oversized.c_str()};
+        static_cast<void>(take(shell.execute(shellRequest(fixture, "Get-Location"), fixture.authority, context(143U))));
+        require(find(supervisor->requests().back(), "SystemDrive") == nullptr,
+            "Shell imported an oversized SystemDrive default");
+    }
+    {
+        const ShellEnvironmentVariableScope missingSystemDrive{L"SystemDrive", nullptr};
+        static_cast<void>(take(shell.execute(shellRequest(fixture, "Get-Location"), fixture.authority, context(144U))));
+        require(find(supervisor->requests().back(), "SystemDrive") == nullptr,
+            "Shell fabricated a missing SystemDrive default");
+    }
 }
 
 void shellPolicyAuthorityCancellationAndShutdownFailClosed()

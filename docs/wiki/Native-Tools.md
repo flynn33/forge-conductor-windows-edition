@@ -6,7 +6,7 @@
 
 Forge Conductor's project tools are native Windows implementations behind application contracts and workspace authority.
 
-The current 1.3.20 source retains every original tool and provides 106 Primary/Fallback descriptors. Native CMake/CTest jobs, offset-paged accessibility reads and optional higher-resolution bounded previews extend dedicated WinHTTP search/fetch/HTTP, DOCX/XLSX/PPTX writers, desktop/browser input/capture, PNG drawing/image analysis, independent model workers and persistent schedules. Source, package, installed-tool and live-model qualification are pending. See [Windows Workflow Capabilities](Windows-workflow-capabilities), [CMake/CTest source guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/CMAKE-CTEST.md) and [1.3.20 implementation notes](Release-1.3.20); [published 1.3.19 qualification](Release-1.3.19) remains historical.
+The current 1.3.21 source retains every original tool and provides 106 Primary/Fallback descriptors. Native CMake/CTest jobs, offset-paged accessibility reads and optional higher-resolution bounded previews extend dedicated WinHTTP search/fetch/HTTP, DOCX/XLSX/PPTX writers, desktop/browser input/capture, PNG drawing/image analysis, independent model workers and persistent schedules. Source, package, installed-tool and live-model qualification are pending. See [Windows Workflow Capabilities](Windows-workflow-capabilities), [CMake/CTest source guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/CMAKE-CTEST.md) and [1.3.21 implementation notes](Release-1.3.21); [published 1.3.19 qualification](Release-1.3.19) remains historical.
 
 Host filesystem mode covers ordinary available local volumes using existing native ACL/path/reparse checks; workspace mode retains registered/configured roots. Both keep the selected project directory as the default for relative artifact paths. Models cannot change the owner's filesystem mode. Generative image models and cloud accounts require separately configured providers/accounts or authorized APIs.
 
@@ -62,6 +62,8 @@ Large canonical results use ordered bounded JSON text fragments without executin
 ## Process supervision
 
 Git, PowerShell, and other child work share a native supervisor with explicit executable paths, an explicit bounded Windows tool environment containing system tools, Git, PowerShell 7, `PATHEXT`, and `COMSPEC`, handle inheritance allowlists, redirected bounded pipes, deadlines, cancellation, and deterministic process-tree termination.
+
+Native shell and executable jobs explicitly supply bounded `SystemDrive`, `ProgramFiles`, `ProgramFiles(x86)` and `ProgramData` defaults from the Windows host. Case-insensitive explicit caller overrides remain authoritative; absent or oversized defaults are omitted. `SystemDrive` supports Windows/.NET known-folder resolution used by MSBuild; arbitrary host environment variables remain excluded.
 
 **Next:** [Tool Catalog](Tool-Catalog) · [Security](Security) · [How-To Recipes](How-To#invoke-a-native-project-tool)
 

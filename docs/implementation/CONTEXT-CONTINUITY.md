@@ -1,6 +1,6 @@
 # Native LM Studio chat Auto Continuity
 
-## Current 1.3.20 source contract
+## Current 1.3.21 source contract
 
 The Primary stdio MCP composition continues to own `WindowsLMStudioChatContinuity`; Fallback and CLU do not start competing native rollover workers. The current source adds durable phase reconstruction through `LMStudioChatCheckpoint` and New chat/Send effect receipts in `WindowsLMStudioChatControl`. Final reconstruction regression and installed interrupted-connector restart qualification are pending. The historical checks below do not qualify this new behavior.
 

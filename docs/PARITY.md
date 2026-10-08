@@ -1,6 +1,6 @@
 # Windows capability map
 
-The measurement block below is historical 1.3.19 qualification; it does not qualify the current 1.3.20 implementation.
+The measurement block below is historical 1.3.19 qualification; it does not qualify the current 1.3.21 implementation.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,7 +8,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-This map describes the current 1.3.20 implementation and native workflow bounds. Final source, package, installed-tool and live Qwen qualification is pending. The [capability guide](HOST-CAPABILITIES.md) explains request/receipt contracts; the historical [1.3.19 verification](validation/HOST-CAPABILITIES-1.3.19.md) retains that artifact's executed checks and scope. Historical delivery records do not qualify the new implementation. Generative image providers and cloud accounts require separate configured connections or authorized APIs.
+This map describes the current 1.3.21 implementation and native workflow bounds. Final source, package, installed-tool and live Qwen qualification is pending. The [capability guide](HOST-CAPABILITIES.md) explains request/receipt contracts; the historical [1.3.19 verification](validation/HOST-CAPABILITIES-1.3.19.md) retains that artifact's executed checks and scope. Historical delivery records do not qualify the new implementation. Generative image providers and cloud accounts require separate configured connections or authorized APIs.
 
 | Capability | Implementation and bounds |
 |---|---|
@@ -17,7 +17,7 @@ This map describes the current 1.3.20 implementation and native workflow bounds.
 | Project context | Authoritative project ID/root, ordered instruction packages, development-policy identity, tool names/count, and agent count in `get_forge_status`. |
 | Package reading | `instruction_package.read` selects a project queue row and returns paged entries/content with revision identity. |
 | CLU | Immediate policy-repository folder binding, policy readback, evidence evaluation, findings, model notifications, correction receipts, and visible history. |
-| Native chat continuity | Primary worker reads actual selected-chat usage, pauses at a completed tool boundary, obtains a model packet, opens/sends a native successor, and verifies recovery plus a following call. The 1.3.20 source adds an atomic DPAPI-protected handoff checkpoint, fresh scope/authority reconciliation and `recovery_pending` status after observer reconstruction; uncertain Send/New chat effects are not replayed. Final restart qualification is pending. |
+| Native chat continuity | Primary worker reads actual selected-chat usage, pauses at a completed tool boundary, obtains a model packet, opens/sends a native successor, and verifies recovery plus a following call. The 1.3.21 source adds an atomic DPAPI-protected handoff checkpoint, fresh scope/authority reconciliation and `recovery_pending` status after observer reconstruction; uncertain Send/New chat effects are not replayed. Final restart qualification is pending. |
 | Packet controls | Continuity list/detail/refresh/delete-selection/clear. |
 | Settings records | Load/save/readback/revert/test/restart retained; selectable saved records and delete buttons. |
 | MCP/agents | Current source defines 106 Primary/Fallback tools, retaining every previous tool, all original 80 tools, five CLU governance tools, and ten specialist playbooks with matching embedded fallbacks. |

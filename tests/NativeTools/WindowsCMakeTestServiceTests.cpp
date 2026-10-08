@@ -21,6 +21,7 @@
 #include <iterator>
 #include <memory>
 #include <span>
+#include <sstream>
 #include <string>
 #include <thread>
 
@@ -359,7 +360,9 @@ void integration(const std::filesystem::path& powershell, const std::filesystem:
 project(ForgeOwnedCTestFixture NONE)
 enable_testing()
 add_custom_target(success COMMAND "${CMAKE_COMMAND}" -E true)
-add_custom_target(failed_build COMMAND "${CMAKE_COMMAND}" -E false)
+add_custom_target(failed_build
+    COMMAND "${CMAKE_COMMAND}" -E echo FORGE_CTEST_EXPECTED_FAILED_BUILD_REACHED
+    COMMAND "${CMAKE_COMMAND}" -E false)
 add_custom_target(slow_build COMMAND "${CMAKE_COMMAND}" -E sleep 10)
 add_test(NAME pass COMMAND "${CMAKE_COMMAND}" -E true)
 add_test(NAME fail COMMAND "${CMAKE_COMMAND}" -E false)
@@ -386,6 +389,25 @@ add_test(NAME sleep COMMAND "${CMAKE_COMMAND}" -E sleep 10)
                 {"cancelled", job.result->cancelled}, {"termination_confirmed", job.result->terminationConfirmed},
                 {"stdout", job.result->stdoutUtf8.substr(0U, 8U * 1024U)}, {"stderr", job.result->stderrUtf8.substr(0U, 4U * 1024U)}} : Json(nullptr)}}.dump();
     };
+    wchar_t systemDirectory[MAX_PATH]{};
+    const auto systemDirectoryLength = ::GetSystemDirectoryW(systemDirectory, MAX_PATH);
+    require(systemDirectoryLength != 0U && systemDirectoryLength < MAX_PATH, "Windows system directory resolution failed");
+    Domain::ProcessRequest knownFolder{path(std::filesystem::path{systemDirectory} / L"WindowsPowerShell" / L"v1.0" / L"powershell.exe")};
+    knownFolder.arguments = {"-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
+        "$ErrorActionPreference = 'Stop'; "
+        "if ($PSVersionTable.PSVersion.Major -ne 5 -or $PSVersionTable.PSVersion.Minor -lt 1) { throw 'Expected Windows PowerShell 5.1'; }; "
+        "$common = [Environment]::GetFolderPath([Environment+SpecialFolder]::CommonApplicationData); "
+        "if ([string]::IsNullOrWhiteSpace($common) -or -not [IO.Path]::IsPathRooted($common) -or -not [IO.Directory]::Exists($common)) { "
+        "throw 'CommonApplicationData is not an existing absolute directory'; }; "
+        "[Console]::WriteLine('FORGE_NATIVE_COMMON_APPLICATION_DATA_READY'); exit 0"};
+    knownFolder.workingDirectory = path(source); knownFolder.timeout = 15s;
+    knownFolder.maximumStdoutBytes = 8U * 1024U; knownFolder.maximumStderrBytes = 4U * 1024U;
+    const auto folderChecked = terminal(service, take(service.startProcess(knownFolder, scope, context(6U))).jobId, scope);
+    require(folderChecked.state == Domain::ShellJobState::Completed && folderChecked.result && folderChecked.result->exitCode == 0 &&
+        folderChecked.result->terminationConfirmed && !folderChecked.result->timedOut && !folderChecked.result->cancelled &&
+        (folderChecked.result->stdoutUtf8 == "FORGE_NATIVE_COMMON_APPLICATION_DATA_READY\r\n" ||
+            folderChecked.result->stdoutUtf8 == "FORGE_NATIVE_COMMON_APPLICATION_DATA_READY\n"),
+        "Native Windows PowerShell could not resolve CommonApplicationData: " + diagnostic(folderChecked));
     const auto initialized = terminal(service, take(service.startProcess(configure, scope, context(4U))).jobId, scope);
     const auto configureDiagnostic = diagnostic(initialized);
     require(initialized.state == Domain::ShellJobState::Completed && initialized.result && initialized.result->exitCode == 0,
@@ -409,11 +431,33 @@ add_test(NAME sleep COMMAND "${CMAKE_COMMAND}" -E sleep 10)
     const auto built = run(service, request, scope);
     require(built.job.state == Domain::ShellJobState::Completed && built.job.cmakeTest->buildResult->exitCode == 0 &&
         built.job.cmakeTest->testResult->exitCode == 0, "Two real native phases did not complete in order: " + diagnostic(built.job));
+    const auto rebuilt = run(service, request, scope);
+    require(rebuilt.job.state == Domain::ShellJobState::Completed && rebuilt.job.cmakeTest->buildResult &&
+        rebuilt.job.cmakeTest->testResult && rebuilt.job.cmakeTest->buildResult->exitCode == 0 &&
+        rebuilt.job.cmakeTest->buildResult->terminationConfirmed && !rebuilt.job.cmakeTest->buildResult->timedOut &&
+        !rebuilt.job.cmakeTest->buildResult->cancelled && rebuilt.job.cmakeTest->testResult->exitCode == 0 &&
+        rebuilt.job.cmakeTest->testResult->terminationConfirmed && !rebuilt.job.cmakeTest->testResult->timedOut &&
+        !rebuilt.job.cmakeTest->testResult->cancelled &&
+        rebuilt.job.cmakeTest->counts == Domain::CMakeTestCounts{1U,1U,0U,0U,0U},
+        "Repeated build on the initialized tree did not complete both native phases and actual counts: " + diagnostic(rebuilt.job));
     request.target = "failed_build";
     const auto buildFailed = run(service, request, scope);
     require(buildFailed.job.state == Domain::ShellJobState::Failed && buildFailed.job.cmakeTest->buildResult &&
         buildFailed.job.cmakeTest->buildResult->exitCode != 0 && !buildFailed.job.cmakeTest->testResult && !buildFailed.job.cmakeTest->counts,
         "Failed build invented a CTest phase/result");
+    const auto expectedFailureTargetReached = [&] {
+        constexpr std::string_view marker{"FORGE_CTEST_EXPECTED_FAILED_BUILD_REACHED"};
+        std::istringstream output{buildFailed.job.cmakeTest->buildResult->stdoutUtf8};
+        std::string line;
+        while (std::getline(output, line)) {
+            const auto first = line.find_first_not_of(" \t\r");
+            if (first != std::string::npos && std::string_view{line}.substr(first, marker.size()) == marker &&
+                    line.find_first_not_of(" \t\r", first + marker.size()) == std::string::npos) return true;
+        }
+        return false;
+    }();
+    require(expectedFailureTargetReached,
+        "Expected build failure occurred before reaching its target: " + diagnostic(buildFailed.job));
     request.build = false; request.target.reset();
     require(!service.startCMakeTestRun(request, authority(path(workspace.root), false), context()), "CTest bypassed write authority");
     require(!service.startCMakeTestRun(request, authority(path(workspace.root), true, false), context()), "CTest bypassed shell policy");

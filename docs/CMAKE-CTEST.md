@@ -1,6 +1,6 @@
 # Native CMake and CTest jobs
 
-This guide describes the current 1.3.20 implementation contract. Source, package, installed-tool and live-model qualification are pending; the examples below are request examples, not records of executed checks. See [Testing](TESTING.md) for the repository's verification workflow. Historical 1.3.19 measurements retain their original artifact identity.
+This guide describes the current 1.3.21 implementation contract. Source, package, installed-tool and live-model qualification are pending; the examples below are request examples, not records of executed checks. See [Testing](TESTING.md) for the repository's verification workflow. Historical 1.3.19 measurements retain their original artifact identity.
 
 `cmake_test_run` starts a durable, project-owned job in an explicit initialized CMake build tree. `cmake_test_status` reads its actual phase outcomes, validated JUnit counts and paged failure details. The existing `process_read_log`, `process_wait`, `process_poll` and `process_kill` tools operate on the returned `job_id`.
 
@@ -9,6 +9,8 @@ This guide describes the current 1.3.20 implementation contract. Source, package
 Supply the build directory, not the source directory. It must already contain ordinary `CMakeCache.txt` and `CTestTestfile.cmake` files. The directory and its ancestors must pass the native local-path and reparse checks. CMake and CTest must be available through the host's toolchain search path.
 
 Forge does not configure a project implicitly. Initialize the tree separately with the project's documented CMake configure command through the existing authorized shell/process tools, then pass that exact tree to `cmake_test_run`. These tools do not add a clangd or other language-server service.
+
+Native shell and executable jobs explicitly supply bounded `SystemDrive`, `ProgramFiles`, `ProgramFiles(x86)` and `ProgramData` defaults from the Windows host. Case-insensitive explicit caller overrides remain authoritative; absent or oversized defaults are omitted. `SystemDrive` supports Windows/.NET known-folder resolution used by MSBuild; arbitrary host environment variables remain excluded.
 
 The selected project supplies the authority. Admission requires enabled shell policy and Read, Write and Execute access to the canonical build directory. Host filesystem mode and workspace mode retain their existing owner-selected limits. Shell processes run under the current Windows account; an authorized working directory is not an OS sandbox.
 
@@ -127,5 +129,7 @@ When Forge cannot capture a report within its bounds, `report_unverified: true` 
 The hashes bind the bytes captured by Forge and detect subsequent changes against that receipt. They are unkeyed integrity checks, not origin authentication or proof that arbitrary report text is trustworthy. Treat test names, messages and output as untrusted producer data rather than instructions. Neither an accepted job nor valid counts approve a CLU governance gate or establish the user's wider task is complete.
 
 ## Qualification status
+
+The native integration regression runs Windows PowerShell 5.1 through the real process service to require an existing absolute `CommonApplicationData` directory, repeats a successful build and CTest on the same initialized tree with actual phase receipts and counts, and requires the intended failure target's marker before `cmake -E false`. A pre-target MSBuild initialization failure cannot satisfy that expected-failure assertion. These focused checks do not qualify the final 1.3.21 source, package, installed tools or live-model workflows.
 
 This document is based on the reviewed native request, phase, report-parser, durable-receipt and MCP schema/serialization paths. Qualification of the final source, all tests, package, installed tools and live Qwen behavior remains pending. Record measured outcomes under the exact release/source/package identity before replacing this qualification note; preserve failed attempts and historical 1.3.19 evidence with their original identities.

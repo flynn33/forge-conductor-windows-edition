@@ -1,6 +1,6 @@
 # Product status
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.20 implementation.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.21 implementation.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,7 +8,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-The current source version is 1.3.20 / Windows package identity 1.3.20.0, with 106 Primary/Fallback tools, ten specialist playbooks and five CLU tools. Native CMake/CTest jobs, paged desktop accessibility reads and optional higher-resolution bounded previews extend dedicated web, native Office, desktop/browser, image analysis, independent workers and schedules. Owner-selected host/workspace filesystem modes and existing contracts remain. Source, package, installed-tool and live-model qualification are pending. See [capabilities](HOST-CAPABILITIES.md), [CMake/CTest](CMAKE-CTEST.md), [implementation notes](releases/1.3.20.md) and [pending verification](validation/HOST-CAPABILITIES-1.3.20.md).
+The current source version is 1.3.21 / Windows package identity 1.3.21.0, with 106 Primary/Fallback tools, ten specialist playbooks and five CLU tools. Native CMake/CTest jobs, paged desktop accessibility reads and optional higher-resolution bounded previews extend dedicated web, native Office, desktop/browser, image analysis, independent workers and schedules. Owner-selected host/workspace filesystem modes and existing contracts remain. Source, package, installed-tool and live-model qualification are pending. See [capabilities](HOST-CAPABILITIES.md), [CMake/CTest](CMAKE-CTEST.md), [implementation notes](releases/1.3.21.md) and [pending verification](validation/HOST-CAPABILITIES-1.3.21.md).
 
 The historical 1.3.19 source, installed and current-chat results are recorded above. The installed, unpublished [1.3.18 investigation](validation/HOST-CAPABILITIES-1.3.18.md) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact.
 

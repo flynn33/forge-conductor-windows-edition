@@ -38,13 +38,13 @@ A saved packet or local connection ID alone is not native successor proof. Inspe
 
 ### Historical native qualification through 1.3.19
 
-The next two paragraphs record the earlier implementation and its measured limits; they do not describe the current 1.3.20 checkpoint source.
+The next two paragraphs record the earlier implementation and its measured limits; they do not describe the current 1.3.21 checkpoint source.
 
 Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 
 If the primary MCP worker was evicted during handoff, durable packet records may still exist but automatic recovery of the interrupted UI phase is not implemented. Do not describe that state as completed. Physical exhaustion and already-running agent reattachment were not exercised by the 1.3.5 reserve-pressure verification.
 
-### Current 1.3.20 checkpoint recovery
+### Current 1.3.21 checkpoint recovery
 
 The source now checkpoints the native phase, exact packet revision, conversation identities and New chat/Send receipts. Inspect `get_forge_status.visible_chat_continuity.state` and `handoff_recovery` for `recovery_pending`, its recorded phase, reason, packet ID, predecessor/successor IDs and `automatic_replay: false`. That state retains unfinished work; it is not a completed rollover.
 

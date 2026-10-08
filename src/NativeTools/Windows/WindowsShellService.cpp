@@ -331,7 +331,8 @@ void ensureShellToolchainEnvironment(
         {"USERPROFILE", L"USERPROFILE"}, {"APPDATA", L"APPDATA"},
         {"LOCALAPPDATA", L"LOCALAPPDATA"}, {"HOMEDRIVE", L"HOMEDRIVE"},
         {"HOMEPATH", L"HOMEPATH"}, {"ProgramFiles", L"ProgramFiles"},
-        {"ProgramFiles(x86)", L"ProgramFiles(x86)"}, {"ProgramData", L"ProgramData"}};
+        {"ProgramFiles(x86)", L"ProgramFiles(x86)"}, {"ProgramData", L"ProgramData"},
+        {"SystemDrive", L"SystemDrive"}};
     for (const auto& [name, wideName] : hostVariables) {
         if (!hasEnvironmentName(environment, name)) {
             if (auto value = shellHostEnvironmentValue(wideName)) {

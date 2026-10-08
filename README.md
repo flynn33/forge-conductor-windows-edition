@@ -1,6 +1,6 @@
 # Forge Conductor for Windows
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.20 implementation.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.21 implementation.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -10,7 +10,9 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 Forge Conductor is a native Windows 11 workspace and MCP tool server for project work with local models in LM Studio.
 
-The current source version is **1.3.20**, with **106 tools** in Primary and Fallback, ten specialist playbooks and CLU's five governance tools. LM Studio models can use dedicated web search/fetch/HTTP, native DOCX/XLSX/PPTX creation, Windows desktop observation and input, PNG drawing, image previews and independent image analysis, native CMake/CTest jobs, independent model workers, and persistent model-task schedules. Owner-selected host filesystem access covers ordinary local volumes while relative paths keep the selected project as their default. The narrower workspace mode remains selectable. Source, package, installed-tool and live-model qualification are pending. See the [capability guide](docs/HOST-CAPABILITIES.md), [1.3.20 implementation notes](docs/releases/1.3.20.md) and [pending verification record](docs/validation/HOST-CAPABILITIES-1.3.20.md). Published 1.3.19 evidence remains historical above.
+The installed, unpublished 1.3.20.0 candidate was superseded after repeated native CMake builds exposed an MSBuild `FileTracker.InitializeCommonApplicationDataPaths` failure before the requested target. The 1.3.21 source adds the bounded `SystemDrive` default and strengthens the native known-folder, repeated-build and intended-failure regressions. Final 1.3.21 qualification remains pending; retained 1.3.20 attempts keep their original source and package identities.
+
+The current source version is **1.3.21**, with **106 tools** in Primary and Fallback, ten specialist playbooks and CLU's five governance tools. LM Studio models can use dedicated web search/fetch/HTTP, native DOCX/XLSX/PPTX creation, Windows desktop observation and input, PNG drawing, image previews and independent image analysis, native CMake/CTest jobs, independent model workers, and persistent model-task schedules. Owner-selected host filesystem access covers ordinary local volumes while relative paths keep the selected project as their default. The narrower workspace mode remains selectable. Source, package, installed-tool and live-model qualification are pending. See the [capability guide](docs/HOST-CAPABILITIES.md), [1.3.21 implementation notes](docs/releases/1.3.21.md) and [pending verification record](docs/validation/HOST-CAPABILITIES-1.3.21.md). Published 1.3.19 evidence remains historical above.
 
 Native Office files and PNG drawings require neither Office nor Python. Scheduled model tasks require Manager to stay running; future schedules restore after restart, while interrupted runs with uncertain effects require explicit authorization before another attempt. Generative artwork and cloud email, calendar, or chat accounts require separately configured providers or authorized APIs. `host_capabilities` reports the implemented tools, current filesystem policy, and these connection requirements.
 
@@ -51,7 +53,7 @@ Requirements and commands are in [Build](docs/BUILD.md) and [Testing](docs/TESTI
 ./scripts/Run-Static-Gates.ps1
 ```
 
-Current implementation and qualification limits are recorded in the [1.3.20 notes](docs/releases/1.3.20.md) and [pending capability verification record](docs/validation/HOST-CAPABILITIES-1.3.20.md). Final source, package, installed and live-model acceptance are pending. Each qualified distribution records its exact commit, tree, MSIX hash and payload-manifest hash. The [published 1.3.19 release notes](docs/releases/1.3.19.md) and [historical verification record](docs/validation/HOST-CAPABILITIES-1.3.19.md) retain their own artifact identity.
+Current implementation and qualification limits are recorded in the [1.3.21 notes](docs/releases/1.3.21.md) and [pending capability verification record](docs/validation/HOST-CAPABILITIES-1.3.21.md). Final source, package, installed and live-model acceptance are pending. Each qualified distribution records its exact commit, tree, MSIX hash and payload-manifest hash. The [published 1.3.19 release notes](docs/releases/1.3.19.md) and [historical verification record](docs/validation/HOST-CAPABILITIES-1.3.19.md) retain their own artifact identity.
 
 Historical 1.3.19 checks are recorded separately in the measured qualification above. The installed, unpublished [1.3.18 investigation](docs/validation/HOST-CAPABILITIES-1.3.18.md) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact.
 
