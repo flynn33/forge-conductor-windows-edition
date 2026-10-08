@@ -1,5 +1,6 @@
 #include "LMStudioChatCheckpoint.h"
 #include "Detail/OperationContextGuard.h"
+#include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include <wincrypt.h>
 #include <algorithm>
 #include <cstring>
@@ -22,6 +23,25 @@ Domain::PathText pathText(const std::filesystem::path& value) {
 }
 Domain::Error invalid(const std::string& message) {
     return Domain::makeError(Domain::ErrorCodes::IntegrityFailure, message);
+}
+bool validEnvelope(const Json& value) {
+    return value.is_object() && value.size()==5U && value.contains("schema_version") &&
+        value.at("schema_version").is_number_unsigned() && value.at("schema_version")==1U &&
+        value.contains("source_contract") && value.at("source_contract").is_string() &&
+        value.at("source_contract").get<std::string>()==LMStudioChatCheckpoint::SourceContract &&
+        value.contains("scope") && value.at("scope").is_object() && value.contains("revision") &&
+        value.at("revision").is_number_unsigned() && value.at("revision").get<std::uint64_t>()!=0U &&
+        value.contains("state") && value.at("state").is_object();
+}
+bool routeOnlyDifference(Json saved, Json current) {
+    if(!saved.is_object() || !current.is_object() || !saved.contains("routing_sha256") || !current.contains("routing_sha256")) return false;
+    const auto digest=[](const Json& value) {
+        return value.is_string() && value.get_ref<const std::string&>().size()==64U &&
+            std::all_of(value.get_ref<const std::string&>().begin(),value.get_ref<const std::string&>().end(),
+                [](const char c) {return (c>='0' && c<='9') || (c>='a' && c<='f');});
+    };
+    if(!digest(saved.at("routing_sha256")) || !digest(current.at("routing_sha256")) || saved.at("routing_sha256")==current.at("routing_sha256")) return false;
+    saved.erase("routing_sha256");current.erase("routing_sha256");return saved==current;
 }
 struct LocalBlob final {
     DATA_BLOB value{};
@@ -147,5 +167,68 @@ Domain::Result<void> LMStudioChatCheckpoint::save(const Json& state, const Domai
         if (result) ++revision_;
         return result;
     } catch (...) {return Domain::Result<void>::failure(invalid("Visible chat checkpoint publication failed."));}
+}
+
+Domain::Result<LMStudioChatCheckpoint::RouteRecoverySnapshot> LMStudioChatCheckpoint::inspectRouteRecovery(
+    const Domain::OperationContext& operation) noexcept {
+    try {
+        auto path=authorized(Domain::FileAccess::Read,operation);
+        if(!path) return Domain::Result<RouteRecoverySnapshot>::failure(path.error());
+        auto stored=files_.read(path.value(),MaximumStoredBytes,operation);
+        if(!stored) return Domain::Result<RouteRecoverySnapshot>::failure(stored.error());
+        auto opened=open(stored.value());
+        if(!opened) return Domain::Result<RouteRecoverySnapshot>::failure(opened.error());
+        if(!validEnvelope(opened.value()) || !routeOnlyDifference(opened.value().at("scope"),scope_))
+            return Domain::Result<RouteRecoverySnapshot>::failure(invalid("Explicit route recovery requires the same source contract and current scope except for the route digest."));
+        BCryptSha256Hasher hasher;auto hash=hasher.sha256(stored.value());
+        if(!hash) return Domain::Result<RouteRecoverySnapshot>::failure(hash.error());
+        return Domain::Result<RouteRecoverySnapshot>::success({std::move(opened).value(),std::move(stored).value(),hash.value().value()});
+    } catch (...) {return Domain::Result<RouteRecoverySnapshot>::failure(invalid("Explicit route recovery checkpoint inspection failed."));}
+}
+
+Domain::Result<Domain::PathText> LMStudioChatCheckpoint::recoverRoute(const RouteRecoverySnapshot& snapshot,
+    const Json& state,const std::function<Domain::Result<void>()>& freshAuthority,
+    const Domain::OperationContext& operation) noexcept {
+    try {
+        auto current=inspectRouteRecovery(operation);
+        if(!current) return Domain::Result<Domain::PathText>::failure(current.error());
+        if(current.value().stored!=snapshot.stored || current.value().document!=snapshot.document || current.value().sha256!=snapshot.sha256)
+            return Domain::Result<Domain::PathText>::failure(invalid("Explicit route recovery checkpoint changed after inspection."));
+        const auto revision=snapshot.document.at("revision").get<std::uint64_t>();
+        if(revision==(std::numeric_limits<std::uint64_t>::max)() || !state.is_object() || !freshAuthority)
+            return Domain::Result<Domain::PathText>::failure(invalid("Explicit route recovery publication is invalid."));
+        auto sealed=seal(Json{{"schema_version",1U},{"source_contract",SourceContract},{"scope",scope_},{"revision",revision+1U},{"state",state}});
+        if(!sealed) return Domain::Result<Domain::PathText>::failure(sealed.error());
+        const auto archive=pathText(native(path_.value()).parent_path()/
+            ("lmstudio-visible-"+project_.value()+".route-upgrade-"+std::to_string(revision)+"-"+snapshot.sha256+".archive"));
+        auto authority=authority_.authorityFor(project_,operation);
+        if(!authority) return Domain::Result<Domain::PathText>::failure(authority.error());
+        const auto admit=[&](Domain::FileAccess access) {return authority_.authorize(authority.value(),{archive,std::nullopt,access,true},operation);};
+        auto read=admit(Domain::FileAccess::Read);
+        if(!read) return Domain::Result<Domain::PathText>::failure(read.error());
+        auto archived=files_.read(read.value(),MaximumStoredBytes,operation);
+        if(!archived && archived.error().code==Domain::ErrorCodes::RecordNotFound) {
+            auto create=admit(Domain::FileAccess::Create);
+            if(!create) return Domain::Result<Domain::PathText>::failure(create.error());
+            auto saved=files_.replace(create.value(),snapshot.stored,false,operation);
+            if(!saved) return Domain::Result<Domain::PathText>::failure(saved.error());
+            archived=files_.read(read.value(),MaximumStoredBytes,operation);
+        }
+        if(!archived) return Domain::Result<Domain::PathText>::failure(archived.error());
+        if(archived.value()!=snapshot.stored)
+            return Domain::Result<Domain::PathText>::failure(invalid("Explicit route recovery archive differs from the original encrypted checkpoint; it will not be overwritten."));
+        auto fresh=freshAuthority();
+        if(!fresh) return Domain::Result<Domain::PathText>::failure(fresh.error());
+        current=inspectRouteRecovery(operation);
+        if(!current) return Domain::Result<Domain::PathText>::failure(current.error());
+        if(current.value().stored!=snapshot.stored)
+            return Domain::Result<Domain::PathText>::failure(invalid("Explicit route recovery checkpoint changed before publication."));
+        auto write=authorized(Domain::FileAccess::Write,operation);
+        if(!write) return Domain::Result<Domain::PathText>::failure(write.error());
+        auto published=files_.replace(write.value(),sealed.value(),false,operation);
+        if(!published) return Domain::Result<Domain::PathText>::failure(published.error());
+        revision_=revision+1U;
+        return Domain::Result<Domain::PathText>::success(archive);
+    } catch (...) {return Domain::Result<Domain::PathText>::failure(invalid("Explicit route recovery archive or publication failed; control is deferred."));}
 }
 } // namespace ForgeConductor::Infrastructure::Windows::Detail

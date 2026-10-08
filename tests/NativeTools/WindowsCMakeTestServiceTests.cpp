@@ -19,6 +19,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <latch>
 #include <memory>
 #include <span>
 #include <sstream>
@@ -184,16 +185,44 @@ actual output</system-out></testcase><testcase name="skip" status="notrun"><skip
     const auto deadlineElapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - deadlineStarted);
     require(!deadlineResult && deadlineResult.error().code == Domain::ErrorCodes::DeadlineExceeded,
         "Near-bound CTest parse published counts after its deadline; elapsed_us=" + std::to_string(deadlineElapsed.count()));
-    std::stop_source duringParse; auto cancelDuringParse = context(); cancelDuringParse.cancellation = duringParse.get_token();
-    const auto cancellationStarted = std::chrono::steady_clock::now();
-    std::jthread canceller{[&] { std::this_thread::sleep_for(1ms); duringParse.request_stop(); }};
-    const auto cancellationResult = Detail::parseCTestJUnit(largeReport, 0U, 1U, &cancelDuringParse);
-    const auto cancellationElapsed = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - cancellationStarted);
-    canceller.join();
-    require(!cancellationResult && cancellationResult.error().code == Domain::ErrorCodes::Cancelled,
-        "Near-bound CTest parse published counts after cancellation; elapsed_us=" + std::to_string(cancellationElapsed.count()));
+    unsigned cancellationAttempts{};
+    bool cancelledDuringParse{};
+    std::chrono::microseconds cancellationElapsed{}, requestStartedElapsed{}, requestCompletedElapsed{};
+    for (; cancellationAttempts != 10U && !cancelledDuringParse; ++cancellationAttempts) {
+        std::stop_source duringParse; auto cancelDuringParse = context(); cancelDuringParse.cancellation = duringParse.get_token();
+        std::latch workerReady{1}, beginCancellation{1};
+        std::chrono::steady_clock::time_point requestStarted{}, requestCompleted{};
+        bool stopAccepted{};
+        std::jthread canceller{[&] {
+            workerReady.count_down();
+            beginCancellation.wait();
+            std::this_thread::sleep_for(1ms);
+            requestStarted = std::chrono::steady_clock::now();
+            stopAccepted = duringParse.request_stop();
+            requestCompleted = std::chrono::steady_clock::now();
+        }};
+        workerReady.wait();
+        beginCancellation.count_down();
+        const auto parsingStarted = std::chrono::steady_clock::now();
+        const auto cancellationResult = Detail::parseCTestJUnit(largeReport, 0U, 1U, &cancelDuringParse);
+        const auto parsingReturned = std::chrono::steady_clock::now();
+        canceller.join();
+        require(stopAccepted, "CTest cancellation worker did not request cancellation");
+        cancellationElapsed = std::chrono::duration_cast<std::chrono::microseconds>(parsingReturned - parsingStarted);
+        requestStartedElapsed = std::chrono::duration_cast<std::chrono::microseconds>(requestStarted - parsingStarted);
+        requestCompletedElapsed = std::chrono::duration_cast<std::chrono::microseconds>(requestCompleted - parsingStarted);
+        if (requestStarted <= parsingStarted || requestCompleted >= parsingReturned) continue;
+        require(!cancellationResult && cancellationResult.error().code == Domain::ErrorCodes::Cancelled,
+            "Near-bound CTest parse published counts after a during-parse cancellation; elapsed_us=" + std::to_string(cancellationElapsed.count()) +
+            " request_started_us=" + std::to_string(requestStartedElapsed.count()) + " request_completed_us=" + std::to_string(requestCompletedElapsed.count()));
+        cancelledDuringParse = true;
+    }
+    require(cancelledDuringParse, "No during-parse CTest cancellation was exercised in 10 attempts; last_elapsed_us=" +
+        std::to_string(cancellationElapsed.count()) + " last_request_started_us=" + std::to_string(requestStartedElapsed.count()) +
+        " last_request_completed_us=" + std::to_string(requestCompletedElapsed.count()));
     std::cout << "Near-bound CTest context guards: bytes=" << largeReport.size() << " deadline_elapsed_us=" << deadlineElapsed.count()
-              << " cancellation_elapsed_us=" << cancellationElapsed.count() << '\n';
+              << " cancellation_attempts=" << cancellationAttempts << " cancellation_elapsed_us=" << cancellationElapsed.count()
+              << " request_started_us=" << requestStartedElapsed.count() << " request_completed_us=" << requestCompletedElapsed.count() << '\n';
 }
 void reportLifecycleTests() {
     Workspace workspace;

@@ -5,6 +5,9 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsUuidGenerator.h"
 #include "Infrastructure/Windows/LMStudioChatContinuityControl.h"
 #include "Infrastructure/Windows/LMStudioChatCheckpoint.h"
+#include "ForgeConductor/Infrastructure/Windows/LMStudioConfigurationCodec.h"
+#include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
+#include "Infrastructure/Windows/Detail/UtfConversion.h"
 #include "Fakes/ConfigurationStoreFake.h"
 #include "Fakes/ProjectRepositoryFakes.h"
 #include "Fakes/RecordingProjectMemoryService.h"
@@ -546,7 +549,7 @@ class VisibleHandoffFixture final {
 public:
     using Effect=Infrastructure::Windows::LMStudioChatEffect;
     using Stage=Infrastructure::Windows::LMStudioChatEffectStage;
-    enum class Fault {None,AmbiguousRequest,BeforeDispatchStorage,AfterDispatchStorage,UncertainNew,StableNewUndelivered,AmbiguousDelivery};
+    enum class Fault {None,UndispatchedRequest,AmbiguousRequest,BeforeDispatchStorage,AfterDispatchStorage,UncertainNew,StableNewUndelivered,AmbiguousDelivery};
     VisibleHandoffFixture() {
         controls=std::make_shared<Infrastructure::Windows::Detail::LMStudioChatControlActions>();
         controls->activate=[](const auto&,const auto&) {return Domain::Result<void>::success();};
@@ -557,6 +560,8 @@ public:
             const std::function<void(std::string_view)>& successor,
             const Infrastructure::Windows::LMStudioChatEffectObserver& receipt) {
             require(receipt && expected==selected,"private durable control lost its receipt or exact target");
+            if(!newChat && fault==Fault::UndispatchedRequest) return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::PayloadTooLarge,"The selected LM Studio chat exceeds the 32 MiB integration-field update bound; no field was changed."));
             const auto acknowledge=[&](Effect effect,Stage stage,const std::string& id,std::size_t boundary) {
                 return receipt({effect,stage,id,boundary});
             };
@@ -610,6 +615,46 @@ public:
         run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet";});
         require(sends==1U && creations==0U,"private fixture did not acknowledge one initial packet request");
     }
+    void undispatched() {
+        fault=Fault::UndispatchedRequest;
+        fixture.fileFixture.save(conversation(Json::array({message(Json::array({version(Json::array({generation(31000U,32768U)}))}))})));
+        run([&](const Json& status) {
+            const auto error=status.value("error",std::string{});
+            if(error.find("32 MiB")==std::string::npos) return false;
+            try {
+                const auto saved=checkpoint();const auto& state=saved.at("state");
+                return saved.at("scope").at("project_id")==fixture.project.value() && state.at("phase")==1U &&
+                    state.at("effect").is_null() && !state.at("packet_request_acknowledged").get<bool>() &&
+                    state.at("dispatch_error")==error && state.at("operational_error")==error;
+            } catch(...) {return false;}
+        });
+        require(sends==0U && creations==0U && checkpoint()["state"]["effect"].is_null(),"private request failure dispatched an effect");
+        fault=Fault::None;
+    }
+    Domain::PathText home() const {
+        const auto text=(fixture.fileFixture.root()/"home").generic_u8string();
+        return take(Domain::PathText::create(std::string{reinterpret_cast<const char*>(text.data()),text.size()}));
+    }
+    Json upgradeRoutes(bool globallyBound=false) {
+        std::wstring module(32768U,L'\0');const auto size=::GetModuleFileNameW(nullptr,module.data(),static_cast<DWORD>(module.size()));
+        require(size>0U && size<module.size(),"private current module path is unavailable");module.resize(size);
+        const auto binary=take(Domain::PathText::create(take(Infrastructure::Windows::Detail::strictUtf16ToUtf8(module))));
+        const auto bytes=take(Infrastructure::Windows::LMStudioConfigurationCodec::mergeForgeServers(
+            Infrastructure::Windows::LMStudioConfigurationCodec::empty(),binary,home(),
+            parse<Domain::DeploymentId>("0b6eadbe-c35a-4d41-8c6e-6d8c40b68dc2"),
+            globallyBound?std::nullopt:std::optional<Domain::ProjectId>{fixture.project},
+            globallyBound?std::nullopt:std::optional<Domain::PathText>{fixture.fileFixture.path()}));
+        auto routes=Json::parse(reinterpret_cast<const char*>(bytes.data()),reinterpret_cast<const char*>(bytes.data())+bytes.size());
+        ConversationFixture::write(fixture.fileFixture.root()/"mcp.json",routes);return routes;
+    }
+    Json nativeHandoff() const {
+        TestContext operation;const auto chat=take(WindowsLMStudioConversationReader::read(fixture.fileFixture.path(),operation.active()));
+        require(chat.has_value(),"private native handoff chat is missing");
+        for(const auto& result:chat->nativeToolResults) if(result.name=="session_handoff")
+            for(const auto& body:result.textBodies) return Json::parse(body);
+        throw TestFailure{"Private native handoff result is missing."};
+    }
+    void queueHandoff(const Json& result) {fixture.observer->recordTool("session_handoff",true,result.dump());}
     std::filesystem::path checkpointPath() const {
         return fixture.fileFixture.root()/"home"/"continuity"/("lmstudio-visible-"+fixture.project.value()+".checkpoint");
     }
@@ -832,6 +877,222 @@ void durableVisibleHandoffRecoveryCases()
         require(f.creations==1U && f.sends==2U,"reconstruction repeated the uncertain successor Send");
     });
     require(failures.empty(),"Durable visible handoff cases failed; inspect the per-case evidence above.");
+}
+
+void explicitVisibleRouteRecoveryCases()
+{
+    using Checkpoint=Infrastructure::Windows::Detail::LMStudioChatCheckpoint;
+    const auto bytes=[](const std::filesystem::path& path) {
+        const auto extended=std::filesystem::path{L"\\\\?\\"+std::filesystem::absolute(path).wstring()};
+        std::ifstream input{extended,std::ios::binary};return std::vector<char>{std::istreambuf_iterator<char>{input},{}};
+    };
+    const auto currentScope=[](VisibleHandoffFixture& f,const Json& old) {
+        auto scope=old.at("scope");Json active=Json::object();
+        std::ifstream input{f.fixture.fileFixture.root()/"mcp.json"};const auto routes=Json::parse(input).at("mcpServers");
+        for(const char* key:{"forge-conductor","forge-conductor-fallback","forge-conductor-clu"}) active[key]=routes.at(key);
+        Infrastructure::Windows::BCryptSha256Hasher hasher;const auto serialized=active.dump();
+        scope["routing_sha256"]=take(hasher.sha256(std::as_bytes(std::span{serialized.data(),serialized.size()}))).value();return scope;
+    };
+    const auto refused=[&](VisibleHandoffFixture& f) {
+        const auto before=bytes(f.checkpointPath());std::optional<std::int64_t> firstObservation;
+        f.run([&](const Json& status) {
+            if(status.value("state",std::string{})!="recovery_pending" || !status.contains("context_telemetry")) return false;
+            const auto observed=status.at("context_telemetry").at("observed_at_unix_ms").get<std::int64_t>();
+            if(!firstObservation) {firstObservation=observed;return false;}
+            // A later sequential worker tick proves the first admission returned
+            // before shutdown can cancel that attempt's operation context.
+            return observed>*firstObservation;
+        });
+        require(f.creations==0U && f.sends==0U,"explicit recovery replayed or dispatched a refused handoff");
+        require(bytes(f.checkpointPath())==before,"refused explicit recovery changed the encrypted checkpoint");
+    };
+    std::vector<std::string> failures;
+    const auto run=[&](const char* name,const std::function<void()>& exercise) {
+        try {exercise();std::cout<<"[CASE PASS] continuity-route-recovery."<<name<<'\n';}
+        catch(const std::exception& error) {failures.push_back(std::string{name}+": "+error.what());std::cerr<<"[CASE FAIL] continuity-route-recovery."<<failures.back()<<'\n';}
+    };
+    run("explicit_native_packet_archive_and_resume",[&] {
+        VisibleHandoffFixture f;f.undispatched();const auto old=f.checkpoint();const auto raw=bytes(f.checkpointPath());
+        f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();f.reconstruct();f.queueHandoff(native);
+        const auto recovered=f.run([](const Json& status) {return status.value("state",std::string{})=="resuming";});
+        require(f.creations==1U && f.sends==1U,"explicit handoff did not create and deliver exactly one successor");
+        require(f.lastText.starts_with("Resume this Forge project"),"explicit recovery resent the failed old packet request");
+        const auto& recovery=recovered.at("route_recovery");
+        const auto archive=std::filesystem::path{recovery.at("archive_path").get<std::string>()};
+        require(bytes(archive)==raw,"explicit recovery archive did not retain the original encrypted bytes");
+        Infrastructure::Windows::BCryptSha256Hasher hasher;
+        require(recovery.at("archive_sha256")==take(hasher.sha256(std::as_bytes(std::span{raw}))).value(),"explicit recovery archive hash differs from its original encrypted bytes");
+        require(recovery.at("previous_scope")==old.at("scope") && recovery.at("previous_revision")==old.at("revision"),"explicit recovery lost original scope or revision");
+        const auto updated=f.checkpoint();require(updated.at("scope")==currentScope(f,old) && updated.at("revision")>old.at("revision"),"explicit recovery did not publish the validated new scope");
+        require(!updated["state"]["packet_request_acknowledged"].get<bool>(),"explicit recovery fabricated acknowledgement of the old Send");
+        f.nativeResume();f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="resumed";});
+        require(f.creations==1U && f.sends==1U && bytes(archive)==raw,"completed explicit recovery replayed effects or altered its archive");
+    });
+    run("no_automatic_route_migration",[&] {
+        VisibleHandoffFixture f;f.undispatched();f.upgradeRoutes();f.saveModelPacket();f.reconstruct();refused(f);
+    });
+    run("intent_from_previous_routes_is_refused",[&] {
+        VisibleHandoffFixture f;f.undispatched();f.saveModelPacket();const auto native=f.nativeHandoff();
+        f.reconstruct();f.queueHandoff(native);f.upgradeRoutes();refused(f);
+    });
+    run("fresh_callback_rebinds_prior_intent",[&] {
+        VisibleHandoffFixture f;f.undispatched();f.saveModelPacket();const auto native=f.nativeHandoff();
+        f.reconstruct();f.queueHandoff(native);f.upgradeRoutes();refused(f);
+        f.queueHandoff(native);f.run([](const Json& status) {return status.value("state",std::string{})=="resuming";});
+        require(f.creations==1U && f.sends==1U,"a fresh current-scope callback did not replace the stale intent exactly once");
+        require(!f.checkpoint()["state"]["packet_request_acknowledged"].get<bool>(),"fresh callback rebind acknowledged the failed old request");
+    });
+    run("global_routes_with_confirmed_workspace",[&] {
+        VisibleHandoffFixture f;f.undispatched();f.upgradeRoutes(true);f.saveModelPacket();const auto native=f.nativeHandoff();f.reconstruct();f.queueHandoff(native);
+        f.run([](const Json& status) {return status.value("state",std::string{})=="resuming";});
+        require(f.creations==1U && f.sends==1U,"valid global routes lost the separately confirmed live workspace");
+    });
+    run("receipt_without_native_result",[&] {
+        VisibleHandoffFixture f;f.undispatched();f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();
+        f.fixture.fileFixture.save(conversation(Json::array()));f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    run("native_without_matching_receipt",[&] {
+        VisibleHandoffFixture f;f.undispatched();f.upgradeRoutes();f.saveModelPacket();auto native=f.nativeHandoff();native["resume_seed"]="different receipt";
+        f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    run("fallback_native_result_is_not_primary",[&] {
+        VisibleHandoffFixture f;f.undispatched();f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();
+        const auto path=f.fixture.fileFixture.root()/"conversations"/std::filesystem::path{f.selected};
+        std::ifstream input{path};auto text=Json::parse(input).dump();input.close();
+        auto at=text.find("mcp/forge-conductor\"");require(at!=std::string::npos,"private PRIMARY native request is missing");
+        text.replace(at,std::string{"mcp/forge-conductor"}.size(),"mcp/forge-conductor-fallback");ConversationFixture::write(path,Json::parse(text));
+        f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    for(const auto acknowledged:{false,true}) run(acknowledged?"confirmed_effect_not_migrated":"uncertain_effect_not_migrated",[&,acknowledged] {
+        VisibleHandoffFixture f;f.undispatched();auto old=f.checkpoint();
+        old["state"]["effect"]={{"kind","send"},{"stage",acknowledged?"confirmed":"uncertain"},{"purpose","request"},
+            {"conversation_id",f.selected},{"previous_user_messages",0U}};
+        old["state"]["packet_request_acknowledged"]=acknowledged;f.writeCheckpoint(old);
+        f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    for(const char* field:{"provider","project_id","project_root","home","lmstudio_root","executable"}) run(field,[&,field] {
+        VisibleHandoffFixture f;f.undispatched();auto old=f.checkpoint();
+        if(std::string_view{field}=="provider") old["scope"][field]["model"]="foreign-provider";else old["scope"][field]="foreign-scope";
+        f.writeCheckpoint(old);f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    for(const char* field:{"schema_version","source_contract","phase"}) run(field,[&,field] {
+        VisibleHandoffFixture f;f.undispatched();auto old=f.checkpoint();
+        if(std::string_view{field}=="schema_version") old[field]=2U;
+        else if(std::string_view{field}=="source_contract") old[field]="foreign-source-contract";
+        else old["state"][field]=std::uint64_t{4294967296ULL};
+        f.writeCheckpoint(old);f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    run("third_chat_not_adopted",[&] {
+        VisibleHandoffFixture f;f.undispatched();f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();
+        f.select("project/third.conversation.json",conversation(Json::array({message(Json::array({version(Json::array({VisibleHandoffFixture::tool("session_handoff",native,4U)}))}))})));
+        f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    run("null_selection_retains_checkpoint",[&] {
+        VisibleHandoffFixture f;f.undispatched();f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();
+        noSelection(f.fixture,Json{{"selectedConversation",nullptr}});f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    for(const char* field:{"command","deployment","cwd","role"}) run(field,[&,field] {
+        VisibleHandoffFixture f;f.undispatched();auto routes=f.upgradeRoutes();auto& role=routes["mcpServers"]["forge-conductor-clu"];
+        if(std::string_view{field}=="command") role["command"]="C:\\wrong.exe";
+        else if(std::string_view{field}=="deployment") role["env"]["FORGE_DEPLOYMENT_ID"]="d05633b0-2289-4eee-afda-bcd2e6d8278c";
+        else if(std::string_view{field}=="cwd") role["cwd"]="C:\\foreign-project";
+        else role["env"]["FORGE_MCP_ROLE"]="primary";
+        ConversationFixture::write(f.fixture.fileFixture.root()/"mcp.json",routes);f.saveModelPacket();const auto native=f.nativeHandoff();
+        f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    run("standard_packet_semantics",[&] {
+        VisibleHandoffFixture f;f.undispatched();f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();
+        f.fixture.legacyContinuity.record->packet.narrative="placeholder";f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    run("stale_packet_sequence",[&] {
+        VisibleHandoffFixture f;f.undispatched();auto old=f.checkpoint();old["state"]["previous_sequence"]=1U;f.writeCheckpoint(old);
+        f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    run("fresh_configuration_drift_before_publication",[&] {
+        VisibleHandoffFixture f;f.undispatched();f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();
+        f.controls->idle=[&](const auto&,const auto&) {auto changed=Domain::AppConfig{};changed.localModel.model="foreign-model";
+            f.fixture.configuration.reloadResult.set(Domain::Result<Domain::AppConfig>::success(changed));return Domain::Result<bool>::success(true);};
+        f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    run("exclusive_writer_contention_and_retry",[&] {
+        VisibleHandoffFixture f;f.undispatched();const auto old=f.checkpoint();f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();TestContext op;
+        {Checkpoint writer{f.home(),f.fixture.project,currentScope(f,old),op.active()};f.reconstruct();f.queueHandoff(native);refused(f);}
+        f.reconstruct();f.queueHandoff(native);f.run([](const Json& status) {return status.value("state",std::string{})=="resuming";});
+        require(f.creations==1U && f.sends==1U,"explicit recovery did not acquire the released writer exactly once");
+    });
+    run("preexisting_archive_collision",[&] {
+        VisibleHandoffFixture f;f.undispatched();const auto old=f.checkpoint();f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();
+        TestContext op;std::filesystem::path archive;
+        {Checkpoint store{f.home(),f.fixture.project,currentScope(f,old),op.active()};const auto snapshot=take(store.inspectRouteRecovery(op.active()));
+            archive=f.checkpointPath().parent_path()/("lmstudio-visible-"+f.fixture.project.value()+".route-upgrade-"+old.at("revision").dump()+"-"+snapshot.sha256+".archive");}
+        {std::ofstream output{std::filesystem::path{L"\\\\?\\"+std::filesystem::absolute(archive).wstring()},std::ios::binary};output<<"foreign archive";require(static_cast<bool>(output),"private archive collision fixture failed");}
+        const auto collision=bytes(archive);f.reconstruct();f.queueHandoff(native);refused(f);require(bytes(archive)==collision,"archive collision was overwritten");
+    });
+    run("archive_creation_failure_preserves_original",[&] {
+        VisibleHandoffFixture f;f.undispatched();const auto old=f.checkpoint();const auto raw=bytes(f.checkpointPath());f.upgradeRoutes();TestContext op;
+        Checkpoint store{f.home(),f.fixture.project,currentScope(f,old),op.active()};const auto snapshot=take(store.inspectRouteRecovery(op.active()));
+        const auto archive=f.checkpointPath().parent_path()/("lmstudio-visible-"+f.fixture.project.value()+".route-upgrade-"+old.at("revision").dump()+"-"+snapshot.sha256+".archive");
+        const auto extended=std::filesystem::path{L"\\\\?\\"+std::filesystem::absolute(archive).wstring()};
+        require(std::filesystem::create_directory(extended),"private archive-directory blocker could not be created");
+        const auto blocked=store.recoverRoute(snapshot,old.at("state"),[] {return Domain::Result<void>::success();},op.active());
+        require(!blocked && bytes(f.checkpointPath())==raw && std::filesystem::is_directory(extended),"failed archive creation replaced the original checkpoint or blocker");
+    });
+    run("changed_checkpoint_and_snapshot_are_not_overwritten",[&] {
+        VisibleHandoffFixture f;f.undispatched();const auto old=f.checkpoint();const auto raw=bytes(f.checkpointPath());f.upgradeRoutes();TestContext op;
+        Checkpoint store{f.home(),f.fixture.project,currentScope(f,old),op.active()};const auto snapshot=take(store.inspectRouteRecovery(op.active()));
+        auto altered=snapshot;altered.document["revision"]=old.at("revision").get<std::uint64_t>()+1U;
+        requireError(store.recoverRoute(altered,old.at("state"),[] {return Domain::Result<void>::success();},op.active()),
+            Domain::ErrorCodes::IntegrityFailure,"modified recovery snapshot was accepted");
+        require(bytes(f.checkpointPath())==raw,"modified recovery snapshot changed the original file");
+        auto changed=old;changed["revision"]=old.at("revision").get<std::uint64_t>()+1U;
+        const auto rejected=store.recoverRoute(snapshot,old.at("state"),[&] {f.writeCheckpoint(changed);return Domain::Result<void>::success();},op.active());
+        requireError(rejected,Domain::ErrorCodes::IntegrityFailure,"changed checkpoint was overwritten after archive");
+        require(f.checkpoint()==changed,"concurrent checkpoint revision was silently replaced");
+    });
+    run("publication_failure_and_retained_archive_retry",[&] {
+        VisibleHandoffFixture f;f.undispatched();const auto old=f.checkpoint();const auto raw=bytes(f.checkpointPath());f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();
+        f.denyCheckpointPublication();f.reconstruct();f.queueHandoff(native);refused(f);f.publicationBlock.reset();
+        f.reconstruct();f.queueHandoff(native);f.run([](const Json& status) {return status.value("state",std::string{})=="resuming";});
+        require(f.creations==1U && f.sends==1U && f.checkpoint()["scope"]==currentScope(f,old),"explicit recovery could not safely retry after write failure");
+        std::size_t archives{};for(const auto& entry:std::filesystem::directory_iterator{f.checkpointPath().parent_path()}) if(entry.path().extension()==".archive") {
+            ++archives;require(bytes(entry.path())==raw,"failed publication lost original archived bytes");}
+        require(archives==1U,"explicit recovery rewrote or duplicated the retained archive on retry");
+    });
+    run("cancel_deadline_and_fresh_authority_failure",[&] {
+        VisibleHandoffFixture f;f.undispatched();const auto old=f.checkpoint();const auto raw=bytes(f.checkpointPath());f.upgradeRoutes();TestContext op;
+        Checkpoint store{f.home(),f.fixture.project,currentScope(f,old),op.active()};const auto snapshot=take(store.inspectRouteRecovery(op.active()));
+        const auto accepted=[] {return Domain::Result<void>::success();};op.cancellation.request_stop();
+        requireError(store.recoverRoute(snapshot,old.at("state"),accepted,op.active()),Domain::ErrorCodes::Cancelled,"cancelled explicit recovery published state");
+        TestContext expired;expired.now=std::chrono::steady_clock::now()-std::chrono::seconds{1};
+        requireError(store.recoverRoute(snapshot,old.at("state"),accepted,expired.expired()),Domain::ErrorCodes::DeadlineExceeded,"expired explicit recovery published state");
+        TestContext fresh;auto denied=store.recoverRoute(snapshot,old.at("state"),[] {return Domain::Result<void>::failure(Domain::makeError(
+            Domain::ErrorCodes::Unauthorized,"Private current authority drift"));},fresh.active());
+        requireError(denied,Domain::ErrorCodes::Unauthorized,"fresh recovery authority drift was ignored");require(bytes(f.checkpointPath())==raw,"failed current authority changed original checkpoint");
+    });
+    run("planned_creating_reconstruction_without_old_request",[&] {
+        VisibleHandoffFixture f;f.undispatched();const auto old=f.checkpoint();f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();
+        TestContext op;auto state=old.at("state");state["phase"]=2U;state["packet_id"]="durable-native-packet";state["handed"]=native.at("packet");
+        state["handed_message"]="Resume this Forge project from the exact retained packet.";state["packet_write_sequence"]=1U;
+        {Checkpoint store{f.home(),f.fixture.project,currentScope(f,old),op.active()};const auto snapshot=take(store.inspectRouteRecovery(op.active()));
+            const auto archive=take(store.recoverRoute(snapshot,state,[] {return Domain::Result<void>::success();},op.active()));require(!archive.value().empty(),"private planned packet archive is missing");}
+        f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="resuming";});
+        require(f.creations==1U && f.sends==1U && f.lastText==state.at("handed_message").get<std::string>(),"planned Creating reconstruction retried the old unacknowledged packet request");
+    });
+    for(const bool sourceDrift:{false,true}) run(sourceDrift?"planned_creating_source_metadata_drift":"planned_creating_resume_ready_metadata_drift",[&,sourceDrift] {
+        VisibleHandoffFixture f;f.undispatched();const auto old=f.checkpoint();f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();
+        TestContext op;auto state=old.at("state");state["phase"]=2U;state["packet_id"]="durable-native-packet";state["handed"]=native.at("packet");
+        state["handed_message"]="Resume this Forge project from the exact retained packet.";state["packet_write_sequence"]=1U;
+        {Checkpoint store{f.home(),f.fixture.project,currentScope(f,old),op.active()};const auto snapshot=take(store.inspectRouteRecovery(op.active()));
+            const auto archive=take(store.recoverRoute(snapshot,state,[] {return Domain::Result<void>::success();},op.active()));require(!archive.value().empty(),"private planned packet archive is missing");}
+        if(sourceDrift) f.fixture.legacyContinuity.record->packet.source=Domain::LegacyHandoffSource::Automatic;
+        else f.fixture.legacyContinuity.record->packet.resumeReady=false;
+        require(f.fixture.legacyContinuity.record->writeSequence==1U && f.checkpoint()["state"]["handed"]==native.at("packet"),
+            "private metadata-only drift changed its packet body or write sequence");
+        f.reconstruct();refused(f);
+        require(Json::parse(f.fixture.observer->status()).at("handoff_recovery").at("reason").get<std::string>().find("complete model handoff contract")!=std::string::npos,
+            "planned packet metadata drift did not reach the complete-model admission guard");
+    });
+    require(failures.empty(),"Explicit visible route recovery cases failed; inspect the per-case evidence above.");
 }
 
 void continuityObservationRecoversAfterPartialWrite()
@@ -1278,6 +1539,8 @@ void registerWindowsLMStudioConversationReaderTests(TestRegistry& tests)
         observerReconstructionRetainsWaitingPacketWithoutResending);
     addTest(tests, "LMStudioChatContinuity.durable_recovery_cases",
         durableVisibleHandoffRecoveryCases);
+    addTest(tests, "LMStudioChatContinuity.explicit_route_recovery_cases",
+        explicitVisibleRouteRecoveryCases);
     addTest(tests, "LMStudioConversationReader.native_delivery_and_result_evidence",
         nativeDeliveryAndMatchedToolEvidence);
     addTest(tests, "LMStudioConversationReader.fragmented_native_continuity",

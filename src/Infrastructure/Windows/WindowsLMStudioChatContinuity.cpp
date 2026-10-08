@@ -3,6 +3,8 @@
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioChatControl.h"
 #include "LMStudioChatContinuityControl.h"
 #include "LMStudioChatCheckpoint.h"
+#include "Detail/UtfConversion.h"
+#include "ForgeConductor/Infrastructure/Windows/LMStudioConfigurationCodec.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include <nlohmann/json.hpp>
 #include <filesystem>
@@ -161,6 +163,19 @@ bool samePacketBody(const Json& value,const Domain::LegacyHandoffPacket& packet)
     for(auto& agent:body["agents"]) { if(!agent.is_object()) return false;agent.erase("updated_at"); }
     return body==packetBody(packet);
 }
+bool completeModelPacket(const Domain::LegacyHandoffPacket& packet) {
+    return packet.resumeReady && packet.source==Domain::LegacyHandoffSource::Model && !packet.goal.empty() &&
+        packet.narrative.size()>=256U && packet.resumeSeed.size()>=256U && !packet.nextActions.empty() && !packet.keyFiles.empty() && !packet.decisions.empty() &&
+        !containsFiller(packet.narrative) && !containsFiller(packet.resumeSeed) &&
+        !singleCharacterPadding(packet.narrative) && !singleCharacterPadding(packet.resumeSeed) &&
+        !std::any_of(packet.nextActions.begin(),packet.nextActions.end(),opaqueAction);
+}
+std::string resumePrompt(const std::string& packetId,const Json& body) {
+    return "Resume this Forge project from its model-written continuity packet. Call context_get through "
+        "forge-conductor with handoff_id=\""+packetId+"\", reattach any open agent sessions with agent_run_status, "
+        "call get_forge_status to confirm the bound project, tools and agents are callable, then resume the packet's concrete next_actions with Forge tools. All three existing integrations remain enabled. "
+        "Preserve all existing user constraints and the package/policy order.\nContinuity packet:\n"+body.dump(2);
+}
 }
 class WindowsLMStudioChatContinuity::Impl final {
 public:
@@ -195,8 +210,12 @@ public:
         try {
             if (!bound()) return;
             std::lock_guard lock{mutex_};
+            const auto value=Json::parse(payload);
+            if(name=="session_handoff" && succeeded && workspaceConfirmed_ && !pendingWorkspace_ &&
+                payload.size()<=Detail::LMStudioChatCheckpoint::MaximumPlainBytes && value.is_object() && value.value("ok",false))
+                routeRecoveryIntent_=RouteRecoveryIntent{value,checkpointScope()};
             traceUnlocked({{"event","connector_tool_result"},{"tool",name},{"ok",succeeded},
-                {"result",Json::parse(payload)}});
+                {"result",value}});
         } catch (...) {
             // Optional observation cannot change a completed Forge result.
         }
@@ -238,6 +257,33 @@ private:
         return Json{{"project_id",project_.value()},{"project_root",canonical(root_)},{"home",canonical(home_)},
             {"lmstudio_root",canonical(studio_)},{"executable",canonical(exe_)},{"routing_sha256",checkpointDigest(active.dump())},
             {"provider",{{"host",config_.host},{"port",config_.port},{"secure",config_.secure},{"model",config_.model?Json(*config_.model):Json(nullptr)}}}};
+    }
+    bool validCurrentRoutes() {
+        std::ifstream input{filePath(studio_.value())/"mcp.json",std::ios::binary};
+        std::string bytes(LMStudioConfigurationCodec::MaximumDocumentBytes+1U,'\0');
+        input.read(bytes.data(),static_cast<std::streamsize>(bytes.size()));bytes.resize(static_cast<std::size_t>(input.gcount()));
+        if(!input.eof() || bytes.size()>LMStudioConfigurationCodec::MaximumDocumentBytes) return false;
+        auto document=LMStudioConfigurationCodec::parse(std::as_bytes(std::span{bytes.data(),bytes.size()}));
+        if(!document) return false;
+        std::wstring module(32768U,L'\0');
+        const auto count=::GetModuleFileNameW(nullptr,module.data(),static_cast<DWORD>(module.size()));
+        if(count==0U || count>=module.size()) return false;
+        module.resize(count);auto encoded=Detail::strictUtf16ToUtf8(module);
+        if(!encoded) return false;
+        auto binary=Domain::PathText::create(encoded.value());if(!binary) return false;
+        // Global registrations bind their workspace through authorized MCP calls.
+        // Explicit route bindings, when present, must all match that live workspace.
+        const auto servers=Json::parse(document.value().sourceUtf8()).at("mcpServers");
+        bool explicitProject=false,explicitRoot=false;
+        for(const char* key:{"forge-conductor","forge-conductor-fallback","forge-conductor-clu"}) {
+            const auto& route=servers.at(key);
+            explicitProject=explicitProject || (route.contains("args") && route.at("args").is_array() && route.at("args").size()==3U);
+            explicitRoot=explicitRoot || route.contains("cwd");
+        }
+        auto inspection=LMStudioConfigurationCodec::inspect(document.value(),binary.value(),home_,
+            explicitProject?std::optional<Domain::ProjectId>{project_}:std::nullopt,
+            explicitRoot?std::optional<Domain::PathText>{root_}:std::nullopt);
+        return inspection && inspection.value().registered && inspection.value().deploymentId.has_value();
     }
     Json checkpointStateUnlocked() const {
         return Json{{"phase",static_cast<unsigned>(phase_)},{"predecessor",predecessor_},{"successor",successor_},
@@ -381,6 +427,96 @@ private:
             return true;
         } catch(const std::exception& error) {checkpointFailure(error.what());return false;}
     }
+    bool recoverRouteFromNativeHandoff(const LMStudioConversationObservation& chat,const Domain::OperationContext& operation) {
+        try {
+            std::lock_guard lock{mutex_};
+            if(!routeRecoveryIntent_ || !workspaceConfirmed_ || pendingWorkspace_ || !hasForgeIntegrations(chat) || chat.toolsActive) return false;
+            const auto currentScope=checkpointScope();
+            if(routeRecoveryIntent_->scope!=currentScope) {
+                recoveryUnlocked("Explicit route recovery requires a new successful PRIMARY handoff callback under the current scope and routes.");return false;
+            }
+            if(!validCurrentRoutes()) {recoveryUnlocked("Explicit route recovery requires all three valid current executable, home, workspace and deployment registrations.");return false;}
+            if(!checkpoint_ || checkpoint_->scope()!=currentScope) {
+                checkpoint_.reset();checkpoint_=std::make_unique<Detail::LMStudioChatCheckpoint>(home_,project_,currentScope,operation);
+                checkpointLoaded_=false;checkpointLoadFailed_=true;
+            }
+            auto inspected=checkpoint_->inspectRouteRecovery(operation);
+            if(!inspected) {recoveryUnlocked(inspected.error().message);return false;}
+            const auto previous=checkpointStateUnlocked();const auto saved=inspected.value().document.at("state");
+            try {restoreCheckpointUnlocked(saved);}
+            catch(...) {restoreCheckpointUnlocked(previous);throw;}
+            const bool eligible=phase_==Phase::WaitingPacket && effect_.is_null() && !packetRequestAcknowledged_ &&
+                !repairAcknowledged_ && !deliveryAcknowledged_ && !contextRecovered_ && packetId_.empty() &&
+                successor_.empty() && createdSuccessor_.empty() && packetWriteSequence_==0U && handed_.is_null() &&
+                handedMessage_.empty() && repairRequest_.empty() && packetRepairAttempts_==0U && !dispatchError_.empty() &&
+                continuityError_==dispatchError_ && chat.conversationId==predecessor_;
+            restoreCheckpointUnlocked(previous);
+            if(!eligible) {recoveryUnlocked("Explicit route recovery is limited to the exact predecessor of an undispatched packet request; acknowledged or uncertain effects are retained without replay.");return false;}
+            auto pointer=memory_.get({"continuity/project/"+project_.value()},operation);
+            if(!pointer) throw std::runtime_error{pointer.error().message};
+            if(!pointer.value().note) {recoveryUnlocked("Explicit route recovery requires the current project's newly saved handoff pointer.");return false;}
+            auto id=Domain::LegacyHandoffId::parse(pointer.value().note->body);if(!id) {recoveryUnlocked("Explicit route recovery handoff pointer is invalid.");return false;}
+            auto fetched=continuity_.get({std::move(id).value(),true},operation);
+            if(!fetched) throw std::runtime_error{fetched.error().message};if(!fetched.value().record) {recoveryUnlocked("Explicit route recovery requires the retained model packet.");return false;}
+            const auto& record=*fetched.value().record;const auto& packet=record.packet;
+            if(record.writeSequence<=saved.at("previous_sequence").get<std::uint64_t>() || !completeModelPacket(packet)) {
+                recoveryUnlocked("Explicit route recovery requires a new complete model packet satisfying the standard native handoff contract.");return false;
+            }
+            std::string requestId;Json nativeResult;
+            for(const auto& result:chat.nativeToolResults) {
+                if(result.name!="session_handoff" || result.pluginIdentifier!="mcp/forge-conductor") continue;
+                const auto digest=checkpointDigest(result.content);
+                const auto& baseline=saved.at("previous_native_handoffs");
+                if(std::find(baseline.begin(),baseline.end(),Json(digest))!=baseline.end()) continue;
+                for(const auto& body:result.textBodies) {
+                    const auto value=Json::parse(body,nullptr,false);
+                    if(value==routeRecoveryIntent_->result && value.is_object() && value.value("ok",false) &&
+                        value.value("handoff_id",std::string{})==packet.id.value() && value.value("resume_seed",std::string{})==packet.resumeSeed &&
+                        value.contains("packet") && samePacketBody(value.at("packet"),packet)) {requestId=result.requestId;nativeResult=value;}
+                }
+            }
+            if(requestId.empty()) {recoveryUnlocked("Explicit route recovery awaits the matching successful PRIMARY session_handoff in the selected predecessor's native results.");return false;}
+            auto idle=controls_->idle(exe_,operation);
+            if(!idle) throw std::runtime_error{idle.error().message};if(!idle.value()) return false;
+            auto next=saved;next["phase"]=static_cast<unsigned>(Phase::Creating);next["packet_id"]=packet.id.value();
+            next["handed"]=nativeResult.at("packet");next["handed_message"]=resumePrompt(packet.id.value(),nativeResult.at("packet"));
+            next["packet_write_sequence"]=record.writeSequence;next["operational_error"]="";next["dispatch_error"]="";
+            // The explicit model handoff replaces the failed request, without
+            // asserting that the old request was ever sent or acknowledged.
+            auto published=checkpoint_->recoverRoute(inspected.value(),next,[&] {
+                auto configuration=configurationStore_.reload(operation);
+                if(!configuration) return Domain::Result<void>::failure(configuration.error());
+                if(configuration.value().localModel!=config_ || !workspaceConfirmed_ || pendingWorkspace_ || !bound() ||
+                    checkpointScope()!=currentScope || !validCurrentRoutes())
+                    return Domain::Result<void>::failure(Domain::makeError(Domain::ErrorCodes::Unauthorized,"Fresh explicit route recovery authority changed before publication."));
+                auto selected=WindowsLMStudioConversationReader::read(studio_,operation);
+                if(!selected) return Domain::Result<void>::failure(selected.error());
+                if(!selected.value() || selected.value()->conversationId!=chat.conversationId || selected.value()->toolsActive || !hasForgeIntegrations(*selected.value()))
+                    return Domain::Result<void>::failure(Domain::makeError(Domain::ErrorCodes::Conflict,"Selected native route recovery predecessor changed before publication."));
+                bool stillNative=false;
+                for(const auto& result:selected.value()->nativeToolResults) if(result.requestId==requestId && result.name=="session_handoff" && result.pluginIdentifier=="mcp/forge-conductor")
+                    for(const auto& body:result.textBodies) if(Json::parse(body,nullptr,false)==nativeResult) stillNative=true;
+                auto freshPointer=memory_.get({"continuity/project/"+project_.value()},operation);
+                if(!freshPointer) return Domain::Result<void>::failure(freshPointer.error());
+                auto freshPacket=continuity_.get({packet.id,true},operation);
+                if(!freshPacket) return Domain::Result<void>::failure(freshPacket.error());
+                if(!stillNative || !freshPointer.value().note || freshPointer.value().note->body!=packet.id.value() || !freshPacket.value().record ||
+                    freshPacket.value().record->writeSequence!=record.writeSequence || !completeModelPacket(freshPacket.value().record->packet) ||
+                    !samePacketBody(nativeResult.at("packet"),freshPacket.value().record->packet))
+                    return Domain::Result<void>::failure(Domain::makeError(Domain::ErrorCodes::Conflict,"Explicit native packet evidence changed before publication."));
+                return Domain::Result<void>::success();
+            },operation);
+            if(!published) {recoveryUnlocked(published.error().message);return false;}
+            restoreCheckpointUnlocked(next);restored_=false;checkpointLoaded_=true;checkpointLoadFailed_=false;lastSavedState_=next;
+            checkpointError_.clear();lastError_.clear();lastErrorFromObservation_=false;routeRecoveryIntent_.reset();status_.erase("error");status_.erase("handoff_recovery");
+            status_["state"]="successor_creating";
+            status_["route_recovery"]={{"archive_path",published.value().value()},{"archive_sha256",inspected.value().sha256},
+                {"previous_revision",inspected.value().document.at("revision")},{"previous_scope",inspected.value().document.at("scope")},
+                {"native_request_id",requestId},{"packet_id",packetId_},{"packet_write_sequence",packetWriteSequence_},{"old_request_acknowledged",false}};
+            traceUnlocked({{"event","explicit_route_recovery"},{"archive",status_.at("route_recovery")},{"result",nativeResult}});
+            return true;
+        } catch(const std::exception& error) {checkpointFailure(error.what());return false;}
+    }
     Domain::Result<void> sendControl(std::string_view text,bool newChat,const Domain::OperationContext& operation,
         std::string_view expected,std::string_view purpose,std::function<void(std::string_view)> successorCreated={}) {
         try {
@@ -421,6 +557,20 @@ private:
             checkpointFailure(error.what());return Domain::Result<void>::failure(Domain::makeError(Domain::ErrorCodes::IntegrityFailure,error.what()));
         }
     }
+    void dispatchSuccessor(const Domain::OperationContext& operation) {
+        auto sent=sendControl(handedMessage_,true,operation,predecessor_,"delivery",
+            [this](std::string_view id) {
+                std::lock_guard lock{mutex_};createdSuccessor_=id;
+                traceUnlocked({{"event","successor_created"},{"packet_id",packetId_},
+                    {"predecessor_lmstudio_session_id",predecessor_},{"successor_lmstudio_session_id",createdSuccessor_}});
+            });
+        {std::lock_guard lock{mutex_};retryAfter_=clock_.monotonicNow()+std::chrono::seconds{5};}
+        if(!sent) throw std::runtime_error{sent.error().message};
+        std::lock_guard lock{mutex_};deliveryAcknowledged_=true;
+        traceUnlocked({{"event","packet_handed_to_new_chat"},{"packet_id",packetId_},
+            {"predecessor_lmstudio_session_id",predecessor_},{"successor_lmstudio_session_id",createdSuccessor_},
+            {"packet",handed_},{"handed_message",handedMessage_}});
+    }
     bool reconcileCheckpoint(const LMStudioConversationObservation& chat,const Domain::OperationContext& operation) {
         std::lock_guard lock{mutex_};
         const auto uncertain=!effect_.is_null() && effect_.at("stage")=="uncertain";
@@ -447,6 +597,9 @@ private:
             if(!packet) throw std::runtime_error{packet.error().message};
             if(!packet.value().record || packet.value().record->writeSequence!=packetWriteSequence_ || !samePacketBody(handed_,packet.value().record->packet)) {
                 recoveryUnlocked("The retained handoff packet revision differs from the durable/native packet evidence; automatic control is deferred.");return false;
+            }
+            if(phase_==Phase::Creating && createdSuccessor_.empty() && effect_.is_null() && !completeModelPacket(packet.value().record->packet)) {
+                recoveryUnlocked("The planned successor's retained packet no longer satisfies the complete model handoff contract; no control is dispatched.");return false;
             }
             bool nativeRecovered=false,following=false;
             for(const auto& result:chat.nativeToolResults) {
@@ -513,6 +666,7 @@ private:
         previousPacket_.clear();packetRequest_.clear();packetRequestGeneration_.clear();handedMessage_.clear();completedGeneration_.clear();handed_=Json{};
         lastPressureConversation_.clear();lastPressureGeneration_.clear();lastRejectedPacket_.clear();repairRequest_.clear();repairGeneration_.clear();
         previousNativeHandoffs_.clear();processedInvalidRequests_.clear();previousSequence_=0U;lastRejectedSequence_=0U;packetRepairAttempts_=0U;
+        routeRecoveryIntent_.reset();
         contextRecovered_=false;packetRequestAcknowledged_=false;repairAcknowledged_=false;deliveryAcknowledged_=false;lastError_.clear();continuityError_.clear();lastErrorFromObservation_=false;
         status_=Json{{"available",false},{"enabled",true},{"state","observing"},
             {"project_id",project_.value()},{"project_folder",root_.value()},{"binding_source","authorized_mcp_workspace"}};
@@ -614,7 +768,7 @@ private:
         auto operation=context(stop);
         auto configuration=configurationStore_.reload(operation);
         if(!configuration) {failure(configuration.error().message,true);return;}
-        config_=configuration.value().localModel;
+        {std::lock_guard lock{mutex_};config_=configuration.value().localModel;}
         auto observed=WindowsLMStudioConversationReader::read(studio_,operation);
         if(!observed) {failure(observed.error().message,true);return;}
         if(!observed.value()) {
@@ -674,7 +828,7 @@ private:
         catch(...) {failure("The automatic continuity preference could not be read.",true);return;}
         observationRecovered(chat.conversationId);
         { std::lock_guard lock{mutex_};status_["enabled"]=isEnabled; }
-        if(!ensureCheckpoint(operation)) return;
+        if(!ensureCheckpoint(operation) && (!isEnabled || !recoverRouteFromNativeHandoff(chat,operation))) return;
         if(!isEnabled) return;
         if(!reconcileCheckpoint(chat,operation)) return;
         Phase phase;bool delivered; {std::lock_guard lock{mutex_};phase=phase_;delivered=deliveryAcknowledged_;}
@@ -852,11 +1006,7 @@ private:
                 }
             }
             if(!nativePacketCall) return;
-            if(!packet.resumeReady || packet.source!=Domain::LegacyHandoffSource::Model || packet.goal.empty() ||
-                packet.narrative.size()<256U || packet.resumeSeed.size()<256U || packet.nextActions.empty() || packet.keyFiles.empty() || packet.decisions.empty() ||
-                containsFiller(packet.narrative) || containsFiller(packet.resumeSeed) ||
-                singleCharacterPadding(packet.narrative) || singleCharacterPadding(packet.resumeSeed) ||
-                std::any_of(packet.nextActions.begin(),packet.nextActions.end(),opaqueAction)) {
+            if(!completeModelPacket(packet)) {
                 const bool sameRevision=lastRejectedPacket_==packet.id.value() &&
                     lastRejectedSequence_==fetched.value().record->writeSequence;
                 if(sameRevision && (chat.generationEvidence.empty() || chat.generationEvidence==repairGeneration_)) return;
@@ -894,26 +1044,18 @@ private:
                 packetWriteSequence_=fetched.value().record->writeSequence;
                 traceUnlocked({{"event","model_packet_saved"},{"packet_id",packetId_},{"predecessor_lmstudio_session_id",predecessor_},
                     {"native_request_id",nativeRequestId},{"plugin",nativePlugin},{"result",nativePacketResult}}); }
-            const auto prompt="Resume this Forge project from its model-written continuity packet. Call context_get through "
-                "forge-conductor with handoff_id=\""+packetId_+"\", reattach any open agent sessions with agent_run_status, "
-                "call get_forge_status to confirm the bound project, tools and agents are callable, then resume the packet's concrete next_actions with Forge tools. All three existing integrations remain enabled. "
-                "Preserve all existing user constraints and the package/policy order.\nContinuity packet:\n"+handed_.dump(2);
+            const auto prompt=resumePrompt(packetId_,handed_);
             { std::lock_guard lock{mutex_};phase_=Phase::Creating;deliveryAcknowledged_=false;createdSuccessor_.clear();handedMessage_=prompt;effect_=Json{};status_["state"]="successor_creating"; }
-            auto sent=sendControl(prompt,true,operation,predecessor_,"delivery",
-                [this](std::string_view id) {
-                    std::lock_guard lock{mutex_};createdSuccessor_=id;
-                    traceUnlocked({{"event","successor_created"},{"packet_id",packetId_},
-                        {"predecessor_lmstudio_session_id",predecessor_},{"successor_lmstudio_session_id",createdSuccessor_}});
-                });
-            { std::lock_guard lock{mutex_};retryAfter_=clock_.monotonicNow()+std::chrono::seconds{5}; }
-            if(!sent) throw std::runtime_error{sent.error().message};
-            std::lock_guard lock{mutex_};deliveryAcknowledged_=true;
-            traceUnlocked({{"event","packet_handed_to_new_chat"},{"packet_id",packetId_},
-                {"predecessor_lmstudio_session_id",predecessor_},{"successor_lmstudio_session_id",createdSuccessor_},
-                {"packet",handed_},{"handed_message",prompt}});
+            dispatchSuccessor(operation);
             return;
         }
         if(phase==Phase::Creating) {
+            if(createdSuccessor_.empty() && effect_.is_null() && chat.conversationId==predecessor_) {
+                auto idle=controls_->idle(exe_,operation);
+                if(!idle) throw std::runtime_error{idle.error().message};
+                if(chat.toolsActive || !idle.value()) return;
+                dispatchSuccessor(operation);return;
+            }
             if(!createdSuccessor_.empty() && chat.conversationId==createdSuccessor_ &&
                 std::find(chat.userMessages.begin(),chat.userMessages.end(),handedMessage_)!=chat.userMessages.end() &&
                 hasForgeIntegrations(chat)) {
@@ -1010,6 +1152,8 @@ private:
     std::unique_ptr<Detail::LMStudioChatCheckpoint> checkpoint_;
     bool checkpointLoaded_{},checkpointLoadFailed_{},restored_{};
     Json effect_,lastSavedState_;
+    struct RouteRecoveryIntent final {Json result,scope;};
+    std::optional<RouteRecoveryIntent> routeRecoveryIntent_;
     std::string checkpointError_,dispatchError_;
     std::uint64_t packetWriteSequence_{};
 };

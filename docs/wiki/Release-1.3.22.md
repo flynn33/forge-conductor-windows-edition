@@ -1,12 +1,14 @@
 # 1.3.22 source candidate
 
-Current source: **1.3.22**, Windows package identity **1.3.22.0**, **112 Primary/Fallback tools** and five CLU tools. All previous descriptors and specialist playbooks remain. Integrated build, complete CTest, signed-package, installed-catalog, native LM Studio and publication qualification are **pending**.
+Current source: **1.3.22**, Windows package identity **1.3.22.0**, **112 Primary/Fallback tools** and five CLU tools. All previous descriptors and specialist playbooks remain. Earlier clean source 5b8c524 passed Product All/static/persistence, but its complete graph passed 165/166 entries in 110.15 seconds with a retained CMake cancellation-fixture failure. The changed source passed two focused targets (125/125 Infrastructure groups, including 37 route-recovery cases, and CMake/CTest) in 64.45 seconds. Fresh complete source, signed-package, installed-catalog, native LM Studio and publication qualification are **pending**.
 
 Six optional ComfyUI tools add generation, source variation/masked editing, read-only status, local cancellation and explicit exact-job resume: image_provider_status, image_generate, image_edit, image_job_status, image_job_cancel, image_job_resume. The provider is disabled by default and needs an explicit owner-selected loopback endpoint, sd1 profile and compatible checkpoint. Forge does not start the provider, install a model or interrupt shared remote inference.
 
 image_write draws shapes and text; image_analyze and reviewer_status interpret an existing image. Provider jobs use the six tools above. An accepted job or preview is not completed generation or model perception.
 
 The earlier isolated ten-target suite and root-owned six-case real ComfyUI smoke passed within their recorded scope. Five generation POSTs, exact outside-mask RGBA preservation, running local cancellation and controlled acknowledgement-loss recovery were measured. They do not qualify integrated 1.3.22, Manager IPC, LM Studio delivery, semantic editing or full host model quality.
+
+Explicit route-upgrade recovery uses the existing authorized Primary session_handoff and matching selected-native/stored packet evidence. Only an undispatched waiting request with no effect or acknowledgements can be promoted after fresh three-route validation and preservation of the original encrypted checkpoint. Old acknowledgement remains false; default scope rejection and uncertain/confirmed no replay remain. The cancellation fixture now requires a stop within the measured parser call using bounded readiness/timestamp attempts; parser production behavior is unchanged. Installed recovery remains unverified.
 
 See [provider contract](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md), [source notes](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/releases/1.3.22.md) and [qualification boundary](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.22.md).
 
