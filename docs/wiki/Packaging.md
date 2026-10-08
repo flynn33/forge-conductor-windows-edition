@@ -1,10 +1,10 @@
-# Current source version 1.3.23
+# Current source version 1.3.24
 
-Product version 1.3.23 and package version 1.3.23.0 are the current source targets. The 112-tool implementation is pending integrated build, signature, package/install, native-model, CI and release qualification. No 1.3.23 download or publication is asserted. The optional image provider is disabled by default and connects only to an explicitly configured existing local service; packaging does not install/start ComfyUI or download models. See [1.3.23 source notes](Release-1.3.23) and [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
+Product version 1.3.24 and package version 1.3.24.0 are the current source targets. The 112-tool implementation is pending integrated build, signature, package/install, native-model, CI and release qualification. No 1.3.24 download or publication is asserted. The optional image provider is disabled by default and connects only to an explicitly configured existing local service; packaging does not install/start ComfyUI or download models. See [1.3.24 source notes](Release-1.3.24) and [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
 
 ## Superseded installed 1.3.22
 
-The signed 1.3.22.0 installation matched all four executable hashes and preserved 8,431 files / 410,168,202 bytes plus the four protected snapshots before launch. Native automatic delivery remained incomplete and no 1.3.22 release was published. These checks do not qualify a 1.3.23 package. See [retained results](Release-1.3.22).
+The signed 1.3.22.0 installation matched all four executable hashes and preserved 8,431 files / 410,168,202 bytes plus the four protected snapshots before launch. Native automatic delivery remained incomplete and no 1.3.22 release was published. These checks do not qualify a 1.3.24 package. See [retained results](Release-1.3.22).
 
 ## Historical published 1.3.21
 

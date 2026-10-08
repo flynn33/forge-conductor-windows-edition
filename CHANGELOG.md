@@ -1,11 +1,16 @@
 # Changelog
 
-## 1.3.23 - Manager lifetime for native chat continuity (source candidate; qualification pending)
+## 1.3.24 - Native recovery result annotation comparison (source candidate; qualification pending)
 
-- Move the visible-chat observer into the Manager transition-worker lifecycle and preserve it across ordinary stdio-client loss. Primary forwards final authorized project/root/native-call observations through internal bounded observe/status methods; Fallback and CLU retain read-only status.
-- Keep the public catalog and schemas unchanged at 112 Primary/Fallback and five CLU tools. Retain one UI writer, fresh project/provider/three-route validation, actual selected-native evidence, exact old encrypted archive and no replay of uncertain New chat or Send.
-- Preserve all optional image-provider jobs, native CMake/CTest, desktop/image, Office/web, worker/schedule, shell, review, policy and persistence features.
-- Align current product/package documentation with 1.3.23 / 1.3.23.0. Final source tests, package/install, catalog, native continuity/image-provider, CI and release checks are pending. Retain every earlier 1.3.22 failure and final passing source/install receipt separately; none qualifies this candidate. See [candidate notes](docs/releases/1.3.23.md) and [pending qualification](docs/validation/HOST-CAPABILITIES-1.3.23.md).
+- Compare the authorized Manager recovery callback with actual delivered Primary context_get evidence while accepting only a client-local Boolean context_budget_cleared annotation absent from the callback. Keep packet, source/scope, call-boundary and following-tool checks exact; preserve uncertain New chat/Send without replay.
+- Retain Manager-owned observer lifetime, the authenticated bounded observe/status bridge, every existing tool/service and unchanged 112/112/5 source inventory. Correct in-app setup help to describe Manager ownership and authorized Primary observations.
+- Align product/package inputs to 1.3.24 / 1.3.24.0. Complete source, signed installation, catalogs, native continuity/image workflows, CI and release checks are pending. See [candidate notes](docs/releases/1.3.24.md) and [qualification boundary](docs/validation/HOST-CAPABILITIES-1.3.24.md).
+
+## 1.3.23 - Manager lifetime for native chat continuity (installed, unpublished, superseded)
+
+- Added the Manager transition-worker observer and internal authenticated bounded observe/status bridge; preserved public 112/112/5 catalog and all existing features.
+- Source b42a80df7db637337ea60737ef8e1049159cf448 / tree a475d6d04e5a70b32bb72390afc7347d2d97ff65 passed Product All, three static gates, persistence and 167/167 tests in 95.75 seconds. Valid signed installation matched four executables and 323 payload files; prelaunch profile comparison preserved 8,471 files / 412,433,227 bytes and four snapshots.
+- Two actual Primary assisted calls returned the retained packet and 1.3.23/112 status; final Qwen generation reached eosFound. Recovery stayed pending because the delivered context_get result added context_budget_cleared:false after the Manager callback. No new 1.3.23 recovery archive, automatic New/Send qualification or release publication was established. See [retained 1.3.23 measurements](docs/validation/HOST-CAPABILITIES-1.3.23.md).
 
 ## 1.3.22 - Optional local image-provider jobs (unpublished, superseded)
 

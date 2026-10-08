@@ -1,6 +1,6 @@
 <p align="center"><img src="images/mark-conductor.jpg" width="132" alt="Forge Conductor mark"></p>
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.23 implementation.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.24 implementation.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -24,7 +24,7 @@ Stock LM Studio MCP image metadata remains distinct from model image input and i
 
 A native Windows 11 workspace and MCP server for project work with local models in LM Studio.
 
-The current source version **1.3.23** provides **112 tools** in Primary/Fallback: the original 80 plus 32 additions, with ten specialist playbooks and five CLU tools retained. Six optional image-provider routes join native CMake/CTest jobs, paged accessibility reads, bounded previews, web, DOCX/XLSX/PPTX creation, visible desktop/browser operations, PNG drawing/image analysis, independent workers and persistent schedules. Existing project identities, policy, telemetry, native design and three LM Studio integrations remain. Integrated 1.3.23 source, package, installed Manager/LM Studio and native-model qualification remain pending. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. See [1.3.23 source notes](Release-1.3.23).
+The current source version **1.3.24** provides **112 tools** in Primary/Fallback: the original 80 plus 32 additions, with ten specialist playbooks and five CLU tools retained. Six optional image-provider routes join native CMake/CTest jobs, paged accessibility reads, bounded previews, web, DOCX/XLSX/PPTX creation, visible desktop/browser operations, PNG drawing/image analysis, independent workers and persistent schedules. Existing project identities, policy, telemetry, native design and three LM Studio integrations remain. Integrated 1.3.24 source, package, installed Manager/LM Studio and native-model qualification remain pending. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. See [1.3.24 source notes](Release-1.3.24).
 
 Historical published 1.3.19 qualification is recorded above. The installed, unpublished [1.3.18 investigation](Release-1.3.18) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact.
 
@@ -39,7 +39,7 @@ The installed, unpublished [1.3.17 investigation](Release-1.3.17) passed its exa
 | [Continuity](Continuity) | Recovery, native rollover path, and durability limits |
 | [Windows Workflow Capabilities](Windows-workflow-capabilities) | Dedicated tool contracts, actual receipts and external connection requirements |
 | [Tool Catalog](Tool-Catalog) | All 112 Primary/Fallback tool names and retained CLU scope |
-| [1.3.23 implementation](Release-1.3.23) | Current source contracts and pending integrated qualification |
+| [1.3.24 implementation](Release-1.3.24) | Current source contracts and pending integrated qualification |
 | [Published 1.3.21 qualification](Release-1.3.21) | Historical source, package and native-model measurements |
 | [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md) | Optional ComfyUI configuration, jobs, cancellation and explicit recovery |
 | [CMake/CTest source guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/CMAKE-CTEST.md) | Initialized-tree jobs, outcomes, failure paging, logs and recovery |
@@ -59,10 +59,10 @@ Schedules require Manager to remain running. Future triggers restore after resta
 
 Historical Auto Continuity qualification used reserve pressure while the primary MCP worker stayed alive. The 1.3.11 native checks verify observing state and project-scoped recovery; they do not add a new rollover or physical-exhaustion qualification. Interrupted UI handoff after worker eviction remains process-local. See [Continuity](Continuity).
 
-The historical in-process limitation above applies to those named artifacts. The checkpoint contract introduced in 1.3.21 remains in the 1.3.23 source: bounded atomic DPAPI state, fresh project/provider/route authority and no replay of uncertain Send or New chat effects. Incomplete reconciliation reports `recovery_pending`. The historical 1.3.21 source passed 118 Infrastructure groups and 20 durability cases within one PID; those measurements do not qualify interrupted installed observers or connector rollover in 1.3.23. The current capture-boundary repair remains pending verification. Physical context exhaustion and already-running agent reattachment remain unverified. See [Continuity](Continuity).
+The historical in-process limitation above applies to those named artifacts. The checkpoint contract introduced in 1.3.21 remains in the 1.3.24 source: bounded atomic DPAPI state, fresh project/provider/route authority and no replay of uncertain Send or New chat effects. Incomplete reconciliation reports `recovery_pending`. The historical 1.3.21 source passed 118 Infrastructure groups and 20 durability cases within one PID; those measurements do not qualify interrupted installed observers or connector rollover in 1.3.24. The current capture-boundary repair remains pending verification. Physical context exhaustion and already-running agent reattachment remain unverified. See [Continuity](Continuity).
 
-## 1.3.23 continuity candidate
+## 1.3.24 continuity candidate
 
 Manager lifetime does not grant saved authority or confirm an uncertain UI effect. Current project/provider/route validation, the OS-held single-writer lease and selected-native evidence still gate control dispatch. An empty or unrelated third chat does not establish the successor. Explicit route migration requires a fresh authorized Primary callback, matching actual native packet/recovery evidence and exact preservation of the old encrypted checkpoint. Uncertain New chat or Send is reconciled without automatic replay. Completion requires the actual handed message, successor `context_get` and a following successful Forge tool result. Installed automatic delivery remains unqualified.
 
-The [superseded 1.3.22 investigation](Release-1.3.22) passed its exact final source and signed-install checks, but an uncertain New chat was followed by an empty selected chat and no automatic packet delivery. Those receipts remain distinct from pending 1.3.23 checks.
+The [superseded 1.3.22 investigation](Release-1.3.22) passed its exact final source and signed-install checks, but an uncertain New chat was followed by an empty selected chat and no automatic packet delivery. Those receipts remain distinct from pending 1.3.24 checks.

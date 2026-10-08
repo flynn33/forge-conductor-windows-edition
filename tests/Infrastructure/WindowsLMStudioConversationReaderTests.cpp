@@ -1156,6 +1156,58 @@ void explicitVisibleRouteRecoveryCases()
             state.at("delivery_acknowledged")==true && state.at("effect").at("stage")=="confirmed" &&
             state.at("packet_request_acknowledged")==false,"native resume recovery did not preserve exact confirmed versus old request acknowledgement state");
     });
+    const auto completeSuccessor=[&](VisibleHandoffFixture& f) {
+        planned(f);auto saved=f.checkpoint();saved["state"]["phase"]=4U;
+        saved["state"]["created_successor"]="project/native-resumed.conversation.json";
+        saved["state"]["successor"]="project/native-resumed.conversation.json";
+        saved["state"]["context_recovered"]=true;saved["state"]["delivery_acknowledged"]=true;
+        saved["state"]["effect"]={{"kind","new_chat"},{"stage","confirmed"},
+            {"purpose","delivery"},{"conversation_id",f.selected},{"previous_user_messages",0U}};
+        f.writeCheckpoint(saved);return saved;
+    };
+    const auto appendResumeReceipt=[](VisibleHandoffFixture& f,const Json& receipt) {
+        f.append(message(Json::array({version(Json::array({
+            VisibleHandoffFixture::tool("context_get",receipt,20U),
+            VisibleHandoffFixture::tool("get_forge_status",Json{{"ok",true}},21U),
+            generation(3000U,32768U)}))})));
+    };
+    for(const bool cleared:{false,true}) run(cleared?"native_resume_guard_annotation_true":"native_resume_guard_annotation_false",[&,cleared] {
+        VisibleHandoffFixture f;const auto saved=completeSuccessor(f);const auto raw=bytes(f.checkpointPath());
+        f.upgradeRoutes();f.select("project/native-resumed.conversation.json",conversation(Json::array()));
+        const auto callback=f.fullResumeReceipt();auto native=callback;native["context_budget_cleared"]=cleared;
+        f.reconstruct();f.fixture.observer->recordTool("context_get",true,callback.dump());appendResumeReceipt(f,native);
+        const auto status=f.run([](const Json& value) {return value.value("state",std::string{})=="resumed";});
+        const auto& recovery=status.at("route_recovery");const auto updated=f.checkpoint();
+        require(f.creations==0U && f.sends==0U && recovery.at("automatic_replay")==false,
+            "native guard annotation recovery dispatched or replayed a UI effect");
+        require(recovery.at("native_request_id")=="durable-native-20" && recovery.at("recovery_kind")=="native_successor_resume" &&
+            bytes(std::filesystem::path{recovery.at("archive_path").get<std::string>()})==raw &&
+            updated.at("scope")==currentScope(f,saved) && updated.at("revision")==saved.at("revision").get<std::uint64_t>()+1U,
+            "native guard annotation recovery lost its exact request, old encrypted archive or new scope revision");
+        require(updated.at("state").at("handed")==saved.at("state").at("handed") &&
+            updated.at("state").at("packet_write_sequence")==saved.at("state").at("packet_write_sequence") &&
+            updated.at("state").at("packet_request_acknowledged")==false &&
+            updated.at("state").at("phase")==4U && updated.at("state").at("context_recovered")==true &&
+            updated.at("state").at("delivery_acknowledged")==true && updated.at("state").at("effect").at("stage")=="confirmed",
+            "native guard annotation recovery changed the retained packet or fabricated an old request acknowledgement");
+    });
+    for(const char* fault:{"native_resume_guard_annotation_number","native_resume_guard_annotation_string",
+        "native_resume_guard_annotation_null","native_resume_unrelated_metadata","native_resume_missing_callback_field",
+        "native_resume_changed_callback_field","native_resume_changed_packet_body","native_resume_changed_owned_annotation"}) run(fault,[&,fault] {
+        VisibleHandoffFixture f;completeSuccessor(f);
+        f.upgradeRoutes();f.select("project/native-resumed.conversation.json",conversation(Json::array()));
+        auto callback=f.fullResumeReceipt();
+        if(std::string_view{fault}=="native_resume_changed_owned_annotation") callback["context_budget_cleared"]=false;
+        auto native=callback;native["context_budget_cleared"]=true;
+        if(std::string_view{fault}=="native_resume_guard_annotation_number") native["context_budget_cleared"]=0U;
+        if(std::string_view{fault}=="native_resume_guard_annotation_string") native["context_budget_cleared"]="false";
+        if(std::string_view{fault}=="native_resume_guard_annotation_null") native["context_budget_cleared"]=nullptr;
+        if(std::string_view{fault}=="native_resume_unrelated_metadata") native["unrelated_transport_annotation"]=true;
+        if(std::string_view{fault}=="native_resume_missing_callback_field") native.erase("resume_seed");
+        if(std::string_view{fault}=="native_resume_changed_callback_field") native["resume_seed"]="different native receipt";
+        if(std::string_view{fault}=="native_resume_changed_packet_body") native["packet"]["resume"]["seed"]="different native packet";
+        f.reconstruct();f.fixture.observer->recordTool("context_get",true,callback.dump());appendResumeReceipt(f,native);refused(f);
+    });
     for(const char* fault:{"no_callback","empty_chat","no_following","wrong_receipt","wrong_successor","wrong_pointer","metadata_drift","fallback_context","stale_scope","callback_read_failure","callback_selection_changed"}) run(fault,[&,fault] {
         VisibleHandoffFixture f;planned(f);auto saved=f.checkpoint();saved["state"]["effect"]={{"kind","new_chat"},{"stage","uncertain"},
             {"purpose","delivery"},{"conversation_id",f.selected},{"previous_user_messages",0U}};

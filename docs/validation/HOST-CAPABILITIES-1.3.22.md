@@ -1,6 +1,6 @@
 # 1.3.22 capability qualification — superseded installed candidate
 
-Product/package identity: **1.3.22 / 1.3.22.0**. Final source commit `9178abdf12998af56df4860a56b25dccfcc30e10`, tree `b5e9fdedc9cb6b7ea0f97f9d93ef2e2d2f313d64`. No final release qualification, tag or publication is asserted. Current candidate [1.3.23](HOST-CAPABILITIES-1.3.23.md) has separate pending checks.
+Product/package identity: **1.3.22 / 1.3.22.0**. Final source commit `9178abdf12998af56df4860a56b25dccfcc30e10`, tree `b5e9fdedc9cb6b7ea0f97f9d93ef2e2d2f313d64`. No final release qualification, tag or publication is asserted. Current candidate [1.3.24](HOST-CAPABILITIES-1.3.24.md) has separate pending checks.
 
 ## Final observed scope
 

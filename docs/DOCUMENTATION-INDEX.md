@@ -2,7 +2,7 @@
 
 ## Current product documentation
 
-The current source implementation is 1.3.23 with 112 Primary/Fallback tools; Integrated 1.3.23 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. Earlier release and verification entries retain their named artifact identities.
+The current source implementation is 1.3.24 with 112 Primary/Fallback tools; Integrated 1.3.24 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. Earlier release and verification entries retain their named artifact identities.
 
 - [README](../README.md)
 - [Product status](STATUS.md)
@@ -20,8 +20,10 @@ The current source implementation is 1.3.23 with 112 Primary/Fallback tools; Int
 - [Windows toolchain](WINDOWS_TOOLCHAIN.md)
 - [Post-1.0 enhancements](DEFERRED.md)
 - [Packaging inputs](../packaging/README.md)
-- [1.3.23 source candidate notes](releases/1.3.23.md)
-- [1.3.23 qualification boundary — pending](validation/HOST-CAPABILITIES-1.3.23.md)
+- [1.3.24 source candidate notes](releases/1.3.24.md)
+- [1.3.24 qualification boundary — pending](validation/HOST-CAPABILITIES-1.3.24.md)
+- [Superseded 1.3.23 installed investigation](releases/1.3.23.md)
+- [Retained 1.3.23 source/install/native mismatch](validation/HOST-CAPABILITIES-1.3.23.md)
 - [Superseded 1.3.22 installed investigation](releases/1.3.22.md)
 - [Retained 1.3.22 source/install/native evidence](validation/HOST-CAPABILITIES-1.3.22.md)
 - [Historical published 1.3.21 release notes](releases/1.3.21.md)

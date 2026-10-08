@@ -1,6 +1,6 @@
 # Roadmap
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.23 candidate.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.24 candidate.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,9 +8,9 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-## Current source version: 1.3.23 — qualification pending
+## Current source version: 1.3.24 — qualification pending
 
-Version 1.3.23 implements 112 Primary/Fallback tools while preserving all original tools, ten specialist playbooks and five CLU tools. Native CMake/CTest run/status jobs, paged accessibility reads and optional higher-resolution bounded image previews extend dedicated web, native Office documents, desktop/browser, PNG/image analysis, independent managed workers and persistent schedules. Existing shell/process jobs, reviews, memory, policy, deployment and continuity remain. Integrated 1.3.23 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. See the [capability guide](HOST-CAPABILITIES.md), [CMake/CTest guide](CMAKE-CTEST.md), [implementation notes](releases/1.3.23.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.23.md).
+Version 1.3.24 implements 112 Primary/Fallback tools while preserving all original tools, ten specialist playbooks and five CLU tools. Native CMake/CTest run/status jobs, paged accessibility reads and optional higher-resolution bounded image previews extend dedicated web, native Office documents, desktop/browser, PNG/image analysis, independent managed workers and persistent schedules. Existing shell/process jobs, reviews, memory, policy, deployment and continuity remain. Integrated 1.3.24 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. See the [capability guide](HOST-CAPABILITIES.md), [CMake/CTest guide](CMAKE-CTEST.md), [implementation notes](releases/1.3.24.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.24.md).
 
 The 1.3.21 source persists the interrupted native handoff phase in a bounded, current-user DPAPI checkpoint. A single writer owns native controls; reconstruction requires fresh project/provider/route confirmation and selected-chat evidence. Uncertain New chat or Send effects remain `recovery_pending` and are not replayed. The 118-group Infrastructure suite passed, including the private same-PID observer reconstruction regression and 20 durability cases. Installed observer/UI interruption or connector rollover recovery remains unverified; physical context exhaustion and already-running agent reattachment were not exercised. Historical 1.3.20 checkpoint-process primitive evidence retains its original source identity and is not a current installed qualification. See the [continuity implementation](implementation/CONTEXT-CONTINUITY.md).
 
@@ -20,13 +20,13 @@ Historical Auto Continuity was verified with a reserve-triggered pause, not phys
 
 The source candidate adds optional image_provider_status, image_generate, image_edit, image_job_status, image_job_cancel and image_job_resume through an explicit disabled-by-default ComfyUI profile. Native masking, durable exact-ID recovery, local cancellation and no replay are bounded contracts; semantic quality and integrated delivery require separate evidence. See [provider contract](IMAGE-PROVIDER.md).
 
-## 1.3.23 continuity candidate
+## 1.3.24 continuity candidate
 
-The 1.3.23 candidate uses `ManagerVisibleChatContinuity` as an `IManagerTransitionWorker`. `ManagerProcessWorkerGroup` starts it after controller initialization and joins it before memory, configuration and repository services are destroyed. Internal `visible_chat.observe` and `visible_chat.status` use the existing authenticated same-Windows-user nonce pipe and 2 MiB frame bound; JSON object bodies are limited to 1 MiB with closed-field, duplicate-field and depth checks. The Primary CLI callback carries the final authorized project/root, tool name, success and canonical result together. Fallback and CLU do not submit competing observations. Route validation uses the verified sibling CLI from `ManagerProcessEnvironment`, rather than treating Manager.exe as the deployed MCP executable. The public catalog, schemas and 112/112/5 source inventory are unchanged.
+The 1.3.24 candidate uses `ManagerVisibleChatContinuity` as an `IManagerTransitionWorker`. `ManagerProcessWorkerGroup` starts it after controller initialization and joins it before memory, configuration and repository services are destroyed. Internal `visible_chat.observe` and `visible_chat.status` use the existing authenticated same-Windows-user nonce pipe and 2 MiB frame bound; JSON object bodies are limited to 1 MiB with closed-field, duplicate-field and depth checks. The Primary CLI callback carries the authorized project/root, tool name, success and adapter canonical result before client-local guard annotations. Fallback and CLU do not submit competing observations. Route validation uses the verified sibling CLI from `ManagerProcessEnvironment`, rather than treating Manager.exe as the deployed MCP executable. The public catalog, schemas and 112/112/5 source inventory are unchanged.
 
 Manager lifetime does not grant saved authority or confirm an uncertain UI effect. Current project/provider/route validation, the OS-held single-writer lease and selected-native evidence still gate control dispatch. An empty or unrelated third chat does not establish the successor. Explicit route migration requires a fresh authorized Primary callback, matching actual native packet/recovery evidence and exact preservation of the old encrypted checkpoint. Uncertain New chat or Send is reconciled without automatic replay. Completion requires the actual handed message, successor `context_get` and a following successful Forge tool result. Installed automatic delivery remains unqualified.
 
-The [superseded 1.3.22 investigation](releases/1.3.22.md) passed final source and signed-install checks but did not complete automatic packet delivery. All 1.3.23 release checks remain pending.
+The [superseded 1.3.22 investigation](releases/1.3.22.md) passed final source and signed-install checks but did not complete automatic packet delivery. All 1.3.24 release checks remain pending.
 
 ## Follow-up
 
@@ -36,3 +36,9 @@ The [superseded 1.3.22 investigation](releases/1.3.22.md) passed final source an
 - Complete an installed-window visual walkthrough when the native-control driver initializes, and validate another disposable Windows account.
 
 Historical Alpha milestones describe their own artifacts and do not establish qualification for current binaries.
+
+## Superseded 1.3.23 measurement
+
+The installed, unpublished 1.3.23 candidate at source `b42a80df7db637337ea60737ef8e1049159cf448`, tree `a475d6d04e5a70b32bb72390afc7347d2d97ff65`, passed Product All, three static gates, persistence and **167/167 Release tests in 95.75 seconds**. Its signed 1.3.23.0 package matched all four executable images and all **323 payload files**; prelaunch comparison preserved **8,471 files / 412,433,227 bytes** and four protected snapshots. Two actual Primary calls in the selected Qwen response returned the saved packet and 1.3.23 status, and generation reached `eosFound`. Manager still reported `recovery_pending`: the delivered `context_get` result had only the later `context_budget_cleared:false` annotation absent from its callback. No new 1.3.23 route-recovery archive or completed route reconciliation was captured. Automatic New chat/Send, full installed catalogs, integrated public/native image acceptance, CI and release qualification remained incomplete. No 1.3.23 release was published.
+
+The 1.3.24 source candidate addresses the delivered `context_get` result comparison at native successor route recovery. The Manager callback precedes `McpInvocationGuard::afterInvoke`, which adds the client-local Boolean `context_budget_cleared`. The comparison accepts that Boolean annotation when absent from the callback and keeps every callback-owned field exact. A non-Boolean annotation, changed packet, extra unrelated field or conflicting callback-owned value remains invalid. The narrow working-source regression passed; complete release and installed native qualification remain pending.

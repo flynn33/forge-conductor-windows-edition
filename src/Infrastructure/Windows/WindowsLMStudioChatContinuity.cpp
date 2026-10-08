@@ -606,6 +606,18 @@ private:
                                  "retained model packet.");
                 return false;
             }
+            const auto matchesResumeReceipt = [&](Json nativeReceipt) {
+                const auto annotation = nativeReceipt.find("context_budget_cleared");
+                if (annotation != nativeReceipt.end())
+                {
+                    if (!annotation->is_boolean()) return false;
+                    // The invocation guard adds this client-local annotation after
+                    // the adapter's Manager callback. Callback-owned fields stay exact.
+                    if (!receipt.contains("context_budget_cleared"))
+                        nativeReceipt.erase(annotation);
+                }
+                return nativeReceipt == receipt;
+            };
             const auto evidence =
                 [&](const LMStudioConversationObservation& selected) -> std::string {
                 std::string request;
@@ -625,7 +637,8 @@ private:
                         {
                             continue;
                         }
-                        if (result.name == "context_get" && value == receipt && request.empty())
+                        if (result.name == "context_get" && matchesResumeReceipt(value) &&
+                            request.empty())
                         {
                             request = result.requestId;
                         }
