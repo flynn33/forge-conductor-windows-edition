@@ -243,8 +243,8 @@ class HeldDiagnosticFileLock final
 class FixedClock final : public Contracts::IClock
 {
   public:
-    FixedClock()
-        : monotonic_{std::chrono::steady_clock::now()}, utc_{Domain::UtcTimePoint{std::chrono::seconds{1'787'650'000}}}
+    explicit FixedClock(const Domain::MonotonicTimePoint monotonic = std::chrono::steady_clock::now())
+        : monotonic_{monotonic}, utc_{Domain::UtcTimePoint{std::chrono::seconds{1'787'650'000}}}
     {
     }
 
@@ -272,10 +272,10 @@ class FixedClock final : public Contracts::IClock
     Domain::UtcTimePoint utc_;
 };
 
-[[nodiscard]] Domain::OperationContext liveContext(const FixedClock &clock, const std::stop_token cancellation = {})
+[[nodiscard]] Domain::OperationContext liveContext(const FixedClock &, const std::stop_token cancellation = {})
 {
     return Domain::OperationContext{parse<Domain::OperationId>("55555555-5555-4555-8555-555555555555"),
-                                    clock.monotonic() + std::chrono::seconds{30}, cancellation,
+                                    std::chrono::steady_clock::now() + std::chrono::seconds{30}, cancellation,
                                     parse<Domain::CorrelationId>("p06-diagnostic-test")};
 }
 
@@ -719,13 +719,16 @@ class BlockingDiagnosticRotationObserver final : public WindowsDetail::IDiagnost
         }
     }
 
-    [[nodiscard]] bool waitUntilCheckpoint() const noexcept
+    [[nodiscard]] bool waitUntilCheckpoint(const HANDLE writerFinished = nullptr) const noexcept
     {
-        // Reaching the validation checkpoint includes copying and durably flushing
-        // the 64 MiB stress fixture. Hosted Windows storage and real-time scanning
-        // can legitimately take longer than 15 seconds without indicating a
-        // synchronization or rotation failure.
-        return ::WaitForSingleObject(checkpointReached_.get(), 120'000U) == WAIT_OBJECT_0;
+        // Preserve the original checkpoint bound, but stop waiting if the actual
+        // writer completes before reaching this checkpoint.
+        if (writerFinished == nullptr)
+        {
+            return ::WaitForSingleObject(checkpointReached_.get(), 120'000U) == WAIT_OBJECT_0;
+        }
+        const HANDLE events[]{checkpointReached_.get(), writerFinished};
+        return ::WaitForMultipleObjects(2U, events, FALSE, 120'000U) == WAIT_OBJECT_0;
     }
 
     [[nodiscard]] std::filesystem::path stagedPath() const
@@ -1445,6 +1448,14 @@ void concurrentSinksRespectRotationAndDownshiftCaps()
 
 void rotationTemporaryDeniesReadersAndCancelsCleanly()
 {
+    const FixedClock expiredFixtureClock{std::chrono::steady_clock::now() - std::chrono::seconds{31}};
+    const auto contextStarted = std::chrono::steady_clock::now();
+    const auto freshContext = liveContext(expiredFixtureClock);
+    const auto contextFinished = std::chrono::steady_clock::now();
+    require(freshContext.deadline >= contextStarted + std::chrono::seconds{30} &&
+                freshContext.deadline <= contextFinished + std::chrono::seconds{30},
+            "each diagnostic operation must receive a fresh 30-second deadline after fixture setup");
+
     DiagnosticFixture fixture;
     const auto master = fixture.logRoot / L"forge-diagnostics.jsonl";
     const auto firstArchive = fixture.logRoot / L"forge-diagnostics.jsonl.1";
@@ -1500,14 +1511,27 @@ void rotationTemporaryDeniesReadersAndCancelsCleanly()
         auto sink = WindowsDetail::WindowsDiagnosticSinkTestAccess::create(
             fixture.options(rotationStressBudgets()), fixture.clockOwner, fixture.redactorOwner, fixture.hasherOwner,
             fixture.authorityOwner, fixture.atomicStoreOwner, observer);
+        WindowsDetail::UniqueHandle writerFinished{::CreateEventW(nullptr, TRUE, FALSE, nullptr)};
+        require(static_cast<bool>(writerFinished), "diagnostic writer completion event must be created");
         std::optional<Domain::Result<void>> outcome;
         std::jthread writer{[&]() {
             outcome.emplace(
                 sink->record(diagnostic("collision-rotation-copy", fixture.clock.utc()), liveContext(fixture.clock)));
+            static_cast<void>(::SetEvent(writerFinished.get()));
         }};
         DiagnosticRotationCheckpointReleaseGuard releaseObserver{*observer};
 
-        const bool reachedValidation = observer->waitUntilCheckpoint();
+        const bool reachedValidation = observer->waitUntilCheckpoint(writerFinished.get());
+        if (!reachedValidation)
+        {
+            observer->allowCheckpoint();
+            writer.join();
+            require(outcome.has_value(), "diagnostic rotation writer must return its result after joining");
+            require(static_cast<bool>(outcome.value()),
+                    outcome.value() ? "diagnostic rotation completed without its validation checkpoint"
+                                    : "diagnostic rotation failed before its validation checkpoint: " +
+                                          outcome->error().code + ": " + outcome->error().message);
+        }
         require(reachedValidation,
                 "diagnostic rotation collision test must reach its prepublication validation checkpoint");
         const std::filesystem::path temporary = observer->stagedPath();

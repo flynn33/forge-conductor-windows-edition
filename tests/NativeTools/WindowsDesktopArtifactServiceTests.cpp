@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
@@ -523,8 +524,13 @@ class OwnedWindow final {
 public:
     explicit OwnedWindow(std::wstring initialText = {},
         std::wstring title = L"Forge Conductor owned desktop test", int additionalButtons = 0,
-        std::wstring buttonPrefix = L"Paged Unicode \u03a9\u20ac ", std::wstring lateText = {})
-        : worker_{[this, initialText = std::move(initialText), title = std::move(title), additionalButtons,
+        std::wstring buttonPrefix = L"Paged Unicode \u03a9\u20ac ", std::wstring lateText = {},
+        std::chrono::milliseconds accessibilityDelay = 0ms, bool repeatAccessibilityDelay = false,
+        bool hideAfterAccessibilityDelay = false)
+        : accessibilityDelay_{static_cast<DWORD>(accessibilityDelay.count())},
+          repeatAccessibilityDelay_{repeatAccessibilityDelay},
+          hideAfterAccessibilityDelay_{hideAfterAccessibilityDelay},
+          worker_{[this, initialText = std::move(initialText), title = std::move(title), additionalButtons,
             buttonPrefix = std::move(buttonPrefix), lateText = std::move(lateText)](std::stop_token stop) {
                 run(stop, initialText, title, additionalButtons, buttonPrefix, lateText); }} {
         std::unique_lock lock{mutex_};
@@ -540,6 +546,7 @@ public:
         worker_.join();
     }
     Json identity() const { return Json{{"window_id", reinterpret_cast<std::uintptr_t>(window_)}, {"pid", ::GetCurrentProcessId()}}; }
+    unsigned delayedAccessibilityRequests() const { return delayedAccessibilityRequests_.load(); }
     bool isForeground() const { return ::GetForegroundWindow() == window_; }
     HWND focusedControl() const {
         GUITHREADINFO information{};
@@ -559,6 +566,22 @@ public:
     }
 private:
     static LRESULT CALLBACK procedure(HWND window, UINT message, WPARAM wparam, LPARAM lparam) {
+        if (message == WM_NCCREATE) {
+            const auto creation = reinterpret_cast<const CREATESTRUCTW*>(lparam);
+            ::SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(creation->lpCreateParams));
+        }
+        if (message == WM_GETOBJECT) {
+            const auto fixture = reinterpret_cast<OwnedWindow*>(::GetWindowLongPtrW(window, GWLP_USERDATA));
+            if (fixture) {
+                const auto delay = fixture->repeatAccessibilityDelay_ ? fixture->accessibilityDelay_.load() :
+                    fixture->accessibilityDelay_.exchange(0U);
+                if (delay != 0U) {
+                    ++fixture->delayedAccessibilityRequests_;
+                    std::this_thread::sleep_for(std::chrono::milliseconds{delay});
+                    if (fixture->hideAfterAccessibilityDelay_) ::ShowWindow(window, SW_HIDE);
+                }
+            }
+        }
         if (message == WM_ACTIVATE && LOWORD(wparam) != WA_INACTIVE) {
             if (const auto edit = ::GetDlgItem(window, 1)) {
                 ::SetFocus(edit);
@@ -583,7 +606,7 @@ private:
         type.lpszClassName = L"ForgeConductor.OwnedDesktopArtifactTest";
         ::RegisterClassW(&type);
         const auto window = ::CreateWindowExW(0, type.lpszClassName, title.c_str(),
-            WS_OVERLAPPEDWINDOW, 100, 100, 340, 180, nullptr, nullptr, type.hInstance, nullptr);
+            WS_OVERLAPPEDWINDOW, 100, 100, 340, 180, nullptr, nullptr, type.hInstance, this);
         const auto edit = window ? ::CreateWindowExW(0, L"EDIT", initialText.c_str(), WS_CHILD | WS_VISIBLE | WS_BORDER | ES_AUTOHSCROLL,
             10, 10, 280, 32, window, reinterpret_cast<HMENU>(1), type.hInstance, nullptr) : nullptr;
         const auto button = window ? ::CreateWindowExW(0, L"BUTTON", L"Owned action", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON,
@@ -616,8 +639,76 @@ private:
     HWND window_{};
     HWND edit_{};
     HWND button_{};
+    std::atomic<DWORD> accessibilityDelay_{};
+    bool repeatAccessibilityDelay_{};
+    bool hideAfterAccessibilityDelay_{};
+    std::atomic<unsigned> delayedAccessibilityRequests_{};
     std::jthread worker_;
 };
+void ownedWindowAccessibilityRecoversTransientConnectionTimeout() {
+    Fixture fixture;
+    fixture.reset(Domain::FileAccess::Read, {Domain::FileAccess::Read}, false);
+    OwnedWindow owned{L"Delayed owned Unicode \u03a9\u20ac", L"Forge Conductor owned transient accessibility test",
+        0, L"", L"", 1600ms};
+    const auto foreground = ::GetForegroundWindow();
+    const auto observed = fixture.execute("desktop_read", owned.identity());
+    bool editValue{};
+    for (const auto& element : observed.at("elements")) {
+        if (element.at("control_type") == UIA_EditControlTypeId && element.contains("text"))
+            editValue = element.at("text") == "Delayed owned Unicode \xce\xa9\xe2\x82\xac";
+    }
+    require(observed.at("ok") == true && editValue && owned.delayedAccessibilityRequests() == 1U &&
+        ::GetForegroundWindow() == foreground && owned.observedText() == L"Delayed owned Unicode \u03a9\u20ac",
+        "A transient accessibility connection timeout lost owned edit data, replayed input, or activated the window.");
+}
+void ownedWindowAccessibilityPermanentConnectionTimeoutRemainsBounded() {
+    Fixture fixture;
+    fixture.reset(Domain::FileAccess::Read, {Domain::FileAccess::Read}, false);
+    OwnedWindow owned{L"Unresponsive owned value", L"Forge Conductor owned permanent accessibility timeout test",
+        0, L"", L"", 4000ms, true};
+    const auto foreground = ::GetForegroundWindow();
+    const auto started = std::chrono::steady_clock::now();
+    const auto observed = fixture.invoke("desktop_read", owned.identity());
+    const auto elapsed = std::chrono::steady_clock::now() - started;
+    requireError(observed, Domain::ErrorCodes::HostCapabilityUnavailable,
+        "A permanently unresponsive accessibility provider was accepted.");
+    require(observed.error().message.find("HRESULT 2148734213") != std::string::npos &&
+        owned.delayedAccessibilityRequests() > 0U && elapsed < 3500ms && ::GetForegroundWindow() == foreground,
+        "A permanent accessibility timeout retried without a bound or changed the foreground window.");
+}
+void ownedWindowAccessibilityTimeoutPreservesDeadlineAndCancellation() {
+    for (const bool cancelled : {false, true}) {
+        Fixture fixture;
+        fixture.reset(Domain::FileAccess::Read, {Domain::FileAccess::Read}, false);
+        OwnedWindow owned{L"Interrupted owned value", L"Forge Conductor owned interrupted accessibility test",
+            0, L"", L"", 1600ms};
+        const auto foreground = ::GetForegroundWindow();
+        TestContext operation;
+        auto active = operation.active();
+        if (!cancelled) active.deadline = std::chrono::steady_clock::now() + 200ms;
+        std::jthread interrupt{[&](std::stop_token) {
+            if (cancelled) { std::this_thread::sleep_for(200ms); operation.cancellation.request_stop(); }
+        }};
+        const auto observed = fixture.service->execute("desktop_read", owned.identity().dump(), *fixture.authority, active);
+        requireError(observed, cancelled ? Domain::ErrorCodes::Cancelled : Domain::ErrorCodes::DeadlineExceeded,
+            "An interrupted accessibility connection retried or hid the operation interruption.");
+        require(owned.delayedAccessibilityRequests() == 1U && ::GetForegroundWindow() == foreground,
+            "An interrupted accessibility connection changed the foreground or repeated fixture requests.");
+    }
+}
+void ownedWindowAccessibilityTimeoutRevalidatesVisibleIdentity() {
+    Fixture fixture;
+    fixture.reset(Domain::FileAccess::Read, {Domain::FileAccess::Read}, false);
+    OwnedWindow owned{L"Hidden during accessibility connection", L"Forge Conductor owned disappearing accessibility test",
+        0, L"", L"", 1600ms, false, true};
+    const auto foreground = ::GetForegroundWindow();
+    const auto observed = fixture.invoke("desktop_read", owned.identity());
+    requireError(observed, Domain::ErrorCodes::HostCapabilityUnavailable,
+        "A window that disappeared during an accessibility retry was read.");
+    require(observed.error().message.find("selected visible window/PID is no longer available") != std::string::npos &&
+        owned.delayedAccessibilityRequests() == 1U && ::GetForegroundWindow() == foreground,
+        "An accessibility retry did not revalidate its selected visible identity or changed the foreground window.");
+}
 void desktopInventoryBoundsActualSerializedTitles() {
     Fixture fixture;
     fixture.reset(Domain::FileAccess::Read, {Domain::FileAccess::Read}, false);
@@ -873,6 +964,10 @@ int main(int argc, char** argv) {
         ownedWindowAccessibilityByteBoundPaging(true); std::cout << "PASS owned-window-accessibility-byte-bound-paging\n";
         ownedWindowAccessibilityByteBoundPaging(false); std::cout << "PASS owned-window-accessibility-unicode-text-bound-paging\n";
         desktopInventoryBoundsActualSerializedTitles(); std::cout << "PASS desktop-inventory-serialized-title-bound\n";
+        ownedWindowAccessibilityRecoversTransientConnectionTimeout(); std::cout << "PASS owned-window-accessibility-transient-connection-timeout\n";
+        ownedWindowAccessibilityPermanentConnectionTimeoutRemainsBounded(); std::cout << "PASS owned-window-accessibility-permanent-connection-timeout\n";
+        ownedWindowAccessibilityTimeoutPreservesDeadlineAndCancellation(); std::cout << "PASS owned-window-accessibility-timeout-deadline-cancellation\n";
+        ownedWindowAccessibilityTimeoutRevalidatesVisibleIdentity(); std::cout << "PASS owned-window-accessibility-timeout-visible-identity\n";
         if (argc == 2 && (std::string_view{argv[1]} == "--owned-window-input" ||
                 std::string_view{argv[1]} == "--owned-window-input-wait")) {
             ownedWindowInputReadAndCapture(std::string_view{argv[1]} == "--owned-window-input-wait");

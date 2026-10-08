@@ -437,7 +437,16 @@ Json readWindow(HWND selected, const Json& arguments, const Domain::OperationCon
     requireHr(bounded->put_ConnectionTimeout(1000U), "Bound accessibility connection");
     requireHr(bounded->put_TransactionTimeout(1000U), "Bound accessibility transaction");
     ComPtr<IUIAutomationElement> root;
-    requireHr(automation->ElementFromHandle(selected, &root), "Read selected accessibility window");
+    auto connected = automation->ElementFromHandle(selected, &root);
+    if (connected == UIA_E_TIMEOUT) {
+        check(context);
+        static_cast<void>(window(arguments));
+        root.Reset();
+        connected = automation->ElementFromHandle(selected, &root);
+        check(context);
+        static_cast<void>(window(arguments));
+    }
+    requireHr(connected, "Read selected accessibility window");
     ComPtr<IUIAutomationCondition> condition;
     requireHr(automation->CreateTrueCondition(&condition), "Create accessibility condition");
     ComPtr<IUIAutomationElementArray> elements;

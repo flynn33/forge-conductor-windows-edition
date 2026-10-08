@@ -910,19 +910,20 @@ private:
     Domain::Result<void> sendControl(std::string_view text,bool newChat,const Domain::OperationContext& operation,
         std::string_view expected,std::string_view purpose,std::function<void(std::string_view)> successorCreated={}) {
         try {
-            {std::lock_guard lock{mutex_};saveCheckpointUnlocked(operation);}
-            auto result=controls_->sendMessage(exe_,text,newChat,operation,expected,std::move(successorCreated),
-                [this,&operation,purpose](const LMStudioChatEffectReceipt& receipt) {
+            const auto dispatchOperation=context(operation.cancellation,std::chrono::seconds{25});
+            {std::lock_guard lock{mutex_};saveCheckpointUnlocked(dispatchOperation);}
+            auto result=controls_->sendMessage(exe_,text,newChat,dispatchOperation,expected,std::move(successorCreated),
+                [this,&dispatchOperation,purpose](const LMStudioChatEffectReceipt& receipt) {
                     try {
                         if(receipt.stage==LMStudioChatEffectStage::BeforeDispatch) {
-                            auto configuration=configurationStore_.reload(operation);
+                            auto configuration=configurationStore_.reload(dispatchOperation);
                             if(!configuration) return Domain::Result<void>::failure(configuration.error());
                             if(configuration.value().localModel!=config_ || !bound()) return Domain::Result<void>::failure(Domain::makeError(
                                 Domain::ErrorCodes::Conflict,"Visible chat authority or provider configuration changed before dispatch."));
                         }
                         std::lock_guard lock{mutex_};
                         if(receipt.stage==LMStudioChatEffectStage::BeforeDispatch && freshWorkspaceAuthority_) {
-                            auto fresh=freshWorkspaceAuthority_(project_,root_,operation);
+                            auto fresh=freshWorkspaceAuthority_(project_,root_,dispatchOperation);
                             if(!fresh) return fresh;
                             if(!validCurrentRoutes()) return Domain::Result<void>::failure(Domain::makeError(
                                 Domain::ErrorCodes::Unauthorized,"All current native connector routes must remain verified before control dispatch."));
@@ -939,7 +940,7 @@ private:
                             else if(purpose=="repair") {previousRepairUserMessages_=receipt.previousUserMessages;repairAcknowledged_=confirmed;}
                             else deliveryAcknowledged_=confirmed;
                         }
-                        saveCheckpointUnlocked(operation);
+                        saveCheckpointUnlocked(dispatchOperation);
                         if(receipt.stage==LMStudioChatEffectStage::BeforeDispatch) recoveryUnlocked("A native control dispatch is pending confirmation; an uncertain effect will not be repeated.");
                         return Domain::Result<void>::success();
                     } catch(const std::exception& error) {
@@ -1070,10 +1071,10 @@ private:
             {"binding_source","authorized_mcp_workspace"},{"previous_handoff_abandoned",phase!=Phase::Observe && phase!=Phase::Complete}});
         return true;
     }
-    Domain::OperationContext context(std::stop_token stop) {
+    Domain::OperationContext context(std::stop_token stop,std::chrono::seconds budget=std::chrono::seconds{20}) {
         auto id=uuid_.next(); if(!id) throw std::runtime_error{id.error().message};
         auto correlation=Domain::CorrelationId::parse("lmstudio-visible-continuity");
-        return {Domain::OperationId{std::move(id).value()},clock_.monotonicNow()+std::chrono::seconds{20},stop,std::move(correlation).value()};
+        return {Domain::OperationId{std::move(id).value()},clock_.monotonicNow()+budget,stop,std::move(correlation).value()};
     }
     bool bound() {
         std::ifstream input{filePath(studio_.value())/"mcp.json"}; if(!input) return false;
@@ -1259,6 +1260,7 @@ private:
                 lastPressureCachedPrompt_=chat.cachedRenderedPromptTokens;
                 traceUnlocked({{"event","context_pressure_detected"},{"predecessor_lmstudio_session_id",chat.conversationId},
                     {"provider_used",chat.usedTokens},{"capacity",chat.contextCapacity},{"reserved",budget.value().reserved},
+                    {"generation_evidence",Json::parse(chat.generationEvidence)},
                     {"cached_rendered_prompt_tokens",chat.cachedRenderedPromptTokens ? Json(*chat.cachedRenderedPromptTokens) : Json(nullptr)},
                     {"pressure_tokens",contextPressureTokens(chat)},{"pressure_source",contextPressureSource(chat)},
                     {"pressure_action",budget.value().action==Domain::ContextBudgetAction::Emergency ? "emergency" : "rollover"},
@@ -1314,6 +1316,7 @@ private:
                 retryAfter_=clock_.monotonicNow()+std::chrono::seconds{5};status_["state"]="requesting_model_packet";
                 traceUnlocked({{"event","context_pressure_pause"},{"predecessor_lmstudio_session_id",predecessor_},
                     {"provider_used",chat.usedTokens},{"capacity",chat.contextCapacity},{"reserved",budget.value().reserved},
+                    {"generation_evidence",Json::parse(chat.generationEvidence)},
                     {"cached_rendered_prompt_tokens",chat.cachedRenderedPromptTokens ? Json(*chat.cachedRenderedPromptTokens) : Json(nullptr)},
                     {"pressure_tokens",contextPressureTokens(chat)},{"pressure_source",contextPressureSource(chat)},
                     {"pressure_action",budget.value().action==Domain::ContextBudgetAction::Emergency ? "emergency" : "rollover"},

@@ -979,6 +979,10 @@ void cachedPromptPressureRequestsPacketWithSeparateProviderEvidence()
 {
     VisibleHandoffFixture f;
     f.fixture.fileFixture.save(renderedPromptConversation(264415U));
+    TestContext operation;
+    const auto initial=take(WindowsLMStudioConversationReader::read(f.fixture.fileFixture.path(),operation.active()));
+    require(initial && !initial->generationEvidence.empty(),"private pressure fixture has no selected provider generation");
+    const auto initialGeneration=Json::parse(initial->generationEvidence);
     const auto status=f.run([](const Json& observed) {
         return observed.value("state",std::string{})=="waiting_for_model_packet";
     });
@@ -1003,6 +1007,8 @@ void cachedPromptPressureRequestsPacketWithSeparateProviderEvidence()
         require(trace.at("provider_used")==130969U && trace.at("cached_rendered_prompt_tokens")==264415U &&
             trace.at("pressure_tokens")==264415U && trace.at("pressure_source")=="cached_rendered_prompt" &&
             !trace.at("overflow").get<bool>(),"pressure trace did not retain distinct cached and provider evidence");
+        require(trace.at("generation_evidence")==initialGeneration,
+            "pressure trace did not retain the exact selected provider generation and model evidence");
     }
 }
 
@@ -1068,11 +1074,24 @@ void cachedPromptPressurePreservesProviderPressureAndOverflow()
 
 void cachedPromptPressureRereadsProjectionAtConfirmedPause()
 {
-    for(const auto change:{"lower","absent","model_mismatch","capacity_mismatch","no_provider_evidence","no_capacity","still_high"}) {
+    for(const auto change:{"lower","absent","model_mismatch","capacity_mismatch","no_provider_evidence","no_capacity","still_high","new_generation"}) {
         VisibleHandoffFixture f;f.fixture.fileFixture.save(renderedPromptConversation(264415U));
+        TestContext operation;
+        const auto initial=take(WindowsLMStudioConversationReader::read(f.fixture.fileFixture.path(),operation.active()));
+        require(initial && !initial->generationEvidence.empty(),"private pause fixture has no initial selected provider generation");
+        const auto initialGeneration=Json::parse(initial->generationEvidence);
+        const bool requestsPacket=std::string_view{change}=="still_high" || std::string_view{change}=="new_generation";
+        Json pauseGeneration;
         std::atomic<std::size_t> pauses{};
         f.controls->pause=[&](const auto&,std::string_view,const auto&) {
-            auto fresh=renderedPromptConversation(std::string_view{change}=="still_high"?240000U:0U);
+            auto fresh=renderedPromptConversation(requestsPacket?240000U:0U);
+            if(std::string_view{change}=="new_generation") {
+                auto newer=fresh["messages"][0]["versions"][0];
+                newer["steps"][0]["genInfo"]["stats"]["totalTokensCount"]=130970U;
+                newer["steps"][0]["genInfo"]["native_unknown_field"]=Json{{"preserved",true}};
+                fresh["messages"][0]["versions"].push_back(std::move(newer));
+                fresh["messages"][0]["currentlySelected"]=1U;
+            }
             if(std::string_view{change}=="absent") fresh.erase("tokenCount");
             if(std::string_view{change}=="model_mismatch") {
                 fresh["tokenCount"]=264415U;fresh["lastUsedModel"]["identifier"]="different-model";
@@ -1089,9 +1108,16 @@ void cachedPromptPressureRereadsProjectionAtConfirmedPause()
                 fresh["messages"][0]["versions"][0]["steps"][0]["genInfo"].erase("loadModelConfig");
                 fresh["lastUsedModel"].erase("instanceLoadTimeConfig");
             }
-            f.fixture.fileFixture.save(fresh);++pauses;return Domain::Result<bool>::success(true);
+            f.fixture.fileFixture.save(fresh);
+            if(requestsPacket) {
+                TestContext pausedOperation;
+                const auto paused=take(WindowsLMStudioConversationReader::read(f.fixture.fileFixture.path(),pausedOperation.active()));
+                require(paused && !paused->generationEvidence.empty(),"private pause fixture lost its selected provider generation");
+                pauseGeneration=Json::parse(paused->generationEvidence);
+            }
+            ++pauses;return Domain::Result<bool>::success(true);
         };
-        if(std::string_view{change}=="still_high") {
+        if(requestsPacket) {
             f.run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet";});
             require(pauses==1U && f.sends==1U && f.creations==0U &&
                 f.lastText.find("240000")!=std::string::npos && f.lastText.find("264415")==std::string::npos,
@@ -1099,6 +1125,15 @@ void cachedPromptPressureRereadsProjectionAtConfirmedPause()
             const auto trace=visibleContinuityTraceEvent(f,"context_pressure_pause");
             require(trace.at("cached_rendered_prompt_tokens")==240000U && trace.at("pressure_tokens")==240000U,
                 "the pause trace did not use the fresh admitted projection");
+            const auto detected=visibleContinuityTraceEvent(f,"context_pressure_detected");
+            require(detected.at("generation_evidence")==initialGeneration &&
+                trace.at("generation_evidence")==pauseGeneration,
+                "pressure trace conflated initial detection with the freshly selected generation at pause");
+            if(std::string_view{change}=="new_generation") require(pauseGeneration!=initialGeneration &&
+                pauseGeneration.at("selected_version")==1U &&
+                pauseGeneration.at("genInfo").at("native_unknown_field").at("preserved")==true &&
+                trace.at("provider_used")==130970U,
+                "the new selected pause generation was reduced to counts or lost unknown native fields");
         } else {
             const bool lostProvider=std::string_view{change}=="no_provider_evidence" || std::string_view{change}=="no_capacity";
             const auto status=f.run([&](const Json& observed) {
@@ -2169,6 +2204,128 @@ void equalStatisticsIdentifyDistinctSelectedGenerations()
     }
 }
 
+class VisibleDispatchClock final : public Contracts::IClock {
+public:
+    VisibleDispatchClock() noexcept : ticks_{std::chrono::steady_clock::now().time_since_epoch().count()} {}
+    Domain::UtcTimePoint utcNow() const noexcept override {return std::chrono::system_clock::now();}
+    Domain::MonotonicTimePoint monotonicNow() const noexcept override {
+        return Domain::MonotonicTimePoint{Domain::MonotonicTimePoint::duration{ticks_.load()}};
+    }
+    void advance(const std::chrono::seconds elapsed) noexcept {
+        ticks_.fetch_add(std::chrono::duration_cast<Domain::MonotonicTimePoint::duration>(elapsed).count());
+    }
+private:
+    std::atomic<Domain::MonotonicTimePoint::duration::rep> ticks_;
+};
+
+void continuitySendUsesFreshBudgetAndPreservesAuthority() {
+    using Controls=Infrastructure::Windows::Detail::LMStudioChatContinuityAccess;
+    using Receipt=Infrastructure::Windows::LMStudioChatEffectReceipt;
+    enum class Scenario {Confirmed,Cancelled,AuthorityDenied};
+    for(const auto scenario:{Scenario::Confirmed,Scenario::Cancelled,Scenario::AuthorityDenied}) {
+        VisibleHandoffFixture f;VisibleDispatchClock clock;
+        f.fixture.observer.reset();f.upgradeRoutes();
+        std::optional<Domain::OperationContext> tickOperation,dispatchOperation;
+        std::size_t freshAuthorityChecks{},effectCallbacks{};
+        bool cancelledRefused{},authorityRefused{};
+        std::string controlFailure;
+        f.controls->pause=[&](const Domain::PathText&,std::string_view expected,const Domain::OperationContext& operation) {
+            require(expected==f.selected,"private fresh-budget pause targeted another conversation");
+            require(operation.deadline==clock.monotonicNow()+std::chrono::seconds{20},
+                "ordinary observation tick lost its existing20second budget");
+            tickOperation=operation;clock.advance(std::chrono::seconds{30});
+            f.fixture.configuration.setNow(clock.monotonicNow());
+            require(operation.isExpired(clock.monotonicNow()),"private clock did not exhaust the observation tick budget");
+            return Domain::Result<bool>::success(true);
+        };
+        const auto originalSend=f.controls->send;
+        f.controls->send=[&](const Domain::PathText& executable,std::string_view text,bool newChat,
+            const Domain::OperationContext& operation,std::optional<std::string_view> expected,
+            const std::function<void(std::string_view)>& successor,
+            const Infrastructure::Windows::LMStudioChatEffectObserver& receipt) {
+            try {
+            dispatchOperation=operation;
+            require(tickOperation.has_value(),"private dispatch did not follow the observed pause");
+            require(operation.deadline==clock.monotonicNow()+std::chrono::seconds{25},
+                "visible Send reused the consumed observation deadline instead of a fresh25second budget");
+            require(operation.operationId!=tickOperation->operationId &&
+                    operation.correlationId==tickOperation->correlationId &&
+                    operation.cancellation==tickOperation->cancellation && operation.cancellation.stop_possible(),
+                "fresh dispatch context lost its operation identity, correlation or worker cancellation token");
+            if(scenario==Scenario::Cancelled) {
+                f.fixture.observer->beginShutdown();
+                require(operation.isCancellationRequested() && tickOperation->isCancellationRequested(),
+                    "fresh dispatch was detached from the published worker cancellation source");
+                const auto rejected=receipt({VisibleHandoffFixture::Effect::Send,VisibleHandoffFixture::Stage::BeforeDispatch,f.selected,0U});
+                requireError(rejected,Domain::ErrorCodes::Cancelled,"cancelled fresh dispatch passed its configuration callback guard");
+                cancelledRefused=true;return rejected;
+            }
+            clock.advance(std::chrono::seconds{3});f.fixture.configuration.setNow(clock.monotonicNow());
+            const Infrastructure::Windows::LMStudioChatEffectObserver checked=[&](const Receipt& effect) {
+                ++effectCallbacks;
+                auto recorded=receipt(effect);
+                if(scenario==Scenario::AuthorityDenied) {
+                    requireError(recorded,Domain::ErrorCodes::Unauthorized,"fresh25second dispatch ignored current authority refusal");
+                    authorityRefused=true;return recorded;
+                }
+                if(recorded) {
+                    const auto saved=f.checkpoint().at("state");
+                    require(saved.at("effect").at("purpose")=="request" && saved.at("effect").at("conversation_id")==f.selected,
+                        "fresh dispatch callback checkpoint lost its exact request/target binding");
+                    require(saved.at("effect").at("stage")==
+                            (effect.stage==VisibleHandoffFixture::Stage::BeforeDispatch?"uncertain":"confirmed"),
+                        "fresh dispatch callback checkpoint did not retain the original uncertainty transition");
+                }
+                return recorded;
+            };
+            return originalSend(executable,text,newChat,operation,expected,successor,checked);
+            } catch(const TestFailure& error) {
+                controlFailure=error.what();
+                return Domain::Result<void>::failure(Domain::makeError(Domain::ErrorCodes::InternalFailure,controlFailure));
+            }
+        };
+        const auto freshAuthority=[&](const Domain::ProjectId& project,const Domain::PathText& root,
+            const Domain::OperationContext& operation) {
+            ++freshAuthorityChecks;
+            require(dispatchOperation.has_value() && project==f.fixture.project && root==f.fixture.fileFixture.path(),
+                "fresh dispatch callback lost its actual workspace binding");
+            require(operation.operationId==dispatchOperation->operationId &&
+                    operation.correlationId==dispatchOperation->correlationId &&
+                    operation.deadline==dispatchOperation->deadline &&
+                    operation.cancellation==dispatchOperation->cancellation && !operation.isExpired(clock.monotonicNow()),
+                "fresh authority callback reused the old tick or changed the dispatch context");
+            if(scenario==Scenario::AuthorityDenied) return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::Unauthorized,"Private fresh dispatch authority refusal"));
+            return Domain::Result<void>::success();
+        };
+        f.fixture.observer=Controls::createScoped(f.controls,std::nullopt,freshAuthority,f.fixture.project,
+            f.fixture.fileFixture.path(),f.home(),f.fixture.fileFixture.path(),f.fixture.fileFixture.path(),
+            Domain::LocalModelConfig{},f.fixture.memory,f.fixture.legacyContinuity,f.fixture.projects,
+            clock,f.fixture.uuid,f.fixture.configuration,true);
+        f.fixture.fileFixture.save(conversation(Json::array({message(Json::array({version(Json::array({generation(31000U,32768U)}))}))})));
+        const auto status=f.run([](const Json& value) {
+            return value.value("state",std::string{})=="waiting_for_model_packet" || value.contains("error");
+        });
+        require(controlFailure.empty(),controlFailure);
+        const auto state=f.checkpoint().at("state");
+        require(tickOperation && dispatchOperation,"fresh dispatch was not exercised: "+status.dump());
+        if(scenario==Scenario::Confirmed) {
+            require(status.value("state",std::string{})=="waiting_for_model_packet" && !status.contains("error") &&
+                    f.sends==1U && f.creations==0U && freshAuthorityChecks==1U && effectCallbacks==2U &&
+                    state.at("packet_request_acknowledged")==true && state.at("effect").at("stage")=="confirmed",
+                "fresh dispatch did not publish one exact confirmed packet request: "+status.dump());
+            require(f.fixture.configuration.calls()==2U,"fresh dispatch did not preserve the initial and BeforeDispatch configuration rereads");
+        } else {
+            require(f.sends==0U && f.creations==0U && state.at("effect").is_null() &&
+                    state.at("packet_request_acknowledged")==false,
+                "refused fresh dispatch recorded or performed an uncertain native effect");
+            require(scenario==Scenario::Cancelled?(cancelledRefused && freshAuthorityChecks==0U):
+                    (authorityRefused && freshAuthorityChecks==1U && effectCallbacks==1U),
+                "fresh dispatch refusal did not reach its original cancellation/current authority guard");
+        }
+    }
+}
+
 void freshEmptyConversation()
 {
     ConversationFixture fixture;
@@ -2189,6 +2346,8 @@ void freshEmptyConversation()
 
 void registerWindowsLMStudioConversationReaderTests(TestRegistry& tests)
 {
+    addTest(tests, "LMStudioChatContinuity.fresh_dispatch_budget_preserves_cancellation_and_authority",
+        continuitySendUsesFreshBudgetAndPreservesAuthority);
     addTest(tests, "LMStudioConversationReader.selected_provider_statistics",
         selectedProviderStatisticsAndTerminalTools);
     addTest(tests, "LMStudioConversationReader.cached_prompt_separate_provider_statistics",

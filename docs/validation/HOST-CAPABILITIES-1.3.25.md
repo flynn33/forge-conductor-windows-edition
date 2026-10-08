@@ -1,35 +1,38 @@
-# 1.3.25 capability qualification — pending
+# 1.3.25 capability measurements — superseded, unpublished
 
-The **1.3.25 source candidate / Windows package 1.3.25.0** retains 112 Primary/Fallback descriptors, five CLU tools, ten specialist playbooks and every existing feature. Native continuity adds a separately admitted cached rendered prompt count to pressure evaluation while preserving latest-generation provider usage and telemetry. Cache admission requires the selected native model identifier and matching loaded context capacity; it does not establish generation freshness or current KV usage. Manager remains the observer owner and Primary supplies authorized adapter results and workspace scope. All final 1.3.25 source, build, complete graph, static/persistence, signed installation, catalogs, native/image workflows, CI and release checks remain **pending**. No earlier 1.3.24 pass is a current 1.3.25 qualification.
+The **1.3.25 / 1.3.25.0** installed candidate is **unpublished and superseded**. The source-bound measurements below are historical; they do not qualify a 1.3.26 artifact.
 
-## Required actual checks
+The installed, unpublished **1.3.25 / 1.3.25.0** artifact at source `5708cb9c52ed2f2dd10b3a500b57c7ffff6c6f7b`, tree `fcd027b9bf82bc88673a3ee43069973c1600a831`, passed Product All, all three static gates, package persistence and **167/167 local Release tests in 146.24 seconds**. Its signed installation verified all four executable images and **323 payload files**, preserving **8,553 profile files / 422,592,105 bytes** and the four protected snapshots before launch. Exact-source Windows CI run 37763301666 failed **165/167 in 147.41 seconds** at DesktopArtifact accessibility connection and Infrastructure diagnostic rotation checks; the later CI static-gate/upload steps were skipped. Local success does not replace that failed CI result. Actual native assisted readback reported 1.3.25 and 112 tools; it did not establish all-tool runtime qualification or automatic New chat/Send. Full controller diagnosis remained open, and no 1.3.25 release was published. These observations do not qualify 1.3.26.
 
-| Scope | Current 1.3.25 result |
+## Actual automatic attempt
+
+The captured installed automatic attempt preserved every field of the original **86 messages** in the **59,661,455-byte** native conversation. An **18,697-character** unsent draft exactly matched the traced automatic packet request. Checkpoint revision **14** retained `WaitingPacket`, `effect:null` and a false packet-request acknowledgement. The capture reported no confirmed request Send, no New chat dispatch and no new native tool dispatch for this attempt. It does not establish EOS, a saved new model packet, a successor or automatic delivery. The preserved failure receipt has SHA-256 `8075fd1adeb47c96709d644ac08927dba8074e904e2147537b185ac8c038f6fb`; the native file has SHA-256 `ced8d7316db1ea04bde709cb53cf8424afbb7140dccbac120fd95fa329463547`. This capture does not determine the deadline failure by itself; the later guarded timing comparison below diagnoses that boundary. No query optimization is integrated.
+
+## Retained source contract
+
+The cached `tokenCount` projects LM Studio's complete rendered prompt. Continuity evaluates the larger of admitted cached count and actual latest provider usage at initial observation and again after a confirmed pause. `cached_rendered_prompt_tokens`, `pressure_tokens`, `pressure_source` and `pressure_headroom_tokens` remain separate from actual `tokens_used` and `headroom_tokens`. Cache admission requires the current selected generation/model identifier and equal loaded capacity; unknown, malformed or mismatched evidence is not admitted. LM Studio refreshes this cache around its outer prediction and does not attach a generation timestamp. Physical overflow remains distinct.
+
+## Private controller comparisons
+
+Private read-only comparisons retained their C570 source and copied-library identities. The earlier baseline idle calls measured **1,841.9938–3,157.5090 ms**; typed-cache searches measured **6,473.7840–7,603.1633 ms**, and reversed-condition searches measured **1,838.8690–3,247.9454 ms**. All calls returned idle without input actions or owner writes. Neither candidate supported an idle latency improvement, and neither is integrated. These sequential private comparisons are not a Send profile or automatic-rollover result; neither is a completed Send result; the later guarded comparison diagnoses the caller-budget boundary.
+
+Guarded timing used the same C570 controller and protected native inputs. With the original **20-second** caller budget, Send preparation returned `deadline_exceeded` after **20,375.0247 ms**, before the receipt callback. With a fresh **25-second** caller budget, it reached `BeforeDispatch` after **20,363.4627 ms** and the private callback deliberately refused dispatch with `conflict` at **20,367.1673 ms**, leaving **4,632.8327 ms**. Both captures preserved the protected native inputs; neither invoked Send or New chat. This demonstrates the caller-budget boundary on this measured path, not completed native submission or a general latency guarantee.
+
+## Measurement boundaries
+
+| Scope | Actual 1.3.25 result |
 | --- | --- |
-| Narrow cached-prompt pressure/admission regression | Pending |
-| Final clean source commit/tree and all version inputs | Pending |
-| Product All and complete configured Release graph | Pending |
-| Static gates and package persistence | Pending |
-| Signed higher-version installation, four images and complete payload | Pending |
-| Full offline profile backup and four protected prelaunch snapshots | Pending |
-| Installed Primary/Fallback/CLU canonical catalogs | Pending |
-| Original shell authority and fresh CLI scope | Pending |
-| Selected native pixel/CMake/desktop/blind/error groups | Pending |
-| Integrated public MCP and selected Qwen image provider | Pending |
-| Actual initial cached-pressure and confirmed-pause reread | Pending |
-| Automatic native New/Send, exact packet read and following Primary status | Pending |
-| Manager retained lifetime across predecessor CLI exit | Pending |
-| Exact-source Windows CI | Pending |
-| Documentation/wiki alignment and seven-asset release readback | Pending |
+| Clean C570 Product All/static/persistence | Passed; original receipts retained |
+| Local complete Release graph | 167/167 passed in 146.24 seconds |
+| Exact-source Windows CI | 165/167 passed; two failures; 147.41 seconds; later static/upload skipped |
+| Installed higher-version package | Four images/323 payloads and 8,553 files/422,592,105 bytes preserved before launch |
+| Selected native assisted readback | Actual 1.3.25/112 tool result; not all-tool or automatic qualification |
+| Automatic model packet request | Exact 18,697-character unsent draft; no confirmed Send/New/native tool dispatch |
+| Query optimization comparisons | Rejected; private idle-only scope, not Send qualification |
+| Guarded Send timing | Original20-second caller expired; fresh25-second caller reached refused BeforeDispatch; noSend |
+| Complete public/native acceptance/automatic rollover | Not qualified |
+| Release publication | No 1.3.25 release published |
 
-## 1.3.25 cached prompt pressure candidate
+Private working-source CI and pressure changes after C570 are separate source checks. The root-reported two-target run passed in 87.01 seconds while its binaries still compiled version 1.3.25, before the 11 active identity inputs were moved to 1.3.26. That run is not a clean 1.3.26 artifact qualification.
 
-The cached `tokenCount` projects LM Studio's complete rendered prompt. Continuity evaluates the larger of admitted cached count and actual latest provider usage at initial observation and again after a confirmed pause. `cached_rendered_prompt_tokens`, `pressure_tokens`, `pressure_source` and `pressure_headroom_tokens` remain separate from actual `tokens_used` and `headroom_tokens`. Cache admission requires the current selected generation/model identifier and equal loaded capacity; unknown, malformed or mismatched evidence is not admitted. LM Studio refreshes this cache around its outer prediction and does not attach a generation timestamp. Physical overflow remains distinct. Final source checks and installed automatic New/Send/full packet read/following Primary proof are pending.
-
-## Historical 1.3.24 scope
-
-The installed, unpublished **1.3.24 / 1.3.24.0** artifact at source `83d133df8aeb3801c6813be57d0dd81dfe56b6ea`, tree `3c38cb4390605c6f581debe7da9f27609daad3da`, passed Product All, all three static gates, package persistence and **167/167 Release tests in 96.38 seconds**. Exact-source Windows CI run 37745306780 passed **167/167 in 135.32 seconds**. Its development-signed installation matched all four executable images and all **323 payload files**, preserving **8,505 profile files / 414,180,807 bytes** and four protected snapshots before launch. Installed catalogs returned **112/112/5**, retaining every prior 106 descriptor. Original authority and fresh CLI checks passed **7 cases / 63 requests** and **8 cases / 38 requests**. Public image-provider acceptance passed **7 cases / 47 requests**; selected Qwen image-provider acceptance verified **16 actual pairs across all six image tools**, and native acceptance verified **8 calls across five groups**. These eleven completed scopes did not establish automatic continuity, and no 1.3.24 release was published. They do not qualify the 1.3.25 candidate.
-
-The frozen active 86-message conversation stored a cached full rendered prompt count of **264,415**, with loaded capacity **262,144**, while its latest selected provider generation reported **130,969** total tokens (130,895 prompt plus 74 predicted) under `rollingWindow`. LM Studio's shipped writer counts the complete rendered selected history, system prompt and tool definitions into `tokenCount`; its overflow-retry path can retain a smaller history suffix. Forge 1.3.24 based pressure on latest provider usage and ignored that cached full-prompt projection. This source gap prevented the cached projection from triggering rollover. The individual backend overflow-error invocation and exact discarded prefix were not captured. The cached count has no generation freshness timestamp and is distinct from current KV-cache usage. Automatic native New/Send remained without qualification.
-
-See [the separate 1.3.24 record](HOST-CAPABILITIES-1.3.24.md).
+See [current 1.3.26 pending qualification](HOST-CAPABILITIES-1.3.26.md) and [historical 1.3.24 scopes](HOST-CAPABILITIES-1.3.24.md).

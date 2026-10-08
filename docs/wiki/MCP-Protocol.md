@@ -4,7 +4,7 @@
 
 # MCP Protocol
 
-Forge Conductor speaks newline-delimited JSON-RPC 2.0 over stdio for LM Studio. The 1.3.25 source catalog contains **112 tool descriptors**, filtered by deployment role. All original 80 remain, with 32 additions including the six optional ComfyUI generation/edit/job routes. Integrated 1.3.25 source, package, installed Manager/LM Studio and native-model qualification remain pending. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. See [Tool Catalog](Tool-Catalog), [Windows Workflow Capabilities](Windows-workflow-capabilities) and [1.3.25 source notes](Release-1.3.25).
+Forge Conductor speaks newline-delimited JSON-RPC 2.0 over stdio for LM Studio. The 1.3.26 source catalog contains **112 tool descriptors**, filtered by deployment role. All original 80 remain, with 32 additions including the six optional ComfyUI generation/edit/job routes. Integrated 1.3.26 source, package, installed Manager/LM Studio and native-model qualification remain pending. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. See [Tool Catalog](Tool-Catalog), [Windows Workflow Capabilities](Windows-workflow-capabilities) and [1.3.26 source notes](Release-1.3.26).
 
 ## Roles
 
@@ -14,7 +14,7 @@ Forge Conductor speaks newline-delimited JSON-RPC 2.0 over stdio for LM Studio. 
 | Fallback | `forge-conductor-fallback` | Independent general catalog and health |
 | CLU | `forge-conductor-clu` | Governance-only `clu.evaluate`, `clu.export_log`, `clu.findings`, `clu.resolve`, and `project_policy.read` |
 
-All three registrations share an exact deployment revision while retaining distinct role, health, process, and presence evidence. The 1.3.25 implementation retains the exact integer `timeout: 180000` contract for every role.
+All three registrations share an exact deployment revision while retaining distinct role, health, process, and presence evidence. The 1.3.26 implementation retains the exact integer `timeout: 180000` contract for every role.
 
 ## Project context contract
 

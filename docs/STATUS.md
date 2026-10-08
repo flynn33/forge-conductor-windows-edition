@@ -1,10 +1,10 @@
 # Product status
 
-## Current 1.3.25 source candidate
+## Current 1.3.26 source candidate
 
-The **1.3.25 source candidate / Windows package 1.3.25.0** retains 112 Primary/Fallback descriptors, five CLU tools, ten specialist playbooks and every existing feature. Native continuity adds a separately admitted cached rendered prompt count to pressure evaluation while preserving latest-generation provider usage and telemetry. Cache admission requires the selected native model identifier and matching loaded context capacity; it does not establish generation freshness or current KV usage. Manager remains the observer owner and Primary supplies authorized adapter results and workspace scope. All final 1.3.25 source, build, complete graph, static/persistence, signed installation, catalogs, native/image workflows, CI and release checks remain **pending**. No earlier 1.3.24 pass is a current 1.3.25 qualification.
+The **1.3.26 source candidate / Windows package 1.3.26.0** retains 112 Primary/Fallback descriptors, five CLU tools, ten specialist playbooks and every existing feature. Native continuity adds a separately admitted cached rendered prompt count to pressure evaluation while preserving latest-generation provider usage and telemetry. Cache admission requires the selected native model identifier and matching loaded context capacity; it does not establish generation freshness or current KV usage. Manager remains the observer owner and Primary supplies authorized adapter results and workspace scope. All final 1.3.26 source, build, complete graph, static/persistence, signed installation, catalogs, native/image workflows, CI and release checks remain **pending**. No earlier 1.3.24 pass is a current 1.3.26 qualification.
 
-See [candidate notes](releases/1.3.25.md), [pending qualification](validation/HOST-CAPABILITIES-1.3.25.md) and [retained 1.3.24 scopes](validation/HOST-CAPABILITIES-1.3.24.md).
+See [candidate notes](releases/1.3.26.md), [pending qualification](validation/HOST-CAPABILITIES-1.3.26.md) and [retained 1.3.24 scopes](validation/HOST-CAPABILITIES-1.3.24.md).
 
 ## Superseded 1.3.24 installed investigation
 
@@ -24,7 +24,7 @@ The superseded installed 1.3.22 candidate at source `9178abdf12998af56df4860a56b
 
 See [retained 1.3.22 measurements](validation/HOST-CAPABILITIES-1.3.22.md).
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.25 candidate.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.26 candidate.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -44,7 +44,7 @@ Stock LM Studio MCP image metadata remains distinct from model image input and i
 
 
 
-The current source version is 1.3.25 / Windows package identity 1.3.25.0, with 112 Primary/Fallback tools, ten specialist playbooks and five CLU tools. Native CMake/CTest jobs, paged desktop accessibility reads and optional higher-resolution bounded previews extend dedicated web, native Office, desktop/browser, image analysis, independent workers and schedules. Owner-selected host/workspace filesystem modes and existing contracts remain. Integrated 1.3.25 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. See [capabilities](HOST-CAPABILITIES.md), [CMake/CTest](CMAKE-CTEST.md), [implementation notes](releases/1.3.25.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.25.md).
+The current source version is 1.3.26 / Windows package identity 1.3.26.0, with 112 Primary/Fallback tools, ten specialist playbooks and five CLU tools. Native CMake/CTest jobs, paged desktop accessibility reads and optional higher-resolution bounded previews extend dedicated web, native Office, desktop/browser, image analysis, independent workers and schedules. Owner-selected host/workspace filesystem modes and existing contracts remain. Integrated 1.3.26 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. See [capabilities](HOST-CAPABILITIES.md), [CMake/CTest](CMAKE-CTEST.md), [implementation notes](releases/1.3.26.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.26.md).
 
 The historical 1.3.19 source, installed and current-chat results are recorded above. The installed, unpublished [1.3.18 investigation](validation/HOST-CAPABILITIES-1.3.18.md) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact.
 
@@ -67,7 +67,7 @@ The installed 1.3.11 Release suite passed 153/153; signed installation, all thre
 | Packages | Universal inventory and streamed hashes; callable `instruction_package.read` returns the selected project queue row and paged content. |
 | Status | `get_forge_status` returns project ID/folder and binding source, ordered package paths, policy source/revision, tool names/count, and agent count. |
 | Governance | Bound repository reading, structured evidence evaluation, findings, model tool-result notifications, visible findings/correction history, and redacted export. |
-| Auto Continuity | The 1.3.25 candidate uses a Manager-lifetime observer and authorized Primary observations. Actual native messages/effects, packet retrieval and a following Forge result gate completion; installed qualification is pending. |
+| Auto Continuity | The 1.3.26 candidate uses a Manager-lifetime observer and authorized Primary observations. Actual native messages/effects, packet retrieval and a following Forge result gate completion; installed qualification is pending. |
 | Telemetry layout | Real WinUI observer with injected Manager measured zero Rig position transitions across 16 polls; injected CPU values kept updating. |
 | Packet view | Saved packet list and detail, refresh, delete selected packet, and clear all packets. |
 | Settings | Load/save/readback/revert/test/restart controls remain; record selection plus delete buttons replaces the old scope-maintenance scheme. |
