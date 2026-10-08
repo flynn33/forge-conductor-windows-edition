@@ -2,7 +2,7 @@
 
 ## Current product documentation
 
-The current source implementation is 1.3.21 with 106 Primary/Fallback tools; final qualification is pending. Earlier release and verification entries retain their named artifact identities.
+The current source implementation is 1.3.21 with 106 Primary/Fallback tools; Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. Earlier release and verification entries retain their named artifact identities.
 
 - [README](../README.md)
 - [Product status](STATUS.md)
@@ -19,8 +19,8 @@ The current source implementation is 1.3.21 with 106 Primary/Fallback tools; fin
 - [Windows toolchain](WINDOWS_TOOLCHAIN.md)
 - [Post-1.0 enhancements](DEFERRED.md)
 - [Packaging inputs](../packaging/README.md)
-- [1.3.21 implementation notes — qualification pending](releases/1.3.21.md)
-- [1.3.21 pending qualification record](validation/HOST-CAPABILITIES-1.3.21.md)
+- [1.3.21 release notes](releases/1.3.21.md)
+- [1.3.21 measured qualification record](validation/HOST-CAPABILITIES-1.3.21.md)
 - [Unpublished 1.3.20 installed investigation, superseded](releases/1.3.20.md)
 - [Historical published release 1.3.19](releases/1.3.19.md)
 - [Historical 1.3.19 installed capability verification](validation/HOST-CAPABILITIES-1.3.19.md)

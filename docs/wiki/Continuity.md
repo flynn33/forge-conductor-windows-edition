@@ -4,7 +4,7 @@ The primary `forge-conductor` MCP worker owns native visible LM Studio chat roll
 
 ## Current 1.3.21 checkpoint source
 
-The Primary worker now persists the interrupted native handoff phase alongside the existing saved packet. Final reconstruction regression and installed interrupted-connector restart qualification are pending; the historical 1.3.5/1.3.11 checks below do not qualify the new reconstruction path.
+The Primary worker now persists the interrupted native handoff phase alongside the existing saved packet. The 118-group Infrastructure suite passed, including the private same-PID observer reconstruction regression and 20 durability cases. Installed observer/UI interruption or connector rollover recovery remains unverified; physical context exhaustion and already-running agent reattachment were not exercised. Historical 1.3.20 checkpoint-process primitive evidence retains its original source identity and is not a current installed qualification. Historical 1.3.5/1.3.11 checks retain their original identities.
 
 A current-user DPAPI checkpoint lives at `continuity/lmstudio-visible-<project-id>.checkpoint` under the routed Forge home. The existing authorized atomic store publishes its schema, source contract, revision, scope and bounded state; plaintext is limited to 8 MiB and stored content to 10 MiB. One exclusive Windows file handle owns native UI writing across projects on that home and is released on worker exit. A saved checkpoint, lock filename or PID does not grant current workspace authority.
 

@@ -8,7 +8,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-The current Forge Conductor source identity is 1.3.21 (Windows package 1.3.21.0), targeting Windows 11 x64. Source, package, installed-tool and live-model qualification are pending; the published 1.3.19 distribution remains historical evidence above. A distribution contains:
+The current Forge Conductor source identity is 1.3.21 (Windows package 1.3.21.0), targeting Windows 11 x64. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. The published 1.3.19 distribution remains historical evidence above. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
 - `distribution.json` and payload hashes;
@@ -42,7 +42,7 @@ For upgrades, install a higher package version with the same stable identity and
 
 The 1.3.21.0 package identity is higher than the installed unpublished 1.3.20.0 candidate. The next signed upgrade, payload/profile preservation, installed native acceptance and publication must be verified against the final 1.3.21 source and package; the version change alone does not establish those results.
 
-The source and packaging inputs are aligned to 1.3.21 / 1.3.21.0. Final package construction, signature/payload checks, installation, live-model acceptance and publication are pending. See [implementation notes](releases/1.3.21.md) and [pending qualification](validation/HOST-CAPABILITIES-1.3.21.md). Download links for the historical published package above retain their original version.
+The source and packaging inputs are aligned to 1.3.21 / 1.3.21.0. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. Publication readback remains a separate check. See [implementation notes](releases/1.3.21.md) and [measured qualification](validation/HOST-CAPABILITIES-1.3.21.md). Download links for the historical published package above retain their original version.
 
 ## Historical published 1.3.19 distribution
 

@@ -1,6 +1,6 @@
 # Windows package inputs
 
-Current source and packaging inputs identify Forge Conductor 1.3.21 / Windows package 1.3.21.0 x64. `scripts/package.ps1` constructs a distribution from a clean, source-bound Release staging manifest. Final source, package, signature/payload, installed-tool and live-model qualification and publication are pending; see [implementation notes](../docs/releases/1.3.21.md) and [pending verification](../docs/validation/HOST-CAPABILITIES-1.3.21.md). Published [1.3.19 evidence](../docs/releases/1.3.19.md) retains its own artifact identity.
+Current source and packaging inputs identify Forge Conductor 1.3.21 / Windows package 1.3.21.0 x64. `scripts/package.ps1` constructs a distribution from a clean, source-bound Release staging manifest. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. Publication readback remains a separate check; see [implementation notes](../docs/releases/1.3.21.md) and [measured verification](../docs/validation/HOST-CAPABILITIES-1.3.21.md). Published [1.3.19 evidence](../docs/releases/1.3.19.md) retains its own artifact identity.
 
 The stable package identity is `ForgeConductor.Windows`. The package contains the self-contained WinUI application, CLI, Manager, SessionHost, Windows App SDK runtime, release Visual C++ runtime, resources, Forsetti manifest, third-party notices, embedded provenance, and a complete payload hash manifest.
 

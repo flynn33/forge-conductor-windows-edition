@@ -2,7 +2,7 @@
 
 ## Current 1.3.21 source contract
 
-The Primary stdio MCP composition continues to own `WindowsLMStudioChatContinuity`; Fallback and CLU do not start competing native rollover workers. The current source adds durable phase reconstruction through `LMStudioChatCheckpoint` and New chat/Send effect receipts in `WindowsLMStudioChatControl`. Final reconstruction regression and installed interrupted-connector restart qualification are pending. The historical checks below do not qualify this new behavior.
+The Primary stdio MCP composition continues to own `WindowsLMStudioChatContinuity`; Fallback and CLU do not start competing native rollover workers. The current source adds durable phase reconstruction through `LMStudioChatCheckpoint` and New chat/Send effect receipts in `WindowsLMStudioChatControl`. The 118-group Infrastructure suite passed, including the private same-PID observer reconstruction regression and 20 durability cases. Installed observer/UI interruption or connector rollover recovery remains unverified; physical context exhaustion and already-running agent reattachment were not exercised. Historical 1.3.20 checkpoint-process primitive evidence retains its original source identity and is not a current installed qualification. The historical checks below do not qualify this new behavior.
 
 ### Bounded checkpoint and writer ownership
 

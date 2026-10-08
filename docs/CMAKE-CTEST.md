@@ -1,6 +1,6 @@
 # Native CMake and CTest jobs
 
-This guide describes the current 1.3.21 implementation contract. Source, package, installed-tool and live-model qualification are pending; the examples below are request examples, not records of executed checks. See [Testing](TESTING.md) for the repository's verification workflow. Historical 1.3.19 measurements retain their original artifact identity.
+This guide describes the current 1.3.21 implementation contract. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. The examples below are request examples; actual results are recorded separately. See [Testing](TESTING.md) for the repository's verification workflow. Historical 1.3.19 measurements retain their original artifact identity.
 
 `cmake_test_run` starts a durable, project-owned job in an explicit initialized CMake build tree. `cmake_test_status` reads its actual phase outcomes, validated JUnit counts and paged failure details. The existing `process_read_log`, `process_wait`, `process_poll` and `process_kill` tools operate on the returned `job_id`.
 
@@ -132,4 +132,4 @@ The hashes bind the bytes captured by Forge and detect subsequent changes agains
 
 The native integration regression runs Windows PowerShell 5.1 through the real process service to require an existing absolute `CommonApplicationData` directory, repeats a successful build and CTest on the same initialized tree with actual phase receipts and counts, and requires the intended failure target's marker before `cmake -E false`. A pre-target MSBuild initialization failure cannot satisfy that expected-failure assertion. These focused checks do not qualify the final 1.3.21 source, package, installed tools or live-model workflows.
 
-This document is based on the reviewed native request, phase, report-parser, durable-receipt and MCP schema/serialization paths. Qualification of the final source, all tests, package, installed tools and live Qwen behavior remains pending. Record measured outcomes under the exact release/source/package identity before replacing this qualification note; preserve failed attempts and historical 1.3.19 evidence with their original identities.
+This document is based on the reviewed native request, phase, report-parser, durable-receipt and MCP schema/serialization paths. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. Failed attempts and historical 1.3.19 evidence retain their original identities.
