@@ -16,7 +16,7 @@ The complete source suite also exercised the native CMake fixture's Windows Powe
 
 Continuity source fixtures passed **118 Infrastructure groups**, including the observer reconstruction regression and **20 durability cases**. Observer reconstruction was exercised within one PID using private native conversation files and injected control receipts. These results do not qualify installed observer/UI interruption, an installed connector rollover, physical context exhaustion or already-running agent reattachment. The historical 1.3.20 cross-process checkpoint primitive evidence is not asserted as a current 1.3.21 check.
 
-Stock LM Studio MCP image metadata remains distinct from model image input and independent analysis. Higher-resolution previews and native RGBA samples do not establish exact OCR or change that stock bridge. Generative image providers and cloud accounts require separately configured services. Current Windows CI and publication readback are separate checks; no result is asserted here.
+Stock LM Studio MCP image metadata remains distinct from model image input and independent analysis. Higher-resolution previews and native RGBA samples do not establish exact OCR or change that stock bridge. Generative image providers and cloud accounts require separately configured services. Windows CI passed for the recorded 1.3.21 source, as linked in the verification record. Publication readback is a separate check.
 
 
 

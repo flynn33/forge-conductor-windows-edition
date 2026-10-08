@@ -65,7 +65,7 @@ Git, PowerShell, and other child work share a native supervisor with explicit ex
 
 Native shell and executable jobs explicitly supply bounded `SystemDrive`, `ProgramFiles`, `ProgramFiles(x86)` and `ProgramData` defaults from the Windows host. Case-insensitive explicit caller overrides remain authoritative; absent or oversized defaults are omitted. `SystemDrive` supports Windows/.NET known-folder resolution used by MSBuild; arbitrary host environment variables remain excluded.
 
-**Next:** [Tool Catalog](Tool-Catalog) · [Security](Security) · [How-To Recipes](How-To#invoke-a-native-project-tool)
+**Next:** [Tool Catalog](Tool-Catalog) · [Security](Security) · [How-To Recipes](How-To)
 
 ## Retained evidence and review workflows
 

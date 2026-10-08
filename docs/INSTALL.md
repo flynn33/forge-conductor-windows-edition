@@ -40,7 +40,7 @@ For upgrades, install a higher package version with the same stable identity and
 
 ## Current 1.3.21 implementation
 
-The 1.3.21.0 package identity is higher than the installed unpublished 1.3.20.0 candidate. The next signed upgrade, payload/profile preservation, installed native acceptance and publication must be verified against the final 1.3.21 source and package; the version change alone does not establish those results.
+The signed 1.3.21.0 package upgraded the unpublished 1.3.20.0 candidate. All four installed, staged and MSIX executable hashes matched, the complete owner profile and protected snapshots were preserved, and installed catalogs and the selected native Qwen cases passed against the recorded source. Publication readback is a separate check.
 
 The source and packaging inputs are aligned to 1.3.21 / 1.3.21.0. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. Publication readback remains a separate check. See [implementation notes](releases/1.3.21.md) and [measured qualification](validation/HOST-CAPABILITIES-1.3.21.md). Download links for the historical published package above retain their original version.
 
