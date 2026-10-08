@@ -4,7 +4,7 @@ The native dependency direction remains Domain → Contracts → Application →
 
 ## Native chat continuity ownership
 
-`McpServeCompositionRoot` constructs and starts `WindowsLMStudioChatContinuity` only for Primary. Authorized adapter calls report the actual workspace binding. `WindowsLMStudioConversationReader` reads the selected native conversation's ID, generation usage/capacity, active-tool state, enabled integrations, and correlated request/results. It reassembles complete canonical per-call fragment sequences before consuming large result evidence; incomplete or inconsistent sequences do not establish semantic success.
+`ManagerCompositionRoot` creates `ManagerVisibleChatContinuity` and registers it as a transition worker; that Manager-owned service constructs and starts `WindowsLMStudioChatContinuity`. Primary supplies authorized adapter observations through the Manager bridge, including the actual workspace binding; Fallback and CLU do not start competing observers. `WindowsLMStudioConversationReader` reads the selected native conversation's ID, generation usage/capacity, active-tool state, enabled integrations, and correlated request/results. It reassembles complete canonical per-call fragment sequences before consuming large result evidence; incomplete or inconsistent sequences do not establish semantic success.
 
 At reserve pressure the worker waits for completed-tool evidence, then `WindowsLMStudioChatControl::pauseAtToolBoundary` uses Windows UI Automation without interrupting an active Forge call. The loaded model saves a detailed `session_handoff`. The adapter publishes `continuity/project/<project-id>`; all three connector bootstrap paths can carry it.
 

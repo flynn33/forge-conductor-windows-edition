@@ -99,11 +99,15 @@ The Workspace/dashboard **Auto Continuity** toggle is persisted for the selected
 
 Inspect `get_forge_status.context_telemetry` for the latest completed provider generation's usage, capacity, reserves, headroom, source, generation reference, and observation time. Messages added after that generation are not measured; missing observations stay unavailable/null. `auto_continuity.readback_confirmed` confirms this MCP client retrieved the current packet through `context_get`. A completed job's `memory_attached` is a separate persistence outcome and must be checked when the task requires a memory receipt.
 
-The primary worker reads the selected native LM Studio conversation's actual generation usage and loaded capacity. At context reserve pressure it stops generation at a completed tool boundary without cutting off an active Forge tool. It requests a detailed model-written packet containing goal, verified work, decisions and constraints, files, blockers, agent sessions, and ordered next actions. `session_handoff` saves that packet and publishes project-scoped pickup.
+The Manager-owned observer reads the selected native LM Studio conversation's actual generation usage and loaded capacity. At context reserve pressure it stops generation at a completed tool boundary without cutting off an active Forge tool. It requests a detailed model-written packet containing goal, verified work, decisions and constraints, files, blockers, agent sessions, and ordered next actions. `session_handoff` saves that packet and publishes project-scoped pickup.
 
-The product opens **New chat** through Windows UI Automation, retains the same three integrations and loaded model, sends the packet, and checks the exact successor conversation ID and persisted handed message. The successor calls `context_get` and then another Forge tool. Packet storage or an MCP connection ID alone is not credited as native chat rollover.
+The product opens **New chat** through Windows UI Automation, retains the same three integrations and loaded model, sends the packet, and checks the exact successor conversation ID and persisted handed message. Recovery requires a complete Primary `context_get` result and a following successful Forge tool result. Packet storage or an MCP connection ID alone is not credited as native chat rollover.
+
+The following paragraph records historical 1.3.5 qualification, before the current Manager-owned observer and checkpoint implementation:
 
 Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
+
+The installed 1.3.28 reserve-pressure rollover completed after all three predecessor MCP CLI processes and their native bridge parents exited, with the same Manager remaining alive. The captured exits do not establish their cause. Physical context exhaustion, Manager reconstruction during delivery, UI interruption and already-running agent reattachment remain unverified. See [the 1.3.28 verification record](validation/HOST-CAPABILITIES-1.3.28.md).
 
 The **Continuity** view shows saved packets and selected packet detail. Use **Refresh packets**, **Delete selected packet**, or **Clear all packets**. These actions remove saved records, not policy folders or project source files.
 

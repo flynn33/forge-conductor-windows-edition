@@ -35,4 +35,8 @@ This map describes the current 1.3.28 implementation and native workflow bounds.
 | Verification/review | Tracked external pinned Python venv creation and observed version manifest; separate Manager reviewer session with authorized file or 64 KiB inline opening, read-only tools by default, optional text-only mode, per-turn receive timeout 1–3,600 seconds (default 600), sealed timeout persistence and infrastructure failure status. |
 | Persistence/package | Existing per-user stores, retained migration history, stable ForgeConductor.Windows identity, native x64 build/package workflow. |
 
+The following paragraph records historical 1.3.5 qualification, before the current Manager-owned observer and checkpoint implementation:
+
 Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
+
+The installed 1.3.28 reserve-pressure rollover completed after all three predecessor MCP CLI processes and their native bridge parents exited, with the same Manager remaining alive. Actual New chat, packet Send, a complete Primary `context_get` result and a following successful Primary result established continuation. The captured exits do not establish their cause. Physical context exhaustion, Manager reconstruction during delivery, UI interruption and already-running agent reattachment remain unverified. See [the 1.3.28 verification record](validation/HOST-CAPABILITIES-1.3.28.md).
