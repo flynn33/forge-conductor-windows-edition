@@ -125,10 +125,20 @@ Domain::Result<void> ManagerVisibleChatContinuity::validate(
     {
         return Domain::Result<void>::failure(document.error());
     }
-    const auto servers = Json::parse(document.value().sourceUtf8()).at("mcpServers");
+    const auto current = Json::parse(document.value().sourceUtf8());
+    const auto serversMember = current.find("mcpServers");
+    if (serversMember == current.end() || !serversMember->is_object())
+    {
+        return rejected<void>("Visible chat requires all three current native connector registrations.");
+    }
+    const auto& servers = *serversMember;
     bool explicitProject = false;
     for (const char* key : {"forge-conductor", "forge-conductor-fallback", "forge-conductor-clu"})
     {
+        if (!servers.contains(key) || !servers.at(key).is_object())
+        {
+            return rejected<void>("Visible chat requires all three current native connector registrations.");
+        }
         const auto& route = servers.at(key);
         explicitProject =
             explicitProject || (route.contains("args") && route.at("args").is_array() &&
@@ -319,6 +329,10 @@ Domain::Result<Snapshot> ManagerVisibleChatContinuity::observe(
         auto admitted = activate(request.projectId, request.projectRoot, operation);
         if (!admitted)
         {
+            if (!observer_)
+            {
+                startupError_ = admitted.error().message;
+            }
             return Domain::Result<Snapshot>::failure(admitted.error());
         }
         observer_->recordTool(request.toolName, request.succeeded, request.canonicalResult);
@@ -326,7 +340,8 @@ Domain::Result<Snapshot> ManagerVisibleChatContinuity::observe(
     }
     catch (const std::exception& error)
     {
-        return rejected<Snapshot>(error.what());
+        return Domain::Result<Snapshot>::failure(
+            Domain::makeError(Domain::ErrorCodes::InternalFailure, error.what()));
     }
 }
 Domain::Result<Snapshot> ManagerVisibleChatContinuity::status(

@@ -1202,7 +1202,9 @@ private:
                     {project, root, std::string{name}, succeeded, std::string{payload}},
                     brokerOperation);
                 // The Manager verifies renderer evidence without changing a completed tool result.
-                if (!observed) {
+                if (!observed &&
+                    observed.error().code != Domain::ErrorCodes::Unauthorized &&
+                    observed.error().code != Domain::ErrorCodes::HostCapabilityUnavailable) {
                     std::cerr << "visible_chat_bridge: " << observed.error().code << ": "
                               << observed.error().message << '\n';
                 }

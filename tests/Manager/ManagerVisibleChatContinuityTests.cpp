@@ -831,6 +831,44 @@ void freshAuthorityIsCheckedAtNativeDispatch()
             "boundary.");
 }
 
+void rejectedUnboundObservationRetainsItsStatusDiagnostic()
+{
+    OwnerFixture fixture;
+    auto routes = fixture.routes(fixture.root);
+    for (auto& route : routes["mcpServers"])
+    {
+        route["args"] = Json::array({"serve"});
+        route.erase("cwd");
+        route["env"]["FORGE_CONDUCTOR_HOME"] = fixture.alternate.value();
+    }
+    OwnerFixture::write(fixture.files / "studio" / "mcp.json", routes);
+    fixture.start();
+    require(fixture.factoryCalls == 0U && !fixture.status().contains("error"),
+            "Global routes activated an observer before a bound observation.");
+    requireError(fixture.observe(fixture.root), Domain::ErrorCodes::Unauthorized,
+                 "Manager admitted a different native route home.");
+    const auto refused = fixture.status();
+    require(fixture.factoryCalls == 0U && refused.value("error", std::string{}).find(
+                "all three current CLI, home, role and shared deployment routes") != std::string::npos,
+            "Rejected unbound observation lost its inspectable admission diagnostic.");
+    routes["mcpServers"].erase("forge-conductor-fallback");
+    for (const auto& incomplete : {routes, Json::object()})
+    {
+        OwnerFixture::write(fixture.files / "studio" / "mcp.json", incomplete);
+        requireError(fixture.observe(fixture.root), Domain::ErrorCodes::Unauthorized,
+                     "Missing native registrations bypassed admission refusal.");
+        require(fixture.factoryCalls == 0U && fixture.status().value("error", std::string{}).find(
+                    "all three current native connector registrations") != std::string::npos,
+                "Missing unbound registrations lost their inspectable refusal diagnostic.");
+    }
+    OwnerFixture::write(fixture.files / "studio" / "mcp.json", fixture.routes(fixture.root));
+    require(static_cast<bool>(fixture.observe(fixture.root)),
+            "Repaired current routes did not activate an observer.");
+    fixture.observing();
+    require(fixture.factoryCalls == 1U && !fixture.status().contains("error"),
+            "Successful activation retained its old admission diagnostic.");
+}
+
 void completeNativeRecovery(OwnerFixture& fixture)
 {
     fixture.start();
@@ -1021,6 +1059,8 @@ int main()
             trustedSiblingCliMismatchDoesNotActivate);
     addTest(tests, "ManagerVisibleChatContinuity.fresh_native_dispatch_authority",
             freshAuthorityIsCheckedAtNativeDispatch);
+    addTest(tests, "ManagerVisibleChatContinuity.rejected_unbound_observation_diagnostic",
+            rejectedUnboundObservationRetainsItsStatusDiagnostic);
     addTest(tests, "ManagerVisibleChatContinuity.caller_exit_native_recovery",
             callerExitKeepsManagerObserverAndNativeRecovery);
     addTest(tests, "ManagerVisibleChatContinuity.same_project_alias_scope",

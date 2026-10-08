@@ -917,7 +917,7 @@ public:
                 "The stdio MCP child exited with code " +
                 std::to_string(exitCode) + "; stderr: " + error.bytes};
         }
-        REQUIRE(error.bytes.empty());
+        require(error.bytes.empty(), "MCP child stderr must be empty; got: " + error.bytes);
         auto frames = parseProtocolFrames(output.bytes);
         REQUIRE(frames.size() == expectedFrameCount);
         finished_ = true;
