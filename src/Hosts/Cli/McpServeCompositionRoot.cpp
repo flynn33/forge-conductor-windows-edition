@@ -18,7 +18,6 @@
 #include "ForgeConductor/Application/ProjectPolicyService.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsPolicySourceReader.h"
 #include "ForgeConductor/Domain/ProductIdentity.h"
-#include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioChatContinuity.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsGitHubReadService.h"
@@ -756,10 +755,8 @@ public:
                 Domain::MonotonicTimePoint::max(),
                 {},
                 take(Domain::CorrelationId::parse("mcp-stdio-serve"))};
-            if (visibleChatContinuity_ && role_ == Domain::McpRole::Primary) visibleChatContinuity_->start();
             auto outcome = server_->run(
                 *stdioTransport_, role_, deploymentId_, clientId_, serveContext);
-            if (visibleChatContinuity_) visibleChatContinuity_->shutdown();
             stopPresence();
             if (!outcome) {
                 std::cerr << outcome.error().code << ": "
@@ -1107,16 +1104,6 @@ private:
                     authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Write, operation),
                     authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Create, operation)});
             }, dataRoot.value());
-        if (const auto profileRoot = environmentValue(L"USERPROFILE")) {
-            const auto studioRoot = childPath(pathText(*profileRoot), ".lmstudio");
-            const auto localData = environmentValue(L"LOCALAPPDATA");
-            if (localData) {
-                const auto executable = childPath(pathText(*localData), "Programs/LM Studio/LM Studio.exe");
-                visibleChatContinuity_ = std::make_unique<InfrastructureWindows::WindowsLMStudioChatContinuity>(
-                    defaultProjectId_, startupProject.aliases.front(), dataRoot, studioRoot, executable,
-                    configuration_.localModel, *legacyMemory_, *legacyContinuity_, *projectMemory_, *clock_, *uuidGenerator_, *configurationStore_, explicitProject.has_value());
-            }
-        }
         githubRead_ = std::make_unique<InfrastructureWindows::WindowsGitHubReadService>(
             InfrastructureWindows::WindowsGitHubReadService::configuredEnvironmentToken());
         auto toolDependencies = Mcp::McpToolPackDependencies{
@@ -1151,19 +1138,76 @@ private:
                 std::string{ProductVersion},
                 std::string{RuntimeName},
                 static_cast<std::uint32_t>(::GetCurrentProcessId()), projectPolicy_.get(),
-                explicitProject ? "explicit_project_id" : "process_working_directory",
-                [this] { return visibleChatContinuity_ ? visibleChatContinuity_->status() : std::string{"{}"}; },
-                [this](std::string_view name, bool ok, std::string_view payload) {
-                    if (visibleChatContinuity_) visibleChatContinuity_->recordTool(name, ok, payload);
-                },
-                [this](const Domain::ProjectId& project, const Domain::PathText& root) {
-                    if (visibleChatContinuity_) visibleChatContinuity_->bindWorkspace(project, root);
-                }};
+                explicitProject ? "explicit_project_id" : "process_working_directory"};
         toolDependencies.evidence = evidence_.get();
         toolDependencies.webAccess = webAccess_.get();
         toolDependencies.artifactDocuments = artifactDocuments_.get();
         toolDependencies.desktopArtifacts = desktopArtifacts_.get();
         toolDependencies.managerStartupError = managerStartupError_;
+        toolDependencies.visibleChatRemoteStatus = [this, dataRoot](
+            const Domain::ProjectId& project, const Domain::OperationContext& operation) {
+            if (!managerBroker_) {
+                return Domain::Result<std::string>::failure(Domain::makeError(
+                    Domain::ErrorCodes::HostCapabilityUnavailable,
+                    "The Manager-owned native observer is unavailable."));
+            }
+            const Domain::OperationContext brokerOperation{
+                operation.operationId,
+                (std::min)(operation.deadline, clock_->monotonicNow() +
+                    ForgeConductor::Manager::ManagerTransportLimits::DefaultMaximumRequestLifetime),
+                operation.cancellation,
+                operation.correlationId};
+            auto managerStatus = managerBroker_->status(brokerOperation);
+            if (!managerStatus) {
+                return Domain::Result<std::string>::failure(managerStatus.error());
+            }
+            auto executable = siblingManagerExecutable();
+            if (!executable) {
+                return Domain::Result<std::string>::failure(Domain::makeError(
+                    Domain::ErrorCodes::HostCapabilityUnavailable,
+                    "The Manager sibling could not be resolved."));
+            }
+            auto verified = validateDurableManagerStatus(
+                managerStatus.value(), dataRoot, *executable);
+            if (!verified) {
+                return Domain::Result<std::string>::failure(verified.error());
+            }
+            auto observed = managerBroker_->visibleChatStatus(project, brokerOperation);
+            if (!observed) {
+                return Domain::Result<std::string>::failure(observed.error());
+            }
+            return Domain::Result<std::string>::success(observed.value().canonicalStatus);
+        };
+        if (role_ == Domain::McpRole::Primary) {
+            toolDependencies.visibleChatObservation = [this, dataRoot](
+                const Domain::ProjectId& project, const Domain::PathText& root,
+                std::string_view name, bool succeeded, std::string_view payload,
+                const Domain::OperationContext& operation) {
+                if (!managerBroker_) {
+                    return;
+                }
+                const Domain::OperationContext brokerOperation{
+                    operation.operationId,
+                    (std::min)(operation.deadline, clock_->monotonicNow() +
+                        ForgeConductor::Manager::ManagerTransportLimits::DefaultMaximumRequestLifetime),
+                    operation.cancellation,
+                    operation.correlationId};
+                auto managerStatus = managerBroker_->status(brokerOperation);
+                auto executable = siblingManagerExecutable();
+                if (!managerStatus || !executable ||
+                    !validateDurableManagerStatus(managerStatus.value(), dataRoot, *executable)) {
+                    return;
+                }
+                const auto observed = managerBroker_->visibleChatObserve(
+                    {project, root, std::string{name}, succeeded, std::string{payload}},
+                    brokerOperation);
+                // The Manager verifies renderer evidence without changing a completed tool result.
+                if (!observed) {
+                    std::cerr << "visible_chat_bridge: " << observed.error().code << ": "
+                              << observed.error().message << '\n';
+                }
+            };
+        }
         if (managerBroker_) toolDependencies.durableToolBroker = [this, dataRoot](
             const std::string_view name, const std::string_view arguments,
             const Domain::ProjectId& project, const Domain::OperationContext& operation) {
@@ -1263,8 +1307,6 @@ private:
             return;
         }
         shutdown_ = true;
-        if (visibleChatContinuity_) visibleChatContinuity_->shutdown();
-        visibleChatContinuity_.reset();
         stopPresence();
         presenceLifecycle_.reset();
 
@@ -1508,7 +1550,6 @@ private:
     std::unique_ptr<Mcp::McpToolCatalog> toolCatalog_;
     std::unique_ptr<Mcp::McpClientWorkspaceContext> clientWorkspaceContext_;
     std::unique_ptr<Mcp::McpInvocationGuard> invocationGuard_;
-    std::unique_ptr<InfrastructureWindows::WindowsLMStudioChatContinuity> visibleChatContinuity_;
     std::unique_ptr<Mcp::McpToolPackAdapter> toolPack_;
     std::unique_ptr<Mcp::McpToolAuthorizer> toolAuthorizer_;
     std::unique_ptr<InfrastructureWindows::WindowsPolicySourceReader> policySource_;

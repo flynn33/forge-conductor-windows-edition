@@ -519,13 +519,47 @@ void testAuthenticatedNamedPipeRoundTrip()
     limits.connectTimeout = 1s;
     limits.shutdownDrainTimeout = 2s;
 
+    const auto bridgeProjectId = take(Domain::ProjectId::parse(uuidText(12U)));
+    const Manager::ManagerVisibleChatObserveRequest bridgeObserve{
+        bridgeProjectId,
+        take(Domain::PathText::create("C:\\ManagerPipeRoundTrip\\Project")),
+        "continuity.execute", true,
+        R"({"opaque":{"items":[null,true,"quoted \"field\""]},"operation_id":"operation-bridge"})"};
+    const std::string bridgeStatusJson{
+        R"({"observer":{"operation_id":"operation-bridge","pending":true},"successor_response_id":null})"};
+    std::mutex bridgeMutex;
+    std::optional<Manager::ManagerVisibleChatObserveRequest> observedBridgeRequest;
+    std::string observeOperationId;
+    std::string statusOperationId;
+    std::size_t bridgeObserveCalls{};
+    std::size_t bridgeStatusCalls{};
+    Manager::ManagerTelemetrySources telemetrySources;
+    telemetrySources.telemetry = &telemetry;
+    telemetrySources.visibleChatObserve = [&](
+        const Manager::ManagerVisibleChatObserveRequest& observation,
+        const Domain::OperationContext& operation) {
+        std::lock_guard lock{bridgeMutex};
+        ++bridgeObserveCalls;
+        observedBridgeRequest = observation;
+        observeOperationId = operation.operationId.value();
+        return Domain::Result<Manager::ManagerVisibleChatSnapshot>::success(
+            Manager::ManagerVisibleChatSnapshot{observation.projectId, bridgeStatusJson});
+    };
+    telemetrySources.visibleChatStatus = [&](
+        const Domain::ProjectId& projectId,
+        const Domain::OperationContext& operation) {
+        std::lock_guard lock{bridgeMutex};
+        ++bridgeStatusCalls;
+        statusOperationId = operation.operationId.value();
+        return Domain::Result<Manager::ManagerVisibleChatSnapshot>::success(
+            Manager::ManagerVisibleChatSnapshot{projectId, bridgeStatusJson});
+    };
     auto dispatcher = std::make_shared<Manager::ManagerRequestDispatcher>(
         controller,
         clock,
         limits,
         std::shared_ptr<Contracts::IManagedRunService>{},
-        Manager::ManagerTelemetrySources{
-            &telemetry, nullptr, nullptr, nullptr, nullptr});
+        std::move(telemetrySources));
     const auto pipeName = uniquePipeName();
     const auto validNonce = nonce('a');
 
@@ -570,6 +604,33 @@ void testAuthenticatedNamedPipeRoundTrip()
             telemetrySnapshot.runtime == "windows-native",
         "The Manager telemetry snapshot did not complete a typed pipe round trip.");
 
+    const auto bridgeObservation = take(client->visibleChatObserve(
+        bridgeObserve, context(19U)));
+    require(
+        bridgeObservation.projectId == bridgeProjectId &&
+            bridgeObservation.canonicalStatus == bridgeStatusJson,
+        "The visible-chat observation did not return its complete typed snapshot.");
+    const auto bridgeStatus = take(client->visibleChatStatus(
+        bridgeProjectId, context(20U)));
+    require(
+        bridgeStatus.projectId == bridgeProjectId &&
+            bridgeStatus.canonicalStatus == bridgeStatusJson,
+        "The visible-chat status did not return its complete typed snapshot.");
+    {
+        std::lock_guard lock{bridgeMutex};
+        require(observedBridgeRequest.has_value(),
+            "The visible-chat observation did not reach the Manager dependency.");
+        require(
+            observedBridgeRequest->projectId == bridgeObserve.projectId &&
+                observedBridgeRequest->projectRoot == bridgeObserve.projectRoot &&
+                observedBridgeRequest->toolName == bridgeObserve.toolName &&
+                observedBridgeRequest->succeeded == bridgeObserve.succeeded &&
+                observedBridgeRequest->canonicalResult == bridgeObserve.canonicalResult,
+            "The visible-chat observation lost or changed its typed payload fields.");
+        require(observeOperationId == uuidText(19U) && statusOperationId == uuidText(20U),
+            "The visible-chat requests lost their caller operation identities.");
+    }
+
     const auto controlled = take(client->control(
         Domain::ManagerControlRequest{Domain::ManagerControlAction::Restart},
         context(4U)));
@@ -611,6 +672,22 @@ void testAuthenticatedNamedPipeRoundTrip()
         wrongNonceClient->status(context(7U)),
         Domain::ErrorCodes::Unauthorized,
         "The wrong manager nonce");
+    requireError(
+        wrongNonceClient->visibleChatObserve(bridgeObserve, context(13U)),
+        Domain::ErrorCodes::Unauthorized,
+        "The visible-chat observation with a wrong manager nonce");
+    requireError(
+        wrongNonceClient->visibleChatStatus(bridgeProjectId, context(14U)),
+        Domain::ErrorCodes::Unauthorized,
+        "The visible-chat status with a wrong manager nonce");
+    requireError(
+        client->visibleChatObserve(bridgeObserve, context(15U, -1ms)),
+        Domain::ErrorCodes::DeadlineExceeded,
+        "The visible-chat observation after its caller deadline");
+    requireError(
+        client->visibleChatStatus(bridgeProjectId, context(16U, -1ms)),
+        Domain::ErrorCodes::DeadlineExceeded,
+        "The visible-chat status after its caller deadline");
     require(
         take(client->status(context(8U))).processId == 4242U,
         "A rejected nonce damaged later authenticated requests.");
@@ -649,6 +726,19 @@ void testAuthenticatedNamedPipeRoundTrip()
         "The manager server did not exit cleanly after remote shutdown");
 
     client->shutdown();
+    requireError(
+        client->visibleChatObserve(bridgeObserve, context(17U)),
+        Domain::ErrorCodes::TransportClosed,
+        "The visible-chat observation after client shutdown");
+    requireError(
+        client->visibleChatStatus(bridgeProjectId, context(18U)),
+        Domain::ErrorCodes::TransportClosed,
+        "The visible-chat status after client shutdown");
+    {
+        std::lock_guard lock{bridgeMutex};
+        require(bridgeObserveCalls == 1U && bridgeStatusCalls == 1U,
+            "A rejected visible-chat request reached a Manager dependency.");
+    }
     dispatcher->shutdown();
     require(
         controller->closeCalls() == 1U,

@@ -2589,6 +2589,17 @@ public:
                 return propagate<Domain::ToolCallOutcome>(std::move(encoded));
             }
             const bool ok = payload.value().value("ok", true);
+            if (dependencies_.visibleChatObservation) {
+                try {
+                    auto workspace = dependencies_.clientWorkspaceContext.snapshot(authorizedCall.clientId(), operationContext.value());
+                    if (workspace && workspace.value()) dependencies_.visibleChatObservation(
+                        workspace.value()->projectId, workspace.value()->authorityRoot, authorizedCall.toolName(), ok, encoded.value(), operationContext.value());
+                    else if (defaultWorkspace) dependencies_.visibleChatObservation(
+                        authority.projectId(), *defaultWorkspace, authorizedCall.toolName(), ok, encoded.value(), operationContext.value());
+                    else if (!authority.trustedRoots().empty()) dependencies_.visibleChatObservation(
+                        authority.projectId(), authority.trustedRoots().front(), authorizedCall.toolName(), ok, encoded.value(), operationContext.value());
+                } catch (...) { /* Optional observation cannot change a completed tool. */ }
+            }
             if (dependencies_.visibleChatWorkspaceBinding) {
                 try {
                     auto workspace = dependencies_.clientWorkspaceContext.snapshot(
@@ -3292,9 +3303,13 @@ private:
                 return propagate<Json>(std::move(resume));
             }
             auto visibleChat = Json::object();
-            if (dependencies_.visibleChatContinuityStatus) {
+            if (dependencies_.visibleChatRemoteStatus || dependencies_.visibleChatContinuityStatus) {
                 try {
-                    const auto observed = Json::parse(dependencies_.visibleChatContinuityStatus(), nullptr, false);
+                    auto remote = dependencies_.visibleChatRemoteStatus
+                        ? dependencies_.visibleChatRemoteStatus(authority.projectId(), context)
+                        : Domain::Result<std::string>::success(dependencies_.visibleChatContinuityStatus());
+                    if (!remote) throw std::runtime_error{remote.error().message};
+                    const auto observed = Json::parse(remote.value(), nullptr, false);
                     if (observed.is_object() &&
                         (!observed.contains("available") || observed["available"].is_boolean()) &&
                         (!observed.contains("enabled") || observed["enabled"].is_boolean())) visibleChat = observed;
@@ -6131,14 +6146,16 @@ print(json.dumps(facts))
         }
     }
 
-    [[nodiscard]] bool automaticHandoffRequested() const noexcept
+    [[nodiscard]] bool automaticHandoffRequested(const Domain::ProjectId& project, const Domain::OperationContext& context) const noexcept
     {
-        if (!dependencies_.visibleChatContinuityStatus) {
+        if (!dependencies_.visibleChatRemoteStatus && !dependencies_.visibleChatContinuityStatus) {
             return false;
         }
         try {
-            const auto status = Json::parse(
-                dependencies_.visibleChatContinuityStatus(), nullptr, false);
+            auto remote=dependencies_.visibleChatRemoteStatus?dependencies_.visibleChatRemoteStatus(project,context)
+                :Domain::Result<std::string>::success(dependencies_.visibleChatContinuityStatus());
+            if(!remote) return false;
+            const auto status = Json::parse(remote.value(), nullptr, false);
             const auto* state = member(status, "state");
             if (state == nullptr || !state->is_string()) {
                 return false;
@@ -6268,7 +6285,7 @@ print(json.dumps(facts))
                     return propagate<Json>(std::move(valid));
                 }
             }
-            if (name == "session_handoff" && automaticHandoffRequested()) {
+            if (name == "session_handoff" && automaticHandoffRequested(authority.projectId(), context)) {
                 auto complete = validateAutomaticHandoff(writeArguments);
                 if (!complete) {
                     return propagate<Json>(std::move(complete));

@@ -22,6 +22,9 @@ namespace {
 
 using Json = nlohmann::json;
 
+// Match McpJsonCodec's document bound without linking the Manager codec to MCP.
+constexpr std::size_t MaximumVisibleChatJsonBytes = 1024U * 1024U;
+
 class ProtocolCodecException final : public std::runtime_error {
 public:
     ProtocolCodecException(std::string code, std::string message)
@@ -316,11 +319,8 @@ void validateJsonStringsAndNesting(const Json& value, const std::size_t depth)
     return payload;
 }
 
-[[nodiscard]] Json parseFrame(
-    const std::span<const std::byte> frame,
-    const std::size_t maximumFrameBytes)
+[[nodiscard]] Json parseStrictJson(const std::string_view payload)
 {
-    const auto payload = unframe(frame, maximumFrameBytes);
     StrictJsonSax preflight;
     const bool accepted = Json::sax_parse(payload, &preflight);
     if (preflight.duplicateKey()) {
@@ -351,6 +351,13 @@ void validateJsonStringsAndNesting(const Json& value, const std::size_t depth)
             Domain::ErrorCodes::MalformedMessage,
             "Manager protocol payload is malformed JSON.");
     }
+}
+
+[[nodiscard]] Json parseFrame(
+    const std::span<const std::byte> frame,
+    const std::size_t maximumFrameBytes)
+{
+    return parseStrictJson(unframe(frame, maximumFrameBytes));
 }
 
 [[nodiscard]] std::vector<std::byte> makeFrame(
@@ -1249,6 +1256,39 @@ void validateSettingsUpdateOutcome(
     const Json& value,
     std::string_view name);
 
+[[nodiscard]] std::string visibleChatObjectText(
+    const Json& value,
+    const std::string_view schema)
+{
+    requireObject(value, schema);
+    auto canonical = value.dump(-1, ' ', false, Json::error_handler_t::strict);
+    if (canonical.size() > MaximumVisibleChatJsonBytes) {
+        reject(
+            Domain::ErrorCodes::PayloadTooLarge,
+            std::string{schema} + " exceeds the 1 MiB JSON document limit.");
+    }
+    return canonical;
+}
+
+[[nodiscard]] Json visibleChatObject(
+    const std::string_view text,
+    const std::string_view schema)
+{
+    if (text.size() > MaximumVisibleChatJsonBytes) {
+        reject(
+            Domain::ErrorCodes::PayloadTooLarge,
+            std::string{schema} + " exceeds the 1 MiB JSON document limit.");
+    }
+    if (text.find('\0') != std::string_view::npos || !isValidUtf8(text)) {
+        reject(
+            Domain::ErrorCodes::MalformedMessage,
+            std::string{schema} + " contains invalid UTF-8 or an embedded NUL.");
+    }
+    auto value = parseStrictJson(text);
+    static_cast<void>(visibleChatObjectText(value, schema));
+    return value;
+}
+
 [[nodiscard]] Json requestDocument(const ManagerRequest& request)
 {
     validateVersion(request.version);
@@ -1369,6 +1409,19 @@ void validateSettingsUpdateOutcome(
                 params["project_id"] = payload.projectId.value();
                 params["tool_name"] = payload.toolName;
                 params["arguments"] = payload.canonicalArguments;
+            } else if constexpr (
+                std::is_same_v<Payload, ManagerVisibleChatObserveRequest>) {
+                method = "visible_chat.observe";
+                params["project_id"] = payload.projectId.value();
+                params["project_root"] = payload.projectRoot.value();
+                params["tool_name"] = payload.toolName;
+                params["succeeded"] = payload.succeeded;
+                params["result"] = visibleChatObject(
+                    payload.canonicalResult, "visible_chat.observe result");
+            } else if constexpr (
+                std::is_same_v<Payload, ManagerVisibleChatStatusRequest>) {
+                method = "visible_chat.status";
+                params["project_id"] = payload.projectId.value();
             } else if constexpr (
                 std::is_same_v<Payload, ManagerOperationalRequest>) {
                 method = "operations.page";
@@ -1648,6 +1701,28 @@ void validateSettingsUpdateOutcome(
             identifierMember<Domain::ProjectId>(params, "project_id"),
             stringMember(params, "tool_name"),
             stringMember(params, "arguments")};
+    } else if (method == "visible_chat.observe") {
+        requireExactFields(
+            params,
+            {"project_id", "project_root", "tool_name", "succeeded", "result"},
+            "visible_chat.observe params");
+        auto projectRoot = Domain::PathText::create(
+            stringMember(params, "project_root"));
+        if (!projectRoot) {
+            reject(projectRoot.error().code, projectRoot.error().message);
+        }
+        payload = ManagerVisibleChatObserveRequest{
+            identifierMember<Domain::ProjectId>(params, "project_id"),
+            std::move(projectRoot).value(),
+            stringMember(params, "tool_name"),
+            booleanMember(params, "succeeded"),
+            visibleChatObjectText(
+                member(params, "result"), "visible_chat.observe result")};
+    } else if (method == "visible_chat.status") {
+        requireExactFields(
+            params, {"project_id"}, "visible_chat.status params");
+        payload = ManagerVisibleChatStatusRequest{
+            identifierMember<Domain::ProjectId>(params, "project_id")};
     } else if (method == "operations.page") {
         requireExactFields(
             params, {"action", "area", "project_id", "session_id", "summary"},
@@ -3651,6 +3726,13 @@ parseAutomaticContinuityPreference(const Json& value)
                 wrapper["type"] = "tool_outcome";
                 wrapper["value"] = toolOutcomeSnapshotJson(value);
             } else if constexpr (
+                std::is_same_v<Value, ManagerVisibleChatSnapshot>) {
+                wrapper["type"] = "visible_chat";
+                wrapper["value"] = Json{
+                    {"project_id", value.projectId.value()},
+                    {"status", visibleChatObject(
+                        value.canonicalStatus, "visible-chat status")}};
+            } else if constexpr (
                 std::is_same_v<Value, ManagerOperationalSnapshot>) {
                 wrapper["type"] = "operational";
                 wrapper["value"] = operationalSnapshotJson(value);
@@ -3716,6 +3798,13 @@ parseAutomaticContinuityPreference(const Json& value)
     }
     if (type == "tool_outcome") {
         return ManagerResult{parseToolOutcomeSnapshot(value)};
+    }
+    if (type == "visible_chat") {
+        requireExactFields(
+            value, {"project_id", "status"}, "visible-chat snapshot");
+        return ManagerResult{ManagerVisibleChatSnapshot{
+            identifierMember<Domain::ProjectId>(value, "project_id"),
+            visibleChatObjectText(member(value, "status"), "visible-chat status")}};
     }
     if (type == "operational") {
         return ManagerResult{parseOperationalSnapshot(value)};

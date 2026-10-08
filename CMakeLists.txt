@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.3.22
+    VERSION 1.3.23
     LANGUAGES CXX RC
 )
 
@@ -593,6 +593,8 @@ target_link_libraries(ForgeConductor.Cli PRIVATE
 
 add_library(ForgeConductor.Manager.CompositionRoot.Windows STATIC
     src/Hosts/Manager/ManagerCompositionRoot.cpp
+    src/Hosts/Manager/ManagerVisibleChatContinuity.cpp
+    src/Hosts/Manager/ManagerVisibleChatContinuity.h
     src/Hosts/Manager/ManagerCompositionRoot.h)
 add_library(ForgeConductor::Manager.CompositionRoot.Windows ALIAS
     ForgeConductor.Manager.CompositionRoot.Windows)
@@ -829,6 +831,22 @@ if(BUILD_TESTING)
     set_tests_properties(ForgeConductor.Manager.RequestDispatcherTests PROPERTIES
         LABELS "G16;T-MGR;T-UNIT;T-STRESS"
         TIMEOUT 60)
+
+    add_executable(ForgeConductor.Manager.VisibleChatContinuityTests
+        tests/Manager/ManagerVisibleChatContinuityTests.cpp)
+    forge_configure_native_target(ForgeConductor.Manager.VisibleChatContinuityTests)
+    target_include_directories(ForgeConductor.Manager.VisibleChatContinuityTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/src"
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(ForgeConductor.Manager.VisibleChatContinuityTests PRIVATE
+        ForgeConductor::Manager.CompositionRoot.Windows
+        nlohmann_json::nlohmann_json)
+    add_test(
+        NAME ForgeConductor.Manager.VisibleChatContinuityTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Manager.VisibleChatContinuityTests>)
+    set_tests_properties(ForgeConductor.Manager.VisibleChatContinuityTests PROPERTIES
+        LABELS "T-UNIT;T-MGR;T-LMS;T-SEC"
+        TIMEOUT 120)
 
     add_executable(ForgeConductor.Manager.ProtocolTests
         tests/Manager/ManagerProtocolCodecTests.cpp)

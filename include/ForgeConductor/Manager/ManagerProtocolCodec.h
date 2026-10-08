@@ -121,6 +121,18 @@ struct ManagerToolInvokeRequest final {
     std::string canonicalArguments;
 };
 
+struct ManagerVisibleChatObserveRequest final {
+    Domain::ProjectId projectId;
+    Domain::PathText projectRoot;
+    std::string toolName;
+    bool succeeded{};
+    std::string canonicalResult;
+};
+
+struct ManagerVisibleChatStatusRequest final {
+    Domain::ProjectId projectId;
+};
+
 enum class ManagerOperationalArea { Agents, Feed, Runtimes, Diagnostics, Manager, Runs, Evidence, Continuity, ProjectRecords };
 enum class ManagerOperationalAction { Inspect, PruneSessions, CloseSession, VerifyTask, DeletePacket, ClearPackets, EditRecord, DeleteRecord };
 
@@ -294,6 +306,11 @@ struct ManagerToolOutcomeSnapshot final {
     std::chrono::milliseconds elapsed{};
 };
 
+struct ManagerVisibleChatSnapshot final {
+    Domain::ProjectId projectId;
+    std::string canonicalStatus;
+};
+
 struct ManagerOperationalSnapshot final {
     ManagerOperationalArea area{ManagerOperationalArea::Agents};
     std::string title;
@@ -367,6 +384,8 @@ using ManagerRequestPayload = std::variant<
     ManagerLmStudioActivateRequest,
     ManagerToolsRequest,
     ManagerToolInvokeRequest,
+    ManagerVisibleChatObserveRequest,
+    ManagerVisibleChatStatusRequest,
     ManagerOperationalRequest,
     ManagerMaintenanceRequest,
     Domain::ManagerControlRequest,
@@ -409,6 +428,7 @@ using ManagerResult = std::variant<
     ManagerLmStudioSnapshot,
     ManagerToolsSnapshot,
     ManagerToolOutcomeSnapshot,
+    ManagerVisibleChatSnapshot,
     ManagerOperationalSnapshot,
     ManagerMaintenanceSnapshot,
     ManagerAcknowledgement>;

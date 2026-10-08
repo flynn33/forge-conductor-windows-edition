@@ -3674,6 +3674,24 @@ private:
                     return controllerResponse(
                         request, lmStudioWorkflow(request, false, true, payload.projectId, context));
                 } else if constexpr (
+                    std::is_same_v<Payload, ManagerVisibleChatObserveRequest>) {
+                    if (!telemetrySources_.visibleChatObserve) {
+                        return responseWithError(request,
+                            error(Domain::ErrorCodes::HostCapabilityUnavailable,
+                                "Manager-owned visible chat continuity is unavailable."));
+                    }
+                    return controllerResponse(request,
+                        telemetrySources_.visibleChatObserve(payload, context));
+                } else if constexpr (
+                    std::is_same_v<Payload, ManagerVisibleChatStatusRequest>) {
+                    if (!telemetrySources_.visibleChatStatus) {
+                        return responseWithError(request,
+                            error(Domain::ErrorCodes::HostCapabilityUnavailable,
+                                "Manager-owned visible chat continuity is unavailable."));
+                    }
+                    return controllerResponse(request,
+                        telemetrySources_.visibleChatStatus(payload.projectId, context));
+                } else if constexpr (
                     std::is_same_v<Payload, ManagerToolsRequest>) {
                     return controllerResponse(request, toolsSnapshot(context));
                 } else if constexpr (

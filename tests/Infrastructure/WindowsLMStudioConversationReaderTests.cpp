@@ -214,6 +214,8 @@ public:
     {
         if(record && request.handoffId && *request.handoffId==record->packet.id)
             return Domain::Result<Domain::LegacyContinuityGetOutcome>::success({record,true});
+        for(const auto& retained:previousRecords) if(request.handoffId && *request.handoffId==retained.packet.id)
+            return Domain::Result<Domain::LegacyContinuityGetOutcome>::success({retained,true});
         return unused<Domain::LegacyContinuityGetOutcome>();
     }
     Domain::Result<Domain::LegacyContinuityListOutcome> list(
@@ -227,6 +229,7 @@ public:
     { return unused<Domain::LegacyContinuityResetOutcome>(); }
     void shutdown() noexcept override {}
     std::optional<Domain::LegacyContinuityRecord> record;
+    std::vector<Domain::LegacyContinuityRecord> previousRecords;
 private:
     template <typename T> static Domain::Result<T> unused()
     {
@@ -650,8 +653,10 @@ public:
     Json nativeHandoff() const {
         TestContext operation;const auto chat=take(WindowsLMStudioConversationReader::read(fixture.fileFixture.path(),operation.active()));
         require(chat.has_value(),"private native handoff chat is missing");
+        std::optional<Json> latest;
         for(const auto& result:chat->nativeToolResults) if(result.name=="session_handoff")
-            for(const auto& body:result.textBodies) return Json::parse(body);
+            for(const auto& body:result.textBodies) latest=Json::parse(body);
+        if(latest) return *latest;
         throw TestFailure{"Private native handoff result is missing."};
     }
     void queueHandoff(const Json& result) {fixture.observer->recordTool("session_handoff",true,result.dump());}
@@ -701,8 +706,8 @@ public:
             Json{{"type","toolCallResult"},{"callId",call},{"toolCallRequestId",id},
                 {"content",Json::array({Json{{"type","text"},{"text",payload.dump()}}}).dump()}}})}};
     }
-    void saveModelPacket() {
-        Domain::LegacyHandoffPacket packet{parse<Domain::LegacyHandoffId>("durable-native-packet")};
+    void saveModelPacket(std::string_view packetId="durable-native-packet",std::uint64_t sequence=1U) {
+        Domain::LegacyHandoffPacket packet{parse<Domain::LegacyHandoffId>(packetId)};
         packet.resumeReady=true;packet.goal="Recover the exact original task after the visible connector restart";
         packet.narrative="The private observer has measured a real selected provider generation, sent exactly one packet request, and retained the original project folder and Forge integrations. The next step must preserve native tool evidence, pending actions and explicit constraints while resuming the same durable packet after reconstruction.";
         packet.resumeSeed=packet.narrative+" Read this packet with context_get and run agent_list afterward.";
@@ -712,17 +717,29 @@ public:
             {"task",{{"goal",packet.goal},{"status",packet.status},{"next_actions",packet.nextActions},{"blockers",packet.blockers}}},
             {"working_set",{{"key_files",packet.keyFiles},{"decisions",packet.decisions}}},
             {"resume",{{"seed",packet.resumeSeed}}},{"narrative",packet.narrative},{"agents",Json::array()}};
-        fixture.legacyContinuity.record=Domain::LegacyContinuityRecord{packet,1U,{}};
+        if(fixture.legacyContinuity.record) fixture.legacyContinuity.previousRecords.push_back(*fixture.legacyContinuity.record);
+        fixture.legacyContinuity.record=Domain::LegacyContinuityRecord{packet,sequence,{}};
         TestContext operation;
         const auto savedPointer=take(fixture.memory.set({"continuity/project/"+fixture.project.value(),packet.id.value(),{}},operation.active()));
         require(savedPointer.stored && savedPointer.note.body==packet.id.value(),"private model packet pointer was not saved exactly");
         append(message(Json::array({version(Json::array({tool("session_handoff",Json{{"ok",true},
-            {"handoff_id",packet.id.value()},{"resume_seed",packet.resumeSeed},{"packet",body}},1U)}))})));
+            {"handoff_id",packet.id.value()},{"resume_seed",packet.resumeSeed},{"packet",body}},static_cast<unsigned>(sequence))}))})));
     }
     void nativeResume() {
         append(message(Json::array({version(Json::array({
             tool("context_get",Json{{"ok",true},{"found",true},{"handoff_id","durable-native-packet"}},2U),
             tool("agent_list",Json{{"ok",true}},3U),generation(3000U,32768U)}))})));
+    }
+    Json fullResumeReceipt() const {
+        require(fixture.legacyContinuity.record.has_value(),"private retained packet is missing");
+        return Json{{"ok",true},{"found",true},{"handoff_id",fixture.legacyContinuity.record->packet.id.value()},
+            {"resume_seed",fixture.legacyContinuity.record->packet.resumeSeed},{"packet",checkpoint().at("state").at("handed")}};
+    }
+    Json nativeFullResume(bool following=true,unsigned callId=20U) {
+        const auto result=fullResumeReceipt();
+        auto tools=Json::array({tool("context_get",result,callId)});
+        if(following) tools.push_back(tool("agent_list",Json{{"ok",true}},callId+1U));
+        tools.push_back(generation(3000U,32768U));append(message(Json::array({version(tools)})));return result;
     }
     void denyCheckpointPublication() {
         publicationBlock.reset(::CreateFileW(checkpointPath().c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,
@@ -947,6 +964,13 @@ void explicitVisibleRouteRecoveryCases()
         f.run([](const Json& status) {return status.value("state",std::string{})=="resuming";});
         require(f.creations==1U && f.sends==1U,"valid global routes lost the separately confirmed live workspace");
     });
+    run("global_routes_with_confirmed_workspace_and_cwd",[&] {
+        VisibleHandoffFixture f;f.undispatched();auto routes=f.upgradeRoutes(true);
+        for(const char* key:{"forge-conductor","forge-conductor-fallback","forge-conductor-clu"}) routes["mcpServers"][key]["cwd"]=f.fixture.fileFixture.path().value();
+        ConversationFixture::write(f.fixture.fileFixture.root()/"mcp.json",routes);f.saveModelPacket();const auto native=f.nativeHandoff();f.reconstruct();f.queueHandoff(native);
+        f.run([](const Json& status) {return status.value("state",std::string{})=="resuming";});
+        require(f.creations==1U && f.sends==1U,"authorized global routes with a matching cwd were not retained");
+    });
     run("receipt_without_native_result",[&] {
         VisibleHandoffFixture f;f.undispatched();f.upgradeRoutes();f.saveModelPacket();const auto native=f.nativeHandoff();
         f.fixture.fileFixture.save(conversation(Json::array()));f.reconstruct();f.queueHandoff(native);refused(f);
@@ -1091,6 +1115,127 @@ void explicitVisibleRouteRecoveryCases()
         f.reconstruct();refused(f);
         require(Json::parse(f.fixture.observer->status()).at("handoff_recovery").at("reason").get<std::string>().find("complete model handoff contract")!=std::string::npos,
             "planned packet metadata drift did not reach the complete-model admission guard");
+    });
+    const auto planned=[&](VisibleHandoffFixture& f) {
+        f.undispatched();f.saveModelPacket();auto saved=f.checkpoint();const auto native=f.nativeHandoff();
+        saved["state"]["phase"]=2U;saved["state"]["packet_id"]="durable-native-packet";
+        saved["state"]["handed"]=native.at("packet");saved["state"]["handed_message"]="Resume this Forge project from the retained planned packet.";
+        saved["state"]["packet_write_sequence"]=1U;saved["state"]["operational_error"]="";saved["state"]["dispatch_error"]="";
+        f.writeCheckpoint(saved);
+    };
+    run("planned_creating_route_upgrade_requires_new_complete_packet",[&] {
+        VisibleHandoffFixture f;planned(f);const auto raw=bytes(f.checkpointPath());
+        f.upgradeRoutes();f.saveModelPacket("fresh-planned-packet",2U);const auto native=f.nativeHandoff();f.reconstruct();f.queueHandoff(native);
+        const auto status=f.run([](const Json& value) {return value.value("state",std::string{})=="resuming";});
+        require(f.creations==1U && f.sends==1U && status.at("packet_id")=="fresh-planned-packet","planned route recovery did not use exactly the newly saved packet");
+        require(bytes(std::filesystem::path{status.at("route_recovery").at("archive_path").get<std::string>()})==raw,"planned route recovery changed the original encrypted archive");
+        require(!f.checkpoint()["state"]["packet_request_acknowledged"].get<bool>(),"planned recovery fabricated an old request acknowledgement");
+    });
+    run("planned_creating_old_callback_and_sequence_refused",[&] {
+        VisibleHandoffFixture f;planned(f);f.upgradeRoutes();const auto native=f.nativeHandoff();f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    run("planned_creating_prior_metadata_must_remain_complete",[&] {
+        VisibleHandoffFixture f;planned(f);f.upgradeRoutes();f.saveModelPacket("fresh-planned-packet",2U);
+        f.fixture.legacyContinuity.previousRecords.front().packet.resumeReady=false;
+        const auto native=f.nativeHandoff();f.reconstruct();f.queueHandoff(native);refused(f);
+    });
+    for(const auto phase:{2U,3U,4U}) run(phase==2U?"uncertain_new_native_resume_route_upgrade":phase==3U?"resuming_native_route_upgrade":"completed_native_route_upgrade",[&,phase] {
+        VisibleHandoffFixture f;planned(f);auto saved=f.checkpoint();
+        saved["state"]["phase"]=phase;saved["state"]["effect"]={{"kind","new_chat"},{"stage",phase==2U?"uncertain":"confirmed"},
+            {"purpose","delivery"},{"conversation_id",f.selected},{"previous_user_messages",0U}};
+        if(phase!=2U) {saved["state"]["created_successor"]="project/native-resumed.conversation.json";saved["state"]["successor"]="project/native-resumed.conversation.json";
+            saved["state"]["delivery_acknowledged"]=true;saved["state"]["context_recovered"]=phase==4U;}
+        f.writeCheckpoint(saved);const auto raw=bytes(f.checkpointPath());f.upgradeRoutes();
+        f.select("project/native-resumed.conversation.json",conversation(Json::array()));const auto receipt=f.fullResumeReceipt();
+        f.reconstruct();f.fixture.observer->recordTool("context_get",true,receipt.dump());f.nativeFullResume();
+        const auto status=f.run([](const Json& value) {return value.value("state",std::string{})=="resumed";});
+        require(f.creations==0U && f.sends==0U,"native successor route recovery replayed a UI effect");
+        require(status.at("route_recovery").at("recovery_kind")=="native_successor_resume" &&
+            bytes(std::filesystem::path{status.at("route_recovery").at("archive_path").get<std::string>()})==raw,"native successor recovery lost the original scope archive");
+        const auto state=f.checkpoint().at("state");require(state.at("phase")==4U && state.at("context_recovered")==true &&
+            state.at("delivery_acknowledged")==true && state.at("effect").at("stage")=="confirmed" &&
+            state.at("packet_request_acknowledged")==false,"native resume recovery did not preserve exact confirmed versus old request acknowledgement state");
+    });
+    for(const char* fault:{"no_callback","empty_chat","no_following","wrong_receipt","wrong_successor","wrong_pointer","metadata_drift","fallback_context","stale_scope","callback_read_failure","callback_selection_changed"}) run(fault,[&,fault] {
+        VisibleHandoffFixture f;planned(f);auto saved=f.checkpoint();saved["state"]["effect"]={{"kind","new_chat"},{"stage","uncertain"},
+            {"purpose","delivery"},{"conversation_id",f.selected},{"previous_user_messages",0U}};
+        if(std::string_view{fault}=="wrong_successor") saved["state"]["created_successor"]="project/other.conversation.json";
+        f.writeCheckpoint(saved);
+        if(std::string_view{fault}=="stale_scope") {
+            f.select("project/native-resumed.conversation.json",conversation(Json::array()));const auto receipt=f.nativeFullResume();
+            f.reconstruct();f.fixture.observer->recordTool("context_get",true,receipt.dump());f.upgradeRoutes();refused(f);return;
+        }
+        f.upgradeRoutes();f.select("project/native-resumed.conversation.json",conversation(Json::array()));
+        auto receipt=f.fullResumeReceipt();
+        if(std::string_view{fault}=="wrong_receipt") receipt["packet"]["resume"]["seed"]="different callback";
+        if(std::string_view{fault}=="wrong_pointer") {TestContext operation;const auto pointer=take(f.fixture.memory.set({"continuity/project/"+f.fixture.project.value(),"foreign-packet",{}},operation.active()));require(pointer.stored,"private wrong pointer was not saved");}
+        if(std::string_view{fault}=="metadata_drift") f.fixture.legacyContinuity.record->packet.source=Domain::LegacyHandoffSource::Automatic;
+        f.reconstruct();
+        if(std::string_view{fault}=="callback_read_failure") ConversationFixture::write(
+            f.fixture.fileFixture.root()/".internal"/"conversation-config.json",Json{{"selectedConversation",nullptr}});
+        if(std::string_view{fault}!="no_callback") f.fixture.observer->recordTool("context_get",true,receipt.dump());
+        if(std::string_view{fault}=="callback_read_failure") f.select("project/native-resumed.conversation.json",conversation(Json::array()));
+        if(std::string_view{fault}=="callback_selection_changed") f.select("project/changed-after-callback.conversation.json",conversation(Json::array()));
+        if(std::string_view{fault}!="empty_chat") f.nativeFullResume(std::string_view{fault}!="no_following");
+        if(std::string_view{fault}=="fallback_context") {
+            const auto path=f.fixture.fileFixture.root()/"conversations"/std::filesystem::path{f.selected};std::ifstream input{path};auto text=Json::parse(input).dump();input.close();
+            const auto at=text.find("mcp/forge-conductor\"");require(at!=std::string::npos,"private native context connector is missing");
+            text.replace(at,std::string{"mcp/forge-conductor"}.size(),"mcp/forge-conductor-fallback");ConversationFixture::write(path,Json::parse(text));
+        }
+        refused(f);
+    });
+    for(const bool appendFresh:{false,true}) run(appendFresh?"fresh_native_resume_after_identical_history":"historical_identical_native_resume_cannot_satisfy_fresh_callback",[&,appendFresh] {
+        VisibleHandoffFixture f;planned(f);auto saved=f.checkpoint();saved["state"]["phase"]=4U;
+        saved["state"]["created_successor"]="project/native-resumed.conversation.json";
+        saved["state"]["successor"]="project/native-resumed.conversation.json";
+        saved["state"]["context_recovered"]=true;saved["state"]["delivery_acknowledged"]=true;
+        f.writeCheckpoint(saved);const auto raw=bytes(f.checkpointPath());
+        f.select("project/native-resumed.conversation.json",conversation(Json::array()));const auto receipt=f.nativeFullResume();
+        f.upgradeRoutes();f.reconstruct();f.fixture.observer->recordTool("context_get",true,receipt.dump());
+        if(!appendFresh) {refused(f);return;}
+        f.nativeFullResume(false,30U);
+        refused(f);
+        require(bytes(f.checkpointPath())==raw && f.creations==0U && f.sends==0U,
+            "Fresh context_get reused an old following tool to migrate the retained route.");
+        f.append(message(Json::array({version(Json::array({VisibleHandoffFixture::tool("agent_list",Json{{"ok",true}},31U),generation(3000U,32768U)}))})));
+        const auto status=f.run([](const Json& value) {return value.value("state",std::string{})=="resumed";});
+        require(f.creations==0U && f.sends==0U && status.at("route_recovery").at("native_request_id")=="durable-native-30" &&
+            bytes(std::filesystem::path{status.at("route_recovery").at("archive_path").get<std::string>()})==raw,
+            "Fresh native resume with a new following tool did not preserve its actual request and archive.");
+    });
+    run("historical_request_ids_cannot_be_reused_after_content_reencoding",[&] {
+        VisibleHandoffFixture f;planned(f);auto saved=f.checkpoint();saved["state"]["phase"]=4U;
+        saved["state"]["created_successor"]="project/native-resumed.conversation.json";
+        saved["state"]["successor"]="project/native-resumed.conversation.json";
+        saved["state"]["context_recovered"]=true;saved["state"]["delivery_acknowledged"]=true;
+        f.writeCheckpoint(saved);
+        f.select("project/native-resumed.conversation.json",conversation(Json::array()));const auto receipt=f.nativeFullResume();
+        f.upgradeRoutes();f.reconstruct();f.fixture.observer->recordTool("context_get",true,receipt.dump());
+        const auto path=f.fixture.fileFixture.root()/"conversations"/std::filesystem::path{f.selected};
+        std::ifstream input{path};auto document=Json::parse(input);input.close();
+        std::size_t rewritten{};
+        const std::function<void(Json&)> reencode=[&](Json& value) {
+            if(value.is_object() && value.value("type",std::string{})=="toolCallResult") {
+                const auto before=value.at("content").get<std::string>();
+                const auto parsed=Json::parse(before);value["content"]=parsed.dump(2);
+                require(value.at("content").get<std::string>()!=before && Json::parse(value.at("content").get<std::string>())==parsed,
+                    "private historical native re-encoding changed its result meaning or retained identical bytes");
+                ++rewritten;
+            }
+            if(value.is_object() || value.is_array()) for(auto& child:value) reencode(child);
+        };
+        reencode(document);require(rewritten==2U,"private historical context and following result were not both re-encoded");
+        ConversationFixture::write(path,document);refused(f);
+    });
+    run("completed_successor_can_return_to_retained_pressure_chat",[&] {
+        VisibleHandoffFixture f;f.waiting();const auto predecessor=f.selected;f.saveModelPacket();
+        f.run([](const Json& status) {return status.value("state",std::string{})=="resuming";});
+        f.nativeResume();f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="resumed";});
+        require(f.creations==1U && f.sends==2U,"private first handoff did not complete exactly once");
+        f.selected=predecessor;ConversationFixture::write(f.fixture.fileFixture.root()/".internal"/"conversation-config.json",Json{{"selectedConversation",predecessor}});
+        f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet";});
+        const auto state=f.checkpoint().at("state");require(f.creations==1U && f.sends==3U && state.at("previous_sequence")==1U &&
+            state.at("previous_packet")=="durable-native-packet" && state.at("packet_id")=="","returning to an aged chat replayed a successor or reused its prior packet");
     });
     require(failures.empty(),"Explicit visible route recovery cases failed; inspect the per-case evidence above.");
 }

@@ -1,6 +1,13 @@
 # Changelog
 
-## 1.3.22 - Optional local image-provider jobs (source candidate; qualification pending)
+## 1.3.23 - Manager lifetime for native chat continuity (source candidate; qualification pending)
+
+- Move the visible-chat observer into the Manager transition-worker lifecycle and preserve it across ordinary stdio-client loss. Primary forwards final authorized project/root/native-call observations through internal bounded observe/status methods; Fallback and CLU retain read-only status.
+- Keep the public catalog and schemas unchanged at 112 Primary/Fallback and five CLU tools. Retain one UI writer, fresh project/provider/three-route validation, actual selected-native evidence, exact old encrypted archive and no replay of uncertain New chat or Send.
+- Preserve all optional image-provider jobs, native CMake/CTest, desktop/image, Office/web, worker/schedule, shell, review, policy and persistence features.
+- Align current product/package documentation with 1.3.23 / 1.3.23.0. Final source tests, package/install, catalog, native continuity/image-provider, CI and release checks are pending. Retain every earlier 1.3.22 failure and final passing source/install receipt separately; none qualifies this candidate. See [candidate notes](docs/releases/1.3.23.md) and [pending qualification](docs/validation/HOST-CAPABILITIES-1.3.23.md).
+
+## 1.3.22 - Optional local image-provider jobs (unpublished, superseded)
 
 - Add six optional disabled-by-default ComfyUI tools: image_provider_status, image_generate, image_edit, image_job_status, image_job_cancel and image_job_resume. Retain every previous descriptor, raising Primary/Fallback from 106 to 112 while preserving five CLU tools and ten specialist playbooks.
 - Require explicit owner-selected loopback endpoint, sd1 profile, compatible checkpoint, seed, authorized paths and bounded dimensions. Reuse native WinHTTP/WIC and Manager-issued authority; no model installation, provider startup, paid account, global interrupt or new runtime dependency.
@@ -11,7 +18,13 @@
 - Add explicit route-upgrade recovery through the existing authorized Primary session_handoff. Require matching native Primary results, a new complete stored model packet/current project pointer and fresh validation of all three routes. Archive the original encrypted checkpoint before promoting only an undispatched waiting request; retain false old acknowledgement and default scope rejection/no replay for uncertain or confirmed effects.
 - Preserve 1.3.21 SystemDrive/known-folder handling and all existing desktop, image, CMake/CTest, worker, schedule and continuity contracts.
 - Record the isolated ten-target pass and root-owned six-case real ComfyUI smoke within their exact source/native scope; do not treat them as integrated Manager/LM Studio or host-model-quality qualification.
-- Align active source/package identities to 1.3.22 / 1.3.22.0. Earlier clean source 5b8c524 passed Product All, three static gates and persistence; its complete Release graph passed 165/166 entries in 110.15 seconds with one retained CMake parser cancellation-fixture failure. The test-only cancellation handshake and explicit route-recovery source passed two focused targets, including 125 Infrastructure groups and 37 route-recovery cases, in 64.45 seconds. Fresh complete source qualification remains pending. Package/installed/native/publication qualification remains pending; see [candidate notes](docs/releases/1.3.22.md), [provider guide](docs/IMAGE-PROVIDER.md) and [qualification boundary](docs/validation/HOST-CAPABILITIES-1.3.22.md).
+- Preserved pre-final check record: source/package identities were 1.3.22 / 1.3.22.0. Earlier clean source 5b8c524 passed Product All, three static gates and persistence; its complete Release graph passed 165/166 entries in 110.15 seconds with one retained CMake parser cancellation-fixture failure. The test-only cancellation handshake and explicit route-recovery source passed two focused targets, including 125 Infrastructure groups and 37 route-recovery cases, in 64.45 seconds. Fresh complete source qualification remains pending. Package/installed/native/publication qualification remains pending; see [candidate notes](docs/releases/1.3.22.md), [provider guide](docs/IMAGE-PROVIDER.md) and [qualification boundary](docs/validation/HOST-CAPABILITIES-1.3.22.md).
+
+- Final clean source `9178abdf12998af56df4860a56b25dccfcc30e10` / tree `b5e9fdedc9cb6b7ea0f97f9d93ef2e2d2f313d64` passed Product All, three static gates, persistence and 166/166 Release tests in 97.71 seconds. Signed installation matched all four executables and preserved 8,431 files / 410,168,202 bytes and four snapshots before launch.
+- Actual selected Qwen Primary status reported 1.3.22/112 tools; successful model handoff sequence 8 preserved encrypted checkpoint revision 2 and entered Creating revision 3. Revision 4 retained uncertain New chat, the new selected chat had zero messages, and all three CLI/bridge pairs exited with code 1. No automatic packet delivery or completed rollover was established. Catalog 112/112/5 and integrated public/native provider acceptance remained unqualified; candidate superseded for observer lifetime.
+
+- Later manually seeded Primary context_get/get_forge_status readback advanced the same packet to checkpoint revision 6/resumed, with confirmed New chat and delivery/context-recovery flags. This assisted recovery does not establish automatic packet Send; the passive watch did not capture revision 5.
+
 ## 1.3.21 - Durable CMake/CTest jobs and richer desktop/image tools (published)
 
 - Clear stale context telemetry after the selected native LM Studio chat is cleared, while preserving handoff and workspace-binding state. Refresh preferences and clear recovered read errors only after successful observation; a real selected empty chat retains its identity.

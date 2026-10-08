@@ -1136,6 +1136,34 @@ WindowsManagerNamedPipeClient::invokeTool(
               "The manager client transport is unavailable."));
 }
 
+Domain::Result<Manager::ManagerVisibleChatSnapshot>
+WindowsManagerNamedPipeClient::visibleChatObserve(
+    const Manager::ManagerVisibleChatObserveRequest& request,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->typedWorkflow<Manager::ManagerVisibleChatSnapshot>(
+              request, context)
+        : failure<Manager::ManagerVisibleChatSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
+Domain::Result<Manager::ManagerVisibleChatSnapshot>
+WindowsManagerNamedPipeClient::visibleChatStatus(
+    const Domain::ProjectId& projectId,
+    const Domain::OperationContext& context) noexcept
+{
+    const auto implementation = implementation_;
+    return implementation
+        ? implementation->typedWorkflow<Manager::ManagerVisibleChatSnapshot>(
+              Manager::ManagerVisibleChatStatusRequest{projectId}, context)
+        : failure<Manager::ManagerVisibleChatSnapshot>(clientError(
+              Domain::ErrorCodes::TransportClosed,
+              "The manager client transport is unavailable."));
+}
+
 Domain::Result<Manager::ManagerOperationalSnapshot>
 WindowsManagerNamedPipeClient::operational(
     const Manager::ManagerOperationalRequest& request,

@@ -433,6 +433,11 @@ void testEveryRequestMethodRoundTripsDeterministically()
     payloads.emplace_back(Manager::ManagerLmStudioStatusRequest{selectedPluginProject});
     payloads.emplace_back(Manager::ManagerLmStudioRepairRequest{selectedPluginProject});
     payloads.emplace_back(Manager::ManagerLmStudioActivateRequest{selectedPluginProject});
+    payloads.emplace_back(Manager::ManagerVisibleChatObserveRequest{
+        selectedPluginProject, path("D:\\Projects\\Alpha"),
+        "continuity.execute", true, "{\"operation_id\":\"operation-7\"}"});
+    payloads.emplace_back(Manager::ManagerVisibleChatStatusRequest{
+        selectedPluginProject});
     payloads.emplace_back(Manager::ManagerMaintenanceRequest{
         Manager::ManagerMaintenanceScope::ProjectAllData,
         identifier<Domain::ProjectId>(
@@ -486,6 +491,8 @@ void testEveryRequestMethodRoundTripsDeterministically()
         "lmstudio.status",
         "lmstudio.repair",
         "lmstudio.activate",
+        "visible_chat.observe",
+        "visible_chat.status",
         "maintenance.reset",
         "manager.control",
         "manager.settings.update",
@@ -577,6 +584,239 @@ void testEveryRequestMethodRoundTripsDeterministically()
     REQUIRE(managedPayload.task == "Run the ordinary managed turn.");
     REQUIRE(!managedPayload.allowTools);
     REQUIRE(!managedPayload.automaticContinuity);
+}
+
+void testVisibleChatBridgeRoundTrips()
+{
+    const auto projectId = identifier<Domain::ProjectId>(
+        "20000000-0000-4000-8000-000000000002");
+    const auto projectRoot = path("D:\\Projects\\Alpha");
+    const Json result{
+        {"operation_id", "operation-7"},
+        {"provider_response_id", "response-7"},
+        {"detail", std::string{"quoted \"text\", backslash \\, newline\n"}},
+        {"opaque", {{"fields", Json::array({nullptr, false, 42, "preserved"})}}}};
+    for (const bool succeeded : {false, true}) {
+        const auto encoded = take(Manager::ManagerProtocolCodec::encodeRequest(request(
+            Manager::ManagerVisibleChatObserveRequest{
+                projectId, projectRoot, "continuity.execute", succeeded,
+                result.dump(2)})));
+        const auto wire = Json::parse(payloadText(encoded));
+        REQUIRE(wire.at("method") == "visible_chat.observe");
+        REQUIRE(wire.at("params").size() == 5U);
+        REQUIRE(wire.at("params").at("project_id") == projectId.value());
+        REQUIRE(wire.at("params").at("project_root") == projectRoot.value());
+        REQUIRE(wire.at("params").at("tool_name") == "continuity.execute");
+        REQUIRE(wire.at("params").at("succeeded") == succeeded);
+        REQUIRE(wire.at("params").at("result").is_object());
+        REQUIRE(wire.at("params").at("result") == result);
+        const auto decoded = take(Manager::ManagerProtocolCodec::decodeRequest(encoded));
+        const auto& observed = std::get<Manager::ManagerVisibleChatObserveRequest>(
+            decoded.payload);
+        REQUIRE(observed.projectId == projectId);
+        REQUIRE(observed.projectRoot == projectRoot);
+        REQUIRE(observed.toolName == "continuity.execute");
+        REQUIRE(observed.succeeded == succeeded);
+        REQUIRE(observed.canonicalResult == result.dump());
+        REQUIRE(take(Manager::ManagerProtocolCodec::encodeRequest(decoded)) == encoded);
+    }
+
+    const auto statusFrame = take(Manager::ManagerProtocolCodec::encodeRequest(request(
+        Manager::ManagerVisibleChatStatusRequest{projectId})));
+    const auto statusWire = Json::parse(payloadText(statusFrame));
+    REQUIRE(statusWire.at("method") == "visible_chat.status");
+    REQUIRE(statusWire.at("params") == Json({{"project_id", projectId.value()}}));
+    const auto statusRequest = take(Manager::ManagerProtocolCodec::decodeRequest(statusFrame));
+    REQUIRE(std::get<Manager::ManagerVisibleChatStatusRequest>(
+        statusRequest.payload).projectId == projectId);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeRequest(statusRequest)) == statusFrame);
+
+    const Json status{
+        {"state", "awaiting_native_evidence"},
+        {"operation_id", "operation-7"},
+        {"successor", {{"response_id", nullptr}, {"pending", true}}},
+        {"details", Json::array({result, Json::object()})}};
+    const auto encoded = take(Manager::ManagerProtocolCodec::encodeResponse(response(
+        Manager::ManagerVisibleChatSnapshot{projectId, status.dump(2)})));
+    const auto wire = Json::parse(payloadText(encoded));
+    REQUIRE(wire.at("result").at("type") == "visible_chat");
+    REQUIRE(wire.at("result").at("value").size() == 2U);
+    REQUIRE(wire.at("result").at("value").at("project_id") == projectId.value());
+    REQUIRE(wire.at("result").at("value").at("status").is_object());
+    REQUIRE(wire.at("result").at("value").at("status") == status);
+    const auto decoded = take(Manager::ManagerProtocolCodec::decodeResponse(encoded));
+    const auto& snapshot = std::get<Manager::ManagerVisibleChatSnapshot>(
+        std::get<Manager::ManagerResult>(decoded.body));
+    REQUIRE(snapshot.projectId == projectId);
+    REQUIRE(snapshot.canonicalStatus == status.dump());
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == encoded);
+}
+
+void testVisibleChatBoundedObjectsAvoidDoubleEscaping()
+{
+    constexpr std::size_t maximumBodyBytes = 1024U * 1024U;
+    const auto projectId = identifier<Domain::ProjectId>(
+        "20000000-0000-4000-8000-000000000002");
+    Json body{
+        {"escaped", std::string((maximumBodyBytes - 512U) / 2U, '"')},
+        {"unicode", std::string{"\xe2\x98\x83 \xf0\x9f\x8c\x8d"}},
+        {"nested", {{"null", nullptr}, {"array", Json::array({1, true, "\\\n"})}}},
+        {"padding", ""}};
+    body["padding"] = std::string(maximumBodyBytes - body.dump().size(), 'x');
+    const auto canonical = body.dump();
+    REQUIRE(canonical.size() == maximumBodyBytes);
+
+    const auto observe = request(Manager::ManagerVisibleChatObserveRequest{
+        projectId, path("D:\\Projects\\Alpha"), "continuity.execute", true, canonical});
+    const auto observeFrame = take(Manager::ManagerProtocolCodec::encodeRequest(observe));
+    REQUIRE(observeFrame.size() > maximumBodyBytes + 4U);
+    REQUIRE(observeFrame.size() < maximumBodyBytes + 1024U);
+    const auto observed = take(Manager::ManagerProtocolCodec::decodeRequest(observeFrame));
+    REQUIRE(std::get<Manager::ManagerVisibleChatObserveRequest>(
+        observed.payload).canonicalResult == canonical);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeRequest(observed)) == observeFrame);
+
+    const auto snapshotResponse = response(Manager::ManagerVisibleChatSnapshot{
+        projectId, canonical});
+    const auto snapshotFrame = take(Manager::ManagerProtocolCodec::encodeResponse(snapshotResponse));
+    REQUIRE(snapshotFrame.size() > maximumBodyBytes + 4U);
+    REQUIRE(snapshotFrame.size() < maximumBodyBytes + 1024U);
+    const auto decoded = take(Manager::ManagerProtocolCodec::decodeResponse(snapshotFrame));
+    REQUIRE(std::get<Manager::ManagerVisibleChatSnapshot>(
+        std::get<Manager::ManagerResult>(decoded.body)).canonicalStatus == canonical);
+    REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decoded)) == snapshotFrame);
+
+    requireError(Manager::ManagerProtocolCodec::encodeRequest(observe, maximumBodyBytes),
+        Domain::ErrorCodes::PayloadTooLarge);
+    requireError(Manager::ManagerProtocolCodec::encodeResponse(snapshotResponse, maximumBodyBytes),
+        Domain::ErrorCodes::PayloadTooLarge);
+    requireError(Manager::ManagerProtocolCodec::decodeRequest(observeFrame, maximumBodyBytes),
+        Domain::ErrorCodes::PayloadTooLarge);
+    requireError(Manager::ManagerProtocolCodec::decodeResponse(snapshotFrame, maximumBodyBytes),
+        Domain::ErrorCodes::PayloadTooLarge);
+
+    body["padding"].get_ref<std::string&>().push_back('x');
+    const auto oversized = body.dump();
+    REQUIRE(oversized.size() == maximumBodyBytes + 1U);
+    requireError(Manager::ManagerProtocolCodec::encodeRequest(request(
+        Manager::ManagerVisibleChatObserveRequest{projectId, path("D:\\Projects\\Alpha"),
+            "continuity.execute", true, oversized})), Domain::ErrorCodes::PayloadTooLarge);
+    requireError(Manager::ManagerProtocolCodec::encodeResponse(response(
+        Manager::ManagerVisibleChatSnapshot{projectId, oversized})), Domain::ErrorCodes::PayloadTooLarge);
+    auto observeWire = Json::parse(payloadText(observeFrame));
+    observeWire["params"]["result"] = body;
+    requireError(Manager::ManagerProtocolCodec::decodeRequest(frameFromJson(observeWire)),
+        Domain::ErrorCodes::PayloadTooLarge);
+    auto responseWire = Json::parse(payloadText(snapshotFrame));
+    responseWire["result"]["value"]["status"] = body;
+    requireError(Manager::ManagerProtocolCodec::decodeResponse(frameFromJson(responseWire)),
+        Domain::ErrorCodes::PayloadTooLarge);
+
+    const std::string oversizedInput = "{}" + std::string(maximumBodyBytes - 1U, ' ');
+    requireError(Manager::ManagerProtocolCodec::encodeRequest(request(
+        Manager::ManagerVisibleChatObserveRequest{projectId, path("D:\\Projects\\Alpha"),
+            "continuity.execute", true, oversizedInput})), Domain::ErrorCodes::PayloadTooLarge);
+    requireError(Manager::ManagerProtocolCodec::encodeResponse(response(
+        Manager::ManagerVisibleChatSnapshot{projectId, oversizedInput})), Domain::ErrorCodes::PayloadTooLarge);
+}
+
+void testVisibleChatSchemasFailClosed()
+{
+    const auto projectId = identifier<Domain::ProjectId>(
+        "20000000-0000-4000-8000-000000000002");
+    const auto observe = requestJson(Manager::ManagerVisibleChatObserveRequest{
+        projectId, path("D:\\Projects\\Alpha"), "continuity.execute", true, "{}"});
+    for (const auto field : {"project_id", "project_root", "tool_name", "succeeded", "result"}) {
+        auto missing = observe;
+        missing["params"].erase(field);
+        requireError(Manager::ManagerProtocolCodec::decodeRequest(frameFromJson(missing)),
+            Domain::ErrorCodes::InvalidRequest);
+    }
+    auto extra = observe;
+    extra["params"]["unknown"] = true;
+    requireError(Manager::ManagerProtocolCodec::decodeRequest(frameFromJson(extra)),
+        Domain::ErrorCodes::InvalidRequest);
+    for (const auto& [field, value] : std::vector<std::pair<std::string, Json>>{
+        {"project_id", "invalid-project"}, {"project_id", nullptr},
+        {"project_root", ""}, {"project_root", false},
+        {"tool_name", Json::array()}, {"succeeded", 1}, {"succeeded", "true"},
+        {"result", "{}"}, {"result", Json::array()}, {"result", nullptr}}) {
+        auto wrong = observe;
+        wrong["params"][field] = value;
+        requireError(Manager::ManagerProtocolCodec::decodeRequest(frameFromJson(wrong)),
+            Domain::ErrorCodes::InvalidRequest);
+    }
+
+    const auto status = requestJson(Manager::ManagerVisibleChatStatusRequest{projectId});
+    for (const auto& params : std::vector<Json>{Json::object(),
+        Json{{"project_id", projectId.value()}, {"unknown", false}},
+        Json{{"project_id", false}}, Json{{"project_id", "invalid-project"}}}) {
+        auto wrong = status;
+        wrong["params"] = params;
+        requireError(Manager::ManagerProtocolCodec::decodeRequest(frameFromJson(wrong)),
+            Domain::ErrorCodes::InvalidRequest);
+    }
+
+    const auto snapshot = responseJson(Manager::ManagerVisibleChatSnapshot{projectId, "{}"});
+    for (const auto& value : std::vector<Json>{Json::object(),
+        Json{{"project_id", projectId.value()}}, Json{{"status", Json::object()}},
+        Json{{"project_id", projectId.value()}, {"status", Json::object()}, {"unknown", true}},
+        Json{{"project_id", "invalid-project"}, {"status", Json::object()}},
+        Json{{"project_id", projectId.value()}, {"status", "{}"}},
+        Json{{"project_id", projectId.value()}, {"status", Json::array()}},
+        Json{{"project_id", projectId.value()}, {"status", nullptr}}}) {
+        auto wrong = snapshot;
+        wrong["result"]["value"] = value;
+        requireError(Manager::ManagerProtocolCodec::decodeResponse(frameFromJson(wrong)),
+            Domain::ErrorCodes::InvalidRequest);
+    }
+}
+
+void testVisibleChatMalformedBodiesFailClosed()
+{
+    const auto projectId = identifier<Domain::ProjectId>(
+        "20000000-0000-4000-8000-000000000002");
+    const auto observeWire = requestJson(Manager::ManagerVisibleChatObserveRequest{
+        projectId, path("D:\\Projects\\Alpha"), "continuity.execute", true,
+        "{\"sentinel\":true}"}).dump();
+    const auto snapshotWire = responseJson(Manager::ManagerVisibleChatSnapshot{
+        projectId, "{\"sentinel\":true}"}).dump();
+    const auto expectRejected = [&](const std::string& body, const std::string_view code) {
+        requireError(Manager::ManagerProtocolCodec::encodeRequest(request(
+            Manager::ManagerVisibleChatObserveRequest{projectId, path("D:\\Projects\\Alpha"),
+                "continuity.execute", true, body})), code);
+        requireError(Manager::ManagerProtocolCodec::encodeResponse(response(
+            Manager::ManagerVisibleChatSnapshot{projectId, body})), code);
+        auto malformedObserve = observeWire;
+        replaceOne(malformedObserve, "\"result\":{\"sentinel\":true}", "\"result\":" + body);
+        requireError(Manager::ManagerProtocolCodec::decodeRequest(frameFromText(malformedObserve)), code);
+        auto malformedSnapshot = snapshotWire;
+        replaceOne(malformedSnapshot, "\"status\":{\"sentinel\":true}", "\"status\":" + body);
+        requireError(Manager::ManagerProtocolCodec::decodeResponse(frameFromText(malformedSnapshot)), code);
+    };
+    for (const auto body : {"", "{", "{\"x\":}",
+        "{\"child\":{\"x\":1,\"x\":2}}", "{\"x\":1,\"\\u0078\":2}",
+        "{\"x\":\"\\u0000\"}", "{\"\\u0000\":true}"}) {
+        expectRejected(body, Domain::ErrorCodes::MalformedMessage);
+    }
+    for (const auto body : {"[]", "null", "true", "7", "\"{}\""}) {
+        expectRejected(body, Domain::ErrorCodes::InvalidRequest);
+    }
+    std::string invalidUtf8{"{\"text\":\""};
+    invalidUtf8.push_back(static_cast<char>(0xc0));
+    invalidUtf8.push_back(static_cast<char>(0xaf));
+    invalidUtf8 += "\"}";
+    expectRejected(invalidUtf8, Domain::ErrorCodes::MalformedMessage);
+    std::string rawNul{"{\"text\":\"a"};
+    rawNul.push_back('\0');
+    rawNul += "b\"}";
+    expectRejected(rawNul, Domain::ErrorCodes::MalformedMessage);
+    std::string tooDeep{"{\"nested\":"};
+    tooDeep.append(65U, '[');
+    tooDeep += "0";
+    tooDeep.append(65U, ']');
+    tooDeep += "}";
+    expectRejected(tooDeep, Domain::ErrorCodes::LimitExceeded);
 }
 
 void testManagedRunResultRoundTrips()
@@ -1720,6 +1960,10 @@ int main()
     const std::vector<std::pair<std::string_view, std::function<void()>>> tests{
         {"type-and-prefix", testTypeAndPrefixContract},
         {"request-round-trips", testEveryRequestMethodRoundTripsDeterministically},
+        {"visible-chat-bridge-round-trips", testVisibleChatBridgeRoundTrips},
+        {"visible-chat-bounded-object-framing", testVisibleChatBoundedObjectsAvoidDoubleEscaping},
+        {"visible-chat-closed-schemas", testVisibleChatSchemasFailClosed},
+        {"visible-chat-malformed-bodies", testVisibleChatMalformedBodiesFailClosed},
         {"response-round-trips", testResponseResultAndErrorRoundTrips},
         {"managed-run-round-trips", testManagedRunResultRoundTrips},
         {"automatic-continuity-preference-round-trips",

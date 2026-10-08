@@ -938,6 +938,7 @@ void testRuntimeDispatchAndSchemaPolicy()
     auto brokeredExecutionDependencies = adapterDependencies;
     auto imageAnalysisDependencies = adapterDependencies;
     auto capabilityDependencies = adapterDependencies;
+    auto visibleChatBridgeDependencies = adapterDependencies;
     auto adapter = take(Mcp::McpToolPackAdapter::create(std::move(adapterDependencies)));
     REQUIRE(adapter->tools().size() == 112U);
 
@@ -981,6 +982,102 @@ void testRuntimeDispatchAndSchemaPolicy()
             requestId,
             authority);
     };
+
+    {
+        struct ObservedTool final {
+            Domain::ProjectId project;
+            Domain::PathText selectedRoot;
+            std::string name;
+            bool succeeded;
+            std::string canonicalPayload;
+            Domain::OperationContext operation;
+        };
+        std::optional<ObservedTool> observed;
+        std::size_t observations{};
+        bool throwObservation{};
+        auto bridgeDependencies = visibleChatBridgeDependencies;
+        bridgeDependencies.visibleChatContinuityStatus = {};
+        bridgeDependencies.visibleChatToolResult = {};
+        bridgeDependencies.visibleChatWorkspaceBinding = {};
+        bridgeDependencies.visibleChatObservation = [&](const Domain::ProjectId& project,
+            const Domain::PathText& selectedRoot, std::string_view name, bool succeeded,
+            std::string_view canonicalPayload, const Domain::OperationContext& operation) {
+            ++observations;
+            observed = ObservedTool{project, selectedRoot, std::string{name}, succeeded,
+                std::string{canonicalPayload}, operation};
+            if (throwObservation) throw std::runtime_error{"Optional Manager observation failed"};
+        };
+        auto bridge = take(Mcp::McpToolPackAdapter::create(std::move(bridgeDependencies)));
+        const auto requireObserved = [&](const Domain::ToolCallOutcome& outcome,
+            const Domain::PathText& selectedRoot, const std::string_view name) {
+            REQUIRE(observed.has_value());
+            REQUIRE(observed->project == projectId);
+            REQUIRE(observed->selectedRoot == selectedRoot);
+            REQUIRE(observed->name == name);
+            REQUIRE(observed->succeeded == outcome.receipt.ok);
+            REQUIRE(observed->canonicalPayload == outcome.canonicalPayload);
+            REQUIRE(take(Mcp::McpJsonCodec{}.canonicalize(observed->canonicalPayload)) ==
+                observed->canonicalPayload);
+            REQUIRE(observed->operation.operationId == context.operationId);
+            REQUIRE(observed->operation.correlationId == context.correlationId);
+            REQUIRE(observed->operation.deadline == context.deadline);
+            REQUIRE(observed->operation.cancellation == context.cancellation);
+        };
+
+        const auto initial = take(bridge->handle(authorize("agent_list", Domain::ToolEffect::Read,
+            "{}", "bridge-observe-authority-root"), authority, context));
+        REQUIRE(initial.receipt.ok);
+        REQUIRE(observations == 1U);
+        requireObserved(initial, root, "agent_list");
+
+        clientWorkspaceContext.setAdoption(Domain::ClientWorkspaceAdoption{
+            Domain::ClientWorkspaceSnapshot{clientId, projectId, secondaryRoot,
+                parse<Domain::LegacyHandoffId>("bridge-recovered-workspace"), 7U, authority.generation()},
+            std::nullopt, false});
+        const auto recovered = take(bridge->handle(authorize("agent_list", Domain::ToolEffect::Read,
+            "{}", "bridge-observe-recovered-root"), authority, context));
+        REQUIRE(observations == 2U);
+        requireObserved(recovered, secondaryRoot, "agent_list");
+        clientWorkspaceContext.setAdoption({});
+
+        workspaceAuthority.enableHost(authority, secondaryRoot);
+        const auto hostAuthority = take(workspaceAuthority.authorityFor(projectId, context));
+        const auto defaulted = take(bridge->handle(authorizeFor("agent_list", Domain::ToolEffect::Read,
+            "{}", "bridge-observe-host-default-root", hostAuthority), hostAuthority, context));
+        REQUIRE(hostAuthority.trustedRoots().front() != secondaryRoot);
+        REQUIRE(observations == 3U);
+        requireObserved(defaulted, secondaryRoot, "agent_list");
+        workspaceAuthority.restoreWorkspace();
+
+        const auto originalGitResult = git.statusResult.get();
+        const std::string escapedOutput{"quoted \"result\", backslash \\, newline\n\xe2\x98\x83"};
+        git.statusResult.set(Domain::Result<Domain::ProcessResult>::success(
+            Domain::ProcessResult{17, escapedOutput, "measured failure", false, false,
+                false, false, true, 3ms}));
+        const auto failed = take(bridge->handle(authorize("git_status", Domain::ToolEffect::Read,
+            "{}", "bridge-observe-failed-tool"), authority, context));
+        REQUIRE(!failed.receipt.ok);
+        REQUIRE(observations == 4U);
+        requireObserved(failed, root, "git_status");
+        REQUIRE(Json::parse(observed->canonicalPayload).at("stdout") == escapedOutput);
+        REQUIRE(Json::parse(observed->canonicalPayload).at("exit_code") == 17);
+        git.statusResult.set(originalGitResult);
+
+        throwObservation = true;
+        const auto completed = take(bridge->handle(authorize("agent_list", Domain::ToolEffect::Read,
+            "{}", "bridge-observe-optional-failure"), authority, context));
+        REQUIRE(completed.receipt.ok);
+        REQUIRE(observations == 5U);
+        requireObserved(completed, root, "agent_list");
+        throwObservation = false;
+        const auto denied = bridge->handle(authorize("agent_list", Domain::ToolEffect::Write,
+            "{}", "bridge-observe-wrong-effect"), authority, context);
+        REQUIRE(!denied && denied.error().code == Domain::ErrorCodes::Unauthorized);
+        const auto malformed = bridge->handle(authorize("agent_list", Domain::ToolEffect::Read,
+            "{invalid", "bridge-observe-invalid-arguments"), authority, context);
+        REQUIRE(!malformed && malformed.error().code == Domain::ErrorCodes::MalformedMessage);
+        REQUIRE(observations == 5U);
+    }
 
     {
         const Json generation{{"prompt", "Measured provider task"}, {"path", root.value() + "/generated.png"},
@@ -1902,6 +1999,78 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(statusObservationCalls == statusCallsBeforeFailure + 2U);
     visibleStatusPayload = "{}";
 
+    {
+        std::size_t remoteCalls{};
+        std::size_t legacyStatusCalls{};
+        std::optional<Domain::ProjectId> remoteProject;
+        std::optional<Domain::OperationContext> remoteContext;
+        bool throwRemote{};
+        const Json managerStatus{
+            {"state", "waiting_for_model_packet"}, {"available", true}, {"enabled", false},
+            {"owner", "manager"}, {"owner_process_id", 4242U},
+            {"context_telemetry", {{"tokens_used", 1234U}, {"source", "native_generation"}}},
+            {"opaque", {{"items", Json::array({nullptr, true, "preserved"})}}}};
+        auto remoteResult = Domain::Result<std::string>::success(managerStatus.dump());
+        auto bridgeDependencies = visibleChatBridgeDependencies;
+        bridgeDependencies.visibleChatToolResult = {};
+        bridgeDependencies.visibleChatWorkspaceBinding = {};
+        bridgeDependencies.visibleChatContinuityStatus = [&]() -> std::string {
+            ++legacyStatusCalls;
+            throw std::runtime_error{"The superseded local status must not be read"};
+        };
+        bridgeDependencies.visibleChatRemoteStatus = [&](const Domain::ProjectId& project,
+            const Domain::OperationContext& operation) {
+            ++remoteCalls;
+            remoteProject = project;
+            remoteContext = operation;
+            if (throwRemote) throw std::runtime_error{"Manager status transport failed"};
+            return remoteResult;
+        };
+        auto bridge = take(Mcp::McpToolPackAdapter::create(std::move(bridgeDependencies)));
+        std::size_t requestIndex{};
+        const auto readStatus = [&] {
+            return take(bridge->handle(authorize("forge_status", Domain::ToolEffect::Read,
+                "{}", "bridge-remote-status-" + std::to_string(++requestIndex)), authority, context));
+        };
+        const auto outcome = readStatus();
+        const auto payload = Json::parse(outcome.canonicalPayload);
+        REQUIRE(outcome.receipt.ok);
+        REQUIRE(remoteCalls == 1U && legacyStatusCalls == 0U);
+        REQUIRE(remoteProject == std::optional<Domain::ProjectId>{projectId});
+        REQUIRE(remoteContext.has_value());
+        REQUIRE(remoteContext->operationId == context.operationId);
+        REQUIRE(remoteContext->correlationId == context.correlationId);
+        REQUIRE(remoteContext->deadline == context.deadline);
+        REQUIRE(remoteContext->cancellation == context.cancellation);
+        REQUIRE(payload.at("visible_chat_continuity") == managerStatus);
+        REQUIRE(payload.at("auto_continuity").at("visible_chat_handoff_available") == true);
+        REQUIRE(payload.at("auto_continuity").at("enabled") == false);
+        REQUIRE(payload.at("context_telemetry") == managerStatus.at("context_telemetry"));
+        REQUIRE(payload.at("workspace").at("project_id") == projectId.value());
+
+        for (const auto& malformed : std::vector<std::string>{"{incomplete", "[]", "null",
+            R"({"available":"true"})", R"({"enabled":1})"}) {
+            remoteResult = Domain::Result<std::string>::success(malformed);
+            const auto malformedOutcome = readStatus();
+            const auto malformedPayload = Json::parse(malformedOutcome.canonicalPayload);
+            REQUIRE(malformedOutcome.receipt.ok);
+            REQUIRE(malformedPayload.at("ok") == true);
+            REQUIRE(malformedPayload.at("visible_chat_continuity").contains("error"));
+            REQUIRE(malformedPayload.at("auto_continuity").at("visible_chat_handoff_available") == false);
+            REQUIRE(malformedPayload.at("workspace").at("project_id") == projectId.value());
+        }
+        remoteResult = Domain::Result<std::string>::failure(Domain::makeError(
+            Domain::ErrorCodes::TransportClosed, "Manager status transport is closed"));
+        const auto unavailableOutcome = readStatus();
+        REQUIRE(unavailableOutcome.receipt.ok);
+        REQUIRE(Json::parse(unavailableOutcome.canonicalPayload).at("visible_chat_continuity").contains("error"));
+        throwRemote = true;
+        const auto throwingOutcome = readStatus();
+        REQUIRE(throwingOutcome.receipt.ok);
+        REQUIRE(Json::parse(throwingOutcome.canonicalPayload).at("visible_chat_continuity").contains("error"));
+        REQUIRE(remoteCalls == 8U && legacyStatusCalls == 0U);
+    }
+
     const auto handoffId = parse<Domain::LegacyHandoffId>(
         "recovered-adapter-context");
     Domain::LegacyHandoffPacket recoveredPacket{
@@ -2100,6 +2269,75 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(legacyContinuity.lastHandoffRequest()->patch.nextActions == completeAutoRecord.packet.nextActions);
     REQUIRE(legacyContinuity.lastHandoffRequest()->patch.decisions == explicitConstraints);
     REQUIRE(take(legacyMemory.get({resumePointer}, context)).note->body == completeAutoRecord.packet.id.value());
+
+    {
+        std::size_t remoteCalls{};
+        std::size_t legacyStatusCalls{};
+        std::optional<Domain::ProjectId> remoteProject;
+        std::optional<Domain::OperationContext> remoteContext;
+        std::string managerState;
+        auto bridgeDependencies = visibleChatBridgeDependencies;
+        bridgeDependencies.visibleChatToolResult = {};
+        bridgeDependencies.visibleChatWorkspaceBinding = {};
+        bridgeDependencies.visibleChatContinuityStatus = [&] {
+            ++legacyStatusCalls;
+            return R"({"state":"observing"})";
+        };
+        bridgeDependencies.visibleChatRemoteStatus = [&](const Domain::ProjectId& project,
+            const Domain::OperationContext& operation) {
+            ++remoteCalls;
+            remoteProject = project;
+            remoteContext = operation;
+            return Domain::Result<std::string>::success(Json{
+                {"state", managerState}, {"owner", "manager"}}.dump());
+        };
+        auto bridge = take(Mcp::McpToolPackAdapter::create(std::move(bridgeDependencies)));
+        const auto priorHandoffs = legacyContinuity.handoffCalls();
+        for (const auto state : {"requesting_model_packet", "waiting_for_model_packet", "repairing_model_packet"}) {
+            managerState = state;
+            const auto incomplete = bridge->handle(authorize("session_handoff", Domain::ToolEffect::Write,
+                incompleteAuto.dump(), std::string{"bridge-incomplete-auto-"} + state), authority, context);
+            REQUIRE(!incomplete && incomplete.error().code == Domain::ErrorCodes::InvalidRequest);
+            for (const auto field : {"narrative", "resume_seed", "key_files", "next_actions", "decisions"}) {
+                REQUIRE(incomplete.error().message.find(field) != std::string::npos);
+            }
+            REQUIRE(legacyContinuity.handoffCalls() == priorHandoffs);
+            REQUIRE(take(legacyMemory.get({resumePointer}, context)).note->body == completeAutoRecord.packet.id.value());
+        }
+        managerState = "waiting_for_model_packet";
+        auto missingConstraints = completeAuto;
+        missingConstraints.erase("decisions");
+        const auto incompleteSerialized = bridge->handle(authorize("session_handoff", Domain::ToolEffect::Write,
+            Json{{"packet_json", missingConstraints.dump()}}.dump(), "bridge-incomplete-auto-serialized"), authority, context);
+        REQUIRE(!incompleteSerialized && incompleteSerialized.error().code == Domain::ErrorCodes::InvalidRequest);
+        REQUIRE(incompleteSerialized.error().message.find("decisions") != std::string::npos);
+        REQUIRE(legacyContinuity.handoffCalls() == priorHandoffs);
+
+        const auto complete = take(bridge->handle(authorize("session_handoff", Domain::ToolEffect::Write,
+            completeAuto.dump(), "bridge-complete-auto-direct"), authority, context));
+        REQUIRE(complete.receipt.ok);
+        REQUIRE(complete.contextPersistence == completeAutoRecord.packet.id);
+        REQUIRE(legacyContinuity.handoffCalls() == priorHandoffs + 1U);
+        const auto serialized = take(bridge->handle(authorize("session_handoff", Domain::ToolEffect::Write,
+            Json{{"packet_json", completeAuto.dump()}}.dump(), "bridge-complete-auto-serialized"), authority, context));
+        REQUIRE(serialized.receipt.ok);
+        REQUIRE(serialized.contextPersistence == completeAutoRecord.packet.id);
+        REQUIRE(legacyContinuity.handoffCalls() == priorHandoffs + 2U);
+        REQUIRE(legacyContinuity.lastHandoffRequest()->patch.goal == completeAuto.at("goal").get<std::string>());
+        REQUIRE(legacyContinuity.lastHandoffRequest()->patch.narrative == detailedNarrative);
+        REQUIRE(legacyContinuity.lastHandoffRequest()->patch.resumeSeed == detailedSeed);
+        REQUIRE(legacyContinuity.lastHandoffRequest()->patch.keyFiles == completeAutoRecord.packet.keyFiles);
+        REQUIRE(legacyContinuity.lastHandoffRequest()->patch.nextActions == completeAutoRecord.packet.nextActions);
+        REQUIRE(legacyContinuity.lastHandoffRequest()->patch.decisions == explicitConstraints);
+        REQUIRE(take(legacyMemory.get({resumePointer}, context)).note->body == completeAutoRecord.packet.id.value());
+        REQUIRE(remoteCalls == 6U && legacyStatusCalls == 0U);
+        REQUIRE(remoteProject == std::optional<Domain::ProjectId>{projectId});
+        REQUIRE(remoteContext.has_value());
+        REQUIRE(remoteContext->operationId == context.operationId);
+        REQUIRE(remoteContext->correlationId == context.correlationId);
+        REQUIRE(remoteContext->deadline == context.deadline);
+        REQUIRE(remoteContext->cancellation == context.cancellation);
+    }
 
     const auto handoffCallsBeforeSerialized = legacyContinuity.handoffCalls();
     auto rejectSerialized = [&](Json arguments, const std::string& field, const std::string& requestId) {

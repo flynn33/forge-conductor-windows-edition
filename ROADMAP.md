@@ -1,6 +1,6 @@
 # Roadmap
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.22 candidate.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.23 candidate.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,9 +8,9 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-## Current source version: 1.3.22 — qualification pending
+## Current source version: 1.3.23 — qualification pending
 
-Version 1.3.22 implements 112 Primary/Fallback tools while preserving all original tools, ten specialist playbooks and five CLU tools. Native CMake/CTest run/status jobs, paged accessibility reads and optional higher-resolution bounded image previews extend dedicated web, native Office documents, desktop/browser, PNG/image analysis, independent managed workers and persistent schedules. Existing shell/process jobs, reviews, memory, policy, deployment and continuity remain. Integrated 1.3.22 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. See the [capability guide](docs/HOST-CAPABILITIES.md), [CMake/CTest guide](docs/CMAKE-CTEST.md), [implementation notes](docs/releases/1.3.22.md) and [measured verification](docs/validation/HOST-CAPABILITIES-1.3.22.md).
+Version 1.3.23 implements 112 Primary/Fallback tools while preserving all original tools, ten specialist playbooks and five CLU tools. Native CMake/CTest run/status jobs, paged accessibility reads and optional higher-resolution bounded image previews extend dedicated web, native Office documents, desktop/browser, PNG/image analysis, independent managed workers and persistent schedules. Existing shell/process jobs, reviews, memory, policy, deployment and continuity remain. Integrated 1.3.23 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. See the [capability guide](docs/HOST-CAPABILITIES.md), [CMake/CTest guide](docs/CMAKE-CTEST.md), [implementation notes](docs/releases/1.3.23.md) and [measured verification](docs/validation/HOST-CAPABILITIES-1.3.23.md).
 
 The 1.3.21 source persists the interrupted native handoff phase in a bounded, current-user DPAPI checkpoint. A single writer owns native controls; reconstruction requires fresh project/provider/route confirmation and selected-chat evidence. Uncertain New chat or Send effects remain `recovery_pending` and are not replayed. The 118-group Infrastructure suite passed, including the private same-PID observer reconstruction regression and 20 durability cases. Installed observer/UI interruption or connector rollover recovery remains unverified; physical context exhaustion and already-running agent reattachment were not exercised. Historical 1.3.20 checkpoint-process primitive evidence retains its original source identity and is not a current installed qualification. See the [continuity implementation](docs/implementation/CONTEXT-CONTINUITY.md).
 
@@ -19,6 +19,14 @@ The following limitation records the historical qualification through 1.3.19, be
 Historical Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 
 The source candidate adds optional image_provider_status, image_generate, image_edit, image_job_status, image_job_cancel and image_job_resume through an explicit disabled-by-default ComfyUI profile. Native masking, durable exact-ID recovery, local cancellation and no replay are bounded contracts; semantic quality and integrated delivery require separate evidence. See [provider contract](docs/IMAGE-PROVIDER.md).
+
+## 1.3.23 continuity candidate
+
+The 1.3.23 candidate uses `ManagerVisibleChatContinuity` as an `IManagerTransitionWorker`. `ManagerProcessWorkerGroup` starts it after controller initialization and joins it before memory, configuration and repository services are destroyed. Internal `visible_chat.observe` and `visible_chat.status` use the existing authenticated same-Windows-user nonce pipe and 2 MiB frame bound; JSON object bodies are limited to 1 MiB with closed-field, duplicate-field and depth checks. The Primary CLI callback carries the final authorized project/root, tool name, success and canonical result together. Fallback and CLU do not submit competing observations. Route validation uses the verified sibling CLI from `ManagerProcessEnvironment`, rather than treating Manager.exe as the deployed MCP executable. The public catalog, schemas and 112/112/5 source inventory are unchanged.
+
+Manager lifetime does not grant saved authority or confirm an uncertain UI effect. Current project/provider/route validation, the OS-held single-writer lease and selected-native evidence still gate control dispatch. An empty or unrelated third chat does not establish the successor. Explicit route migration requires a fresh authorized Primary callback, matching actual native packet/recovery evidence and exact preservation of the old encrypted checkpoint. Uncertain New chat or Send is reconciled without automatic replay. Completion requires the actual handed message, successor `context_get` and a following successful Forge tool result. Installed automatic delivery remains unqualified.
+
+The [superseded 1.3.22 investigation](docs/releases/1.3.22.md) passed final source and signed-install checks but did not complete automatic packet delivery. All 1.3.23 release checks remain pending.
 
 ## Follow-up
 

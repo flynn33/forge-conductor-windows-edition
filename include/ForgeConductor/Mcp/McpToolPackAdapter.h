@@ -91,6 +91,10 @@ struct McpToolPackDependencies final {
     std::function<Contracts::IScheduledTaskService*()> scheduledTasks;
     std::string managerStartupError;
     Contracts::IImageProviderService* imageProvider{};
+    std::function<Domain::Result<std::string>(const Domain::ProjectId&,
+        const Domain::OperationContext&)> visibleChatRemoteStatus;
+    std::function<void(const Domain::ProjectId&, const Domain::PathText&,
+        std::string_view, bool, std::string_view, const Domain::OperationContext&)> visibleChatObservation;
 };
 
 // Parses source-compatible tool arguments into transport-neutral Domain

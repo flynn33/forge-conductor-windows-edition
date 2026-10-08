@@ -135,6 +135,14 @@ public:
         const Manager::ManagerToolInvokeRequest& request,
         const Domain::OperationContext& context) noexcept;
 
+    [[nodiscard]] Domain::Result<Manager::ManagerVisibleChatSnapshot> visibleChatObserve(
+        const Manager::ManagerVisibleChatObserveRequest& request,
+        const Domain::OperationContext& context) noexcept;
+
+    [[nodiscard]] Domain::Result<Manager::ManagerVisibleChatSnapshot> visibleChatStatus(
+        const Domain::ProjectId& projectId,
+        const Domain::OperationContext& context) noexcept;
+
     [[nodiscard]] Domain::Result<Manager::ManagerOperationalSnapshot> operational(
         const Manager::ManagerOperationalRequest& request,
         const Domain::OperationContext& context) noexcept;

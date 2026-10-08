@@ -4,7 +4,7 @@
 
 **Forge Conductor**
 
-<sub>Windows · 1.3.22 · qualification pending</sub>
+<sub>Windows · 1.3.23 · qualification pending</sub>
 
 ---
 
@@ -12,7 +12,8 @@
 * [Home](Home)
 * [Workspace Guide](Guided-Setup)
 * [CLU Governance](Setup-and-Governance)
-* [1.3.22 source and verification scope](Release-1.3.22)
+* [1.3.23 source and verification scope](Release-1.3.23)
+* [Superseded 1.3.22 installed investigation](Release-1.3.22)
 * [Published 1.3.21 qualification](Release-1.3.21)
 * [Unpublished 1.3.20 installed investigation](Release-1.3.20)
 * [Historical published release 1.3.19](Release-1.3.19)

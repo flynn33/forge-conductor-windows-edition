@@ -21,6 +21,7 @@
 #include <chrono>
 #include <cstddef>
 #include <memory>
+#include <functional>
 
 namespace ForgeConductor::Manager {
 
@@ -50,6 +51,10 @@ struct ManagerTelemetrySources final {
     Contracts::ILegacyContinuityRepository* legacyPackets{};
     Contracts::ILegacyContextContinuityService* legacyContinuity{};
     Contracts::IContinuityProjectionStore* packetFiles{};
+    std::function<Domain::Result<ManagerVisibleChatSnapshot>(
+        const ManagerVisibleChatObserveRequest&, const Domain::OperationContext&)> visibleChatObserve;
+    std::function<Domain::Result<ManagerVisibleChatSnapshot>(
+        const Domain::ProjectId&, const Domain::OperationContext&)> visibleChatStatus;
 };
 
 class ManagerRequestDispatcher final {

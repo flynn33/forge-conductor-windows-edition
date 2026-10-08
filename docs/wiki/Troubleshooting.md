@@ -34,17 +34,21 @@ Choose a policy repository folder to bind it immediately. Use **Inspect findings
 
 ## Packet saved but no chat rollover
 
+Manager lifetime does not grant saved authority or confirm an uncertain UI effect. Current project/provider/route validation, the OS-held single-writer lease and selected-native evidence still gate control dispatch. An empty or unrelated third chat does not establish the successor. Explicit route migration requires a fresh authorized Primary callback, matching actual native packet/recovery evidence and exact preservation of the old encrypted checkpoint. Uncertain New chat or Send is reconciled without automatic replay. Completion requires the actual handed message, successor `context_get` and a following successful Forge tool result. Installed automatic delivery remains unqualified.
+
+In the superseded 1.3.22 run, the retained checkpoint reached an uncertain New chat effect and the selected new conversation had zero messages. The three CLI and bridge parents exited with code 1; the captured exit codes do not identify their exit cause. Do not classify that empty chat as delivered or complete. The 1.3.23 Manager-lifetime change still requires installed native verification.
+
 A saved packet or local connection ID alone is not native successor proof. Inspect the selected native conversation state and continuity status. The product must verify the exact handed message and enabled integrations in a new native chat, then packet retrieval and a following Forge result. CLU is governance and cannot repair chat creation by itself.
 
 ### Historical native qualification through 1.3.19
 
-The next two paragraphs record the earlier implementation and its measured limits; they do not describe the retained checkpoint source in the 1.3.22 candidate.
+The next two paragraphs record the earlier implementation and its measured limits; they do not describe the retained checkpoint source in the 1.3.23 candidate.
 
 Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 
 If the primary MCP worker was evicted during handoff, durable packet records may still exist but automatic recovery of the interrupted UI phase is not implemented. Do not describe that state as completed. Physical exhaustion and already-running agent reattachment were not exercised by the 1.3.5 reserve-pressure verification.
 
-### Current 1.3.22 checkpoint contract — installed recovery unverified
+### Current 1.3.23 Manager observer candidate — installed recovery unverified
 
 The source now checkpoints the native phase, exact packet revision, conversation identities and New chat/Send receipts. Inspect `get_forge_status.visible_chat_continuity.state` and `handoff_recovery` for `recovery_pending`, its recorded phase, reason, packet ID, predecessor/successor IDs and `automatic_replay: false`. That state retains unfinished work; it is not a completed rollover.
 
@@ -78,4 +82,4 @@ For schedules, inspect actual `latest_run`, `needs_attention`, `last_notificatio
 
 ### Image drawing, analysis and generation
 
-The installed 1.3.21 native catalog has 106 tools and lacks the six provider additions. image_write draws shapes/text; image_analyze and reviewer_status inspect an existing image. A 1.3.22 source catalog is not an installed upgrade. Once installed and qualified, generation uses image_generate/image_edit and image_job_status, with explicit configured ComfyUI availability from image_provider_status. Local image_job_cancel and exact-job image_job_resume have separate authority/effect contracts; neither reviewer_status nor a model claim proves generation completion. See [provider contract](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
+The superseded installed 1.3.22 Primary native status reported 112 tools, while complete 112/112/5 catalog qualification and integrated provider acceptance remained incomplete. The 1.3.23 source inventory is not proof of a current installed upgrade. `image_write` draws; `image_analyze` and `reviewer_status` inspect existing images. Generation and editing use the explicitly configured ComfyUI `image_generate`/`image_edit` jobs and `image_job_status`; local cancellation and exact-job resume have separate effect/authority contracts. A model claim or advertised tool count does not prove generation completion. See [provider contract](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).

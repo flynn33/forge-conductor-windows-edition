@@ -1,3 +1,58 @@
+# 1.3.22 capability qualification — superseded installed candidate
+
+Product/package identity: **1.3.22 / 1.3.22.0**. Final source commit `9178abdf12998af56df4860a56b25dccfcc30e10`, tree `b5e9fdedc9cb6b7ea0f97f9d93ef2e2d2f313d64`. No final release qualification, tag or publication is asserted. Current candidate [1.3.23](HOST-CAPABILITIES-1.3.23.md) has separate pending checks.
+
+## Final observed scope
+
+| Check | Actual retained result |
+| --- | --- |
+| Product All | Passed against the clean final source |
+| Complete configured Release CTest graph | 166/166 passed in 97.71 seconds |
+| Static gates and package persistence | All three gates and persistence passed |
+| Signed 1.3.22.0 distribution/install | Valid development signature; all four staging/MSIX/installed executable hashes matched |
+| Offline prelaunch preservation | 8,431 files / 410,168,202 bytes and conversation, selection, configuration and MCP snapshots preserved before launch or explicit setting changes |
+| Actual selected Qwen Primary calls | Successful session_handoff and two get_forge_status results reporting version 1.3.22 / 112 tools |
+| Explicit route recovery | Stored model packet 7f06a8b2-a102-4f82-85ae-93aa6d3a7db4 at write sequence 8; exact original encrypted revision-2 archive, followed by Creating revision 3 |
+| Later native handoff | Revision 4 retained uncertain delivery/new_chat; selected new conversation had zero messages, delivery/context recovery false, no confirmed successor |
+| Later assisted readback | Manually seeded Primary context_get/get_forge_status advanced the same packet to revision 6/resumed, confirmed New chat and delivery/context-recovery flags; this is not automatic packet Send proof |
+| Connector lifetime capture | All three CLI and bridge-parent retained handles exited with code 1; exit cause not established by those codes |
+| Completed predecessor preservation | 84 messages, final eosFound, original complete 78-message prefix preserved |
+| Installed complete catalogs | Not qualified; catalog-v3 capture failed before authenticated HTTP |
+| Integrated public/native image-provider acceptance | Not qualified; isolated smoke remains separately scoped below |
+| Private Manager cleanup | Normal exit 0 independently observed through retained handle; cleanup does not qualify catalogs or images |
+| CI and publication/readback | Not qualified; no 1.3.22 public release |
+
+## Final receipt seals
+
+Paths below are retained private evidence names under capability-parity; they are identifiers, not public download links.
+
+| Receipt | SHA-256 |
+| --- | --- |
+| release-clean-final-1322-9178abd/all_product_build/all_product_build.receipt.json | 2e3ece927702b131b26d832a25fd2e8ab9f537190ab3534900f2ef1844b86c48 |
+| release-clean-final-1322-9178abd/complete_release_tests/complete_release_tests.receipt.json | f1af54dcbf69429545e1455c4afcf92ec7678c473f6b3c09cea417e078a7fa9a |
+| release-clean-final-1322-9178abd/static_gates/static_gates.receipt.json | f89b2ff7c2fdb51df4a3493803c721744e6fad8cc5286003ed8546e642a42364 |
+| release-clean-final-1322-9178abd/persistence/persistence.receipt.json | b92aeced98baf8a1aa18107b4a825bace4918320f43c04b51e925840aaeef834 |
+| release-clean-final-1322-9178abd/package/package.receipt.json | 06175e8732f9eb0a02bf44de61c405006d3f2213fefd0bd77da78d30c7a561a8 |
+| installed-release-qualified-1322/installed-verification.json | a5a6befbf33484e06decba20c22699433efbf97c7f881aeae2bb43a4df88beca |
+| installed-catalogs-qualified-1322-final-v3/report.json | 1cbc436537ee5562a203667ebe88d8fcd3c81d3dc4842c67ee7e0dc2f093556d |
+| native-continuity-watch-1322-9178abd-next/watch-summary.json | 38f676ca8ccc3b6f500f9dbfa8fd964cfaa42627f4110fb0b7ab4838a81590cf |
+| native-connector-lifetime-1322-third-probe/result.json | 930713bb8c4c66c5e530955237d793b6302a460fc02bd6f792909fc2d14a3608 |
+| actual-empty-native-new-chat-1322-0533/snapshot.json | 74f3dc42d0a49ed7f9858655ad42aba27d9789e4b3f30b750a24eba8111cc85e |
+| native-third-probe-completed-predecessor-1322-0533/capture.json | e8a8808ae554b3d6166ea6839ccf7bd0de1185924cef7636d9f6e90ae60d7ac0 |
+| native-third-probe-completed-predecessor-1322-0533/conversation.json | a1808e4b85b77e8e79b36649c94243d01d93cdac15d2eac19ec18931889ab3ab |
+| native-assisted-recovery-watch-1322-0542/checkpoints/0e03af722e69f8299e043102bf96f32cf7c6e029009f648515e408dfad527462.json | 3a88e065ae387f3deace8dff635738941aaa86a0ce08fc0edea408aa51655f60 |
+| private-manager-control-preparation-1322-v1/actual-runtime.json | 0ea8318e1d3c490c16f0f274e593df5d782e8a8f23ad849bf1d73d4b9fe77ba6 |
+
+The selected Primary native request/result pairs use actual call IDs 1867938446390454 (session_handoff), 1867938446390455 and 1867938446390456 (get_forge_status). They do not establish all three catalog roles or the six provider tools. The 30-minute passive watch observed three checkpoint versions and zero read errors; only copied revisions are evidence. Revision 4 was observed at 2026-10-08T05:32:58.591238Z. The three CLI/bridge pairs exited at 05:33:00.125–126Z. The selected new Qwen conversation 1791437581203 had zero messages. Its existence does not prove packet delivery or safe replay. The exact encrypted archive retained SHA-256 c9786acbe59fa91fa9d234894456f58e986b56cf2c0a99b9ba31108babdd330c; the watch receipt supplies the authoritative original digest. No independent raw SQL crash-durability claim is made.
+
+The unpackaged private registry view was absent and the packaged view was present. The package-only existing nonce allowed normal private Manager shutdown with independent retained-handle exit 0 at 2026-10-08T05:39:25.055580Z–05:39:56.630606Z. It did not establish a successful catalog HTTP capture. The installed owner Manager remained a separate process. Owner state was not altered by documentation work.
+
+The later assisted attempt used a manual short seed requesting the existing packet ID and then status. The observed revision-6 checkpoint at 2026-10-08T05:42:30.543720Z reports phase resumed, the same packet/write sequence, successor 1791437581203, confirmed New chat, delivery_acknowledged/context_recovered true, and packet_request_acknowledged/repair_acknowledged false. The watch saw revision 4 then revision 6; revision 5 was not captured. This establishes the retained assisted reconciliation state, not automatic full-packet Send or all intermediate stages. The model generation had not reached EOS when this observation was recorded. It supplies no automatic 1.3.22 rollover qualification and no 1.3.23 proof.
+
+## Preserved chronological pre-final records
+
+The original record below retains the earlier failure, timing diagnosis, focused source checks and isolated provider measurements. Statements about pending checks describe those stages; the final observed table above is the later source/install result. These earlier measurements are not rebound to 1.3.23.
+
 # 1.3.22 capability qualification — pending integrated release checks
 
 The source candidate identifies **1.3.22 / 1.3.22.0** and defines **112 Primary/Fallback tools**, with five CLU tools and every previous descriptor retained. Canonical descriptor SHA-256: 8c8773f8880fd5925b6da2d1a526c85889eb25f715c0dfaebbfa7456ca409508.

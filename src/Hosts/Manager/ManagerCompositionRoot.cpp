@@ -8,6 +8,7 @@
 #include "ManagerProcessStopWatcher.h"
 #include "ManagerProcessWorkerGroup.h"
 #include "ManagerTransitionWorker.h"
+#include "ManagerVisibleChatContinuity.h"
 #include "WindowsManagerRuntime.h"
 
 #include "ManagerDashboardOperationalDataSource.h"
@@ -695,6 +696,7 @@ private:
         legacyProjectionStore_;
     std::unique_ptr<Application::LegacyContextContinuityService>
         legacyContinuity_;
+    std::shared_ptr<ManagerVisibleChatContinuity> visibleChatContinuity_;
     std::unique_ptr<InfrastructureWindows::WindowsContinuityDocumentCodec>
         continuityCodec_;
     std::unique_ptr<InfrastructureWindows::WindowsNativeSessionLedger>
@@ -1542,6 +1544,13 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
             *lmStudioSelectionIssuer_, *fileSystem_};
         auto selection = take(selector.select(
             std::move(candidates), *lmStudioSelectionAuthority_, context));
+        if (selection.status().configurationPath && selection.status().applicationExecutable) {
+            visibleChatContinuity_ = std::make_shared<ManagerVisibleChatContinuity>(
+                process.dataRoot(), parentPath(*selection.status().configurationPath),
+                *selection.status().applicationExecutable, process.cliExecutable(),
+                *projectRegistry_, *projectWorkspaceAuthority_, *legacyMemory_,
+                *legacyContinuity_, *projectMemory_, *clock_, *uuidGenerator_, *configurationStore_);
+        }
         CompositionWindows::ManagerLmStudioReadScopeResolver resolver{
             CompositionWindows::ManagerLmStudioReadScopeConfiguration{
                 CompositionWindows::ManagerLmStudioReadScopeIdentity{
@@ -1616,6 +1625,7 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
         if (!isOptionalLmStudioAbsence(failure.error())) {
             throw;
         }
+        visibleChatContinuity_.reset();
         if (lmStudioDeployment_) {
             lmStudioDeployment_->shutdown();
             lmStudioDeployment_.reset();
@@ -1761,7 +1771,24 @@ void ManagerCompositionRoot::Impl::initializeDashboard(
             auditRepository_.get(),
             managedRunStore_.get(),
             hasher_.get(), projectPolicy_.get(), legacyContinuityRepository_.get(),
-            legacyContinuity_.get(), legacyProjectionStore_.get()});
+            legacyContinuity_.get(), legacyProjectionStore_.get(),
+            [this](const ManagerProtocol::ManagerVisibleChatObserveRequest& request,
+                   const Domain::OperationContext& operation) {
+                if (!visibleChatContinuity_) {
+                    return Domain::Result<ManagerProtocol::ManagerVisibleChatSnapshot>::failure(
+                        Domain::makeError(Domain::ErrorCodes::HostCapabilityUnavailable,
+                            "Manager-owned native continuity is unavailable in this composition."));
+                }
+                return visibleChatContinuity_->observe(request, operation);
+            },
+            [this](const Domain::ProjectId& project, const Domain::OperationContext& operation) {
+                if (!visibleChatContinuity_) {
+                    return Domain::Result<ManagerProtocol::ManagerVisibleChatSnapshot>::failure(
+                        Domain::makeError(Domain::ErrorCodes::HostCapabilityUnavailable,
+                            "Manager-owned native continuity is unavailable in this composition."));
+                }
+                return visibleChatContinuity_->status(project, operation);
+            }});
 }
 
 void ManagerCompositionRoot::Impl::initializeManagerHost(
@@ -1780,11 +1807,14 @@ void ManagerCompositionRoot::Impl::initializeManagerHost(
                 2s}));
 
     std::vector<std::unique_ptr<IManagerTransitionWorker>> workers;
-    workers.reserve(2U);
+    workers.reserve(3U);
     workers.push_back(std::make_unique<ManagerTransitionWorker>(
         managerController_, clock_, uuidGenerator_, restartSignal_));
     workers.push_back(std::make_unique<ManagerMaintenanceWorker>(
         maintenanceService_, clock_, uuidGenerator_));
+    if (visibleChatContinuity_) {
+        workers.push_back(std::make_unique<ManagerVisibleChatWorker>(visibleChatContinuity_));
+    }
     auto workerGroup = std::make_unique<ManagerProcessWorkerGroup>(
         std::move(workers));
 
@@ -1924,6 +1954,9 @@ void ManagerCompositionRoot::Impl::shutdownServices(
     }
 
     try {
+        if (visibleChatContinuity_) {
+            visibleChatContinuity_->shutdown();
+        }
         if (dashboardOperationalService_) {
             dashboardOperationalService_->shutdown();
         }

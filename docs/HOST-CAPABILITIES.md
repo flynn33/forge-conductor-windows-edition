@@ -1,4 +1,4 @@
-# Host workflows in the 1.3.22 source candidate
+# Host workflows in the 1.3.23 source candidate
 
 ## Optional image generation and editing
 
@@ -6,10 +6,10 @@ Choose tools by purpose. image_write draws shapes and text. image_analyze starts
 
 The initial sd1 profile is disabled by default and requires an explicit owner-configured loopback endpoint and compatible checkpoint. Status reports unavailable or incompatible providers; Forge does not start a server or install a model. Inputs require explicit seed, absolute authorized paths and bounded dimensions. Mask red 0 preserves original RGBA exactly. Lost acknowledgements remain unknown without generation replay; status cannot publish recovered work. Cancellation may leave remote inference running. See [provider setup, examples and exact bounds](IMAGE-PROVIDER.md).
 
-The isolated direct-native six-case ComfyUI smoke passed with 128/256-pixel outputs and 2/4/6 steps, including exact 8,192-pixel outside-mask preservation and controlled response-loss recovery. Integrated 1.3.22 Manager IPC/LM Studio qualification, semantic instruction following and full host model quality remain pending or unverified.
+The isolated direct-native six-case ComfyUI smoke passed with 128/256-pixel outputs and 2/4/6 steps, including exact 8,192-pixel outside-mask preservation and controlled response-loss recovery. Integrated 1.3.23 Manager IPC/LM Studio qualification, semantic instruction following and full host model quality remain pending or unverified.
 
 
-The measurement block below is historical 1.3.19 qualification; it does not qualify the current 1.3.22 candidate.
+The measurement block below is historical 1.3.19 qualification; it does not qualify the current 1.3.23 candidate.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -17,7 +17,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-The current 1.3.22 source catalog defines 112 Primary/Fallback tools, adding `cmake_test_run` and `cmake_test_status` while retaining all previous tools, five CLU governance tools and ten specialist playbooks. Integrated 1.3.22 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. Call `host_capabilities` before deciding that a category is unavailable: it reports actual tool names, filesystem mode, Manager-backed capabilities, and external connection requirements. `get_forge_status` also reports the selected project's directory and detailed active authority. The full catalog remains available through the existing MCP protocol.
+The current 1.3.23 source catalog defines 112 Primary/Fallback tools, adding `cmake_test_run` and `cmake_test_status` while retaining all previous tools, five CLU governance tools and ten specialist playbooks. Integrated 1.3.23 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. Call `host_capabilities` before deciding that a category is unavailable: it reports actual tool names, filesystem mode, Manager-backed capabilities, and external connection requirements. `get_forge_status` also reports the selected project's directory and detailed active authority. The full catalog remains available through the existing MCP protocol.
 
 Rig's corrected display shows the native conversation observed by the App and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. The preference does not establish live rollover availability. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for the native worker's actual state; its `available` flag becomes true after a successor conversation and handed message are verified. The 1.3.19 App includes this correction from the earlier candidate; final installed/readback and current-chat results are recorded in the versioned verification record. Earlier tests and package evidence retain their recorded source identities.
 
@@ -135,4 +135,4 @@ Manager reports meaningful transitions through its local notification callback, 
 
 ## Verification and remaining external requirements
 
-Integrated 1.3.22 source/package/installed/native qualification remains pending in [the candidate record](validation/HOST-CAPABILITIES-1.3.22.md). Published 1.3.21 evidence retains its original scope. See the historical [1.3.19 release notes](releases/1.3.19.md) and [verification](validation/HOST-CAPABILITIES-1.3.19.md) for that artifact's executed checks and exact scope. A listed tool, accepted input, queued schedule, opened browser or submitted input is not proof that the user's final task completed. Inspect actual receipts, output, observed UI and error state. Generative image models, cloud accounts and their credentials remain configured external services; the dedicated native workflows above do not remove existing shell/process or integration routes.
+Integrated 1.3.23 source/package/installed/native qualification remains pending in [the candidate record](validation/HOST-CAPABILITIES-1.3.23.md). Published 1.3.21 evidence retains its original scope. See the historical [1.3.19 release notes](releases/1.3.19.md) and [verification](validation/HOST-CAPABILITIES-1.3.19.md) for that artifact's executed checks and exact scope. A listed tool, accepted input, queued schedule, opened browser or submitted input is not proof that the user's final task completed. Inspect actual receipts, output, observed UI and error state. Generative image models, cloud accounts and their credentials remain configured external services; the dedicated native workflows above do not remove existing shell/process or integration routes.

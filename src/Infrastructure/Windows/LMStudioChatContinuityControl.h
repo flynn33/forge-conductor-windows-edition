@@ -34,6 +34,16 @@ public:
         return std::unique_ptr<WindowsLMStudioChatContinuity>{new WindowsLMStudioChatContinuity{
             std::forward<Arguments>(arguments)..., std::move(controls)}};
     }
+    template <typename... Arguments>
+    static std::unique_ptr<WindowsLMStudioChatContinuity> createScoped(
+        std::shared_ptr<LMStudioChatControlActions> controls,
+        std::optional<Domain::PathText> expectedForgeExecutable,
+        std::function<Domain::Result<void>(const Domain::ProjectId&,const Domain::PathText&,const Domain::OperationContext&)> freshWorkspaceAuthority,
+        Arguments&&... arguments)
+    {
+        return std::unique_ptr<WindowsLMStudioChatContinuity>{new WindowsLMStudioChatContinuity{
+            std::forward<Arguments>(arguments)..., std::move(controls), std::move(expectedForgeExecutable), std::move(freshWorkspaceAuthority)}};
+    }
 };
 
 } // namespace ForgeConductor::Infrastructure::Windows::Detail
