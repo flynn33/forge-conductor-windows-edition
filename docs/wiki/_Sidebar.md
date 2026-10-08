@@ -4,7 +4,7 @@
 
 **Forge Conductor**
 
-<sub>Windows · 1.3.28 · qualification pending</sub>
+<sub>Windows · 1.3.28 · measured verification</sub>
 
 ---
 

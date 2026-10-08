@@ -1,6 +1,6 @@
 # Tool catalog
 
-The current 1.3.28 source provides **112 descriptors** in Primary and Fallback: all original 80 plus 32 additions, ten specialist playbooks and five CLU governance tools. Integrated 1.3.28 source, package, installed Manager/LM Studio and native-model qualification remain pending. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. `host_capabilities` reports advertised dedicated capabilities, tool names and filesystem mode; `get_forge_status` adds selected project/default directory, active roots and current policy. The optional provider's configured/available state comes from `image_provider_status`.
+The current 1.3.28 source provides **112 descriptors** in Primary and Fallback: all original 80 plus 32 additions, ten specialist playbooks and five CLU governance tools. Current source, package and selected native measurements are recorded in the 1.3.28 verification record. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. `host_capabilities` reports advertised dedicated capabilities, tool names and filesystem mode; `get_forge_status` adds selected project/default directory, active roots and current policy. The optional provider's configured/available state comes from `image_provider_status`.
 
 - `agent_cancel`
 - `agent_context`

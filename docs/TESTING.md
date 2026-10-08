@@ -26,7 +26,7 @@ Production publication replaces `-DevelopmentSigning` with an approved PFX and p
 
 ## Current 1.3.28 qualification boundary
 
-The source candidate defines 112 tools. Full Product All, the entire configured CTest graph, final static gates, package persistence, signed-package/installed payload matches, installed 112/112/5 catalogs and native LM Studio image-provider cases remain pending. Read [the candidate record](validation/HOST-CAPABILITIES-1.3.28.md) before making a qualification claim.
+The release defines 112 tools. Current Product All, the entire configured CTest graph, static gates, package persistence, signed-package/installed payload matches, installed 112/112/5 catalogs and native LM Studio image-provider measurements are recorded separately. Read [the verification record](validation/HOST-CAPABILITIES-1.3.28.md) before making a qualification claim.
 
 The isolated ten-target provider suite and six-case real ComfyUI native smoke are separate measured checks. Tests cover authority narrowing, durable exact-ID recovery without replay, cancellation publication suppression, bounded retention/cache control identity, UUID normalization, WinHTTP boundaries and alpha-aware mask composition. The smoke is manual, excluded from the default build and never a CTest entry. It does not establish Manager IPC, Qwen delivery, semantic editing or a real process/network failure. See [the provider contract](IMAGE-PROVIDER.md).
 

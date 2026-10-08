@@ -8,7 +8,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-The current 1.3.28 source contains 112 Primary/Fallback tools, retaining the original 80 plus 32 additions. Six optional image-provider tools extend native CMake/CTest jobs, paged accessibility reads, bounded previews, web, DOCX/XLSX/PPTX, visible desktop/browser, PNG drawing/image analysis, independent workers and schedules. Integrated 1.3.28 source, package, installed Manager/LM Studio and native-model qualification remain pending. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. See [1.3.28 source notes](Release-1.3.28).
+The current 1.3.28 source contains 112 Primary/Fallback tools, retaining the original 80 plus 32 additions. Six optional image-provider tools extend native CMake/CTest jobs, paged accessibility reads, bounded previews, web, DOCX/XLSX/PPTX, visible desktop/browser, PNG drawing/image analysis, independent workers and schedules. Current source, package and selected native measurements are recorded in the 1.3.28 verification record. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. See [1.3.28 source notes](Release-1.3.28).
 
 Rig's corrected display shows the observed native conversation and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for actual rollover state; preference readback does not establish completed rollover. The historical 1.3.19 package included this correction; its installed/readback and current-chat evidence remains bound to that artifact above.
 

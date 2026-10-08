@@ -36,25 +36,25 @@ Choose a policy repository folder to bind it immediately. Use **Inspect findings
 
 Manager lifetime does not grant saved authority or confirm an uncertain UI effect. Current project/provider/route validation, the OS-held single-writer lease and selected-native evidence still gate control dispatch. An empty or unrelated third chat does not establish the successor. Explicit route migration requires a fresh authorized Primary callback, matching actual native packet/recovery evidence and exact preservation of the old encrypted checkpoint. Uncertain New chat or Send is reconciled without automatic replay. Completion requires the actual handed message, successor `context_get` and a following successful Forge tool result. Installed automatic delivery remains unqualified.
 
-In the superseded 1.3.22 run, the retained checkpoint reached an uncertain New chat effect and the selected new conversation had zero messages. The three CLI and bridge parents exited with code 1; the captured exit codes do not identify their exit cause. Do not classify that empty chat as delivered or complete. The 1.3.28 Manager-lifetime change still requires installed native verification.
+In the superseded 1.3.22 run, the retained checkpoint reached an uncertain New chat effect and the selected new conversation had zero messages. The three CLI and bridge parents exited with code 1; the captured exit codes do not identify their exit cause. Do not classify that empty chat as delivered or complete. Current 1.3.28 installed Manager-lifetime observations retain a separate verification record.
 
 A saved packet or local connection ID alone is not native successor proof. Inspect the selected native conversation state and continuity status. The product must verify the exact handed message and enabled integrations in a new native chat, then packet retrieval and a following Forge result. CLU is governance and cannot repair chat creation by itself.
 
 ### Historical native qualification through 1.3.19
 
-The next two paragraphs record the earlier implementation and its measured limits; they do not describe the retained checkpoint source in the 1.3.28 candidate.
+The next two paragraphs record the earlier implementation and its measured limits; they do not describe the retained checkpoint source in the 1.3.28 release.
 
 Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 
 If the primary MCP worker was evicted during handoff, durable packet records may still exist but automatic recovery of the interrupted UI phase is not implemented. Do not describe that state as completed. Physical exhaustion and already-running agent reattachment were not exercised by the 1.3.5 reserve-pressure verification.
 
-### Current 1.3.28 Manager observer candidate — installed recovery unverified
+### Current 1.3.28 Manager observer — current recovery measurements
 
 The source now checkpoints the native phase, exact packet revision, conversation identities and New chat/Send receipts. Inspect `get_forge_status.visible_chat_continuity.state` and `handoff_recovery` for `recovery_pending`, its recorded phase, reason, packet ID, predecessor/successor IDs and `automatic_replay: false`. That state retains unfinished work; it is not a completed rollover.
 
 Confirm the intended current project/provider and Primary/Fallback/CLU routes, then select the recorded predecessor or exact successor identified by the recovery reason. Reconstruction compares fresh selected-chat message/tool evidence with the checkpoint. An uncertain New chat or Send is never automatically repeated. A different empty chat, a saved packet alone, or a UI success label cannot settle an ambiguous dispatch. Exact packet recovery through `context_get` followed by a successful Forge tool in the successor can provide reconciliation evidence.
 
-Checkpoint schema, integrity, scope, ownership or storage failures defer native controls. Keep the reported error and retained packet; do not clear the checkpoint or resend an uncertain mutation as routine repair. Historical published 1.3.21 source fixtures passed the 118-group Infrastructure suite, including the private same-PID observer reconstruction regression and 20 durability cases. Installed observer/UI interruption or connector rollover recovery remains unverified; physical context exhaustion and already-running agent reattachment were not exercised. Historical 1.3.20 checkpoint-process primitive evidence retains its original source identity and is not a current installed qualification. See [Auto Continuity](Continuity) for storage bounds and the evidence contract.
+Checkpoint schema, integrity, scope, ownership or storage failures defer native controls. Keep the reported error and retained packet; do not clear the checkpoint or resend an uncertain mutation as routine repair. Historical published 1.3.21 source fixtures passed the 118-group Infrastructure suite, including the private same-PID observer reconstruction regression and 20 durability cases. The current verification record distinguishes observed Manager survival across connector CLI loss and automatic rollover from unverified Manager reconstruction or UI interruption. Physical context exhaustion and already-running agent reattachment were not exercised. Historical 1.3.20 checkpoint-process primitive evidence retains its original source identity and is not a current installed qualification. See [Auto Continuity](Continuity) for storage bounds and the evidence contract.
 
 ## Recovered packet has no actionable goal
 

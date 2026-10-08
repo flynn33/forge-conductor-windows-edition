@@ -1,6 +1,6 @@
 # Current source version 1.3.28
 
-Product version 1.3.28 and package version 1.3.28.0 are the current source targets. The 112-tool implementation is pending integrated build, signature, package/install, native-model, CI and release qualification. No 1.3.28 download or publication is asserted. The optional image provider is disabled by default and connects only to an explicitly configured existing local service; packaging does not install/start ComfyUI or download models. See [1.3.28 source notes](Release-1.3.28) and [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
+Product version 1.3.28 and package version 1.3.28.0 identify the current release. The verification record separates actual build, signature, package/install, native-model and CI measurements from publication readback. The optional image provider is disabled by default and connects only to an explicitly configured existing local service; packaging does not install/start ComfyUI or download models. See [1.3.28 source notes](Release-1.3.28) and [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
 
 ## Superseded installed 1.3.22
 

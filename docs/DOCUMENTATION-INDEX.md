@@ -2,7 +2,7 @@
 
 ## Current product documentation
 
-The current source implementation is 1.3.28 with 112 Primary/Fallback tools; Integrated 1.3.28 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. Earlier release and verification entries retain their named artifact identities.
+The current source implementation is 1.3.28 with 112 Primary/Fallback tools; current build, signed-install, catalog and native measurements are recorded in the 1.3.28 verification record; isolated provider checks retain their own scope. Earlier release and verification entries retain their named artifact identities.
 
 - [README](../README.md)
 - [Product status](STATUS.md)
@@ -20,8 +20,8 @@ The current source implementation is 1.3.28 with 112 Primary/Fallback tools; Int
 - [Windows toolchain](WINDOWS_TOOLCHAIN.md)
 - [Post-1.0 enhancements](DEFERRED.md)
 - [Packaging inputs](../packaging/README.md)
-- [1.3.28 source candidate notes](releases/1.3.28.md)
-- [1.3.28 qualification boundary — pending](validation/HOST-CAPABILITIES-1.3.28.md)
+- [1.3.28 release notes](releases/1.3.28.md)
+- [1.3.28 verification record](validation/HOST-CAPABILITIES-1.3.28.md)
 - [Superseded, unpublished 1.3.27 installed investigation](releases/1.3.27.md)
 - [Retained 1.3.27 source/install/native failure record](validation/HOST-CAPABILITIES-1.3.27.md)
 - [Superseded 1.3.26 installed investigation](releases/1.3.26.md)
