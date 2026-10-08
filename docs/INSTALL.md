@@ -1,6 +1,6 @@
 # Install Forge Conductor
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.21 implementation.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.22 candidate.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,7 +8,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-The current Forge Conductor source identity is 1.3.21 (Windows package 1.3.21.0), targeting Windows 11 x64. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. The published 1.3.19 distribution remains historical evidence above. A distribution contains:
+The current Forge Conductor source identity is 1.3.22 (Windows package 1.3.22.0), targeting Windows 11 x64. Integrated 1.3.22 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. The published 1.3.19 distribution remains historical evidence above. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
 - `distribution.json` and payload hashes;
@@ -16,6 +16,14 @@ The current Forge Conductor source identity is 1.3.21 (Windows package 1.3.21.0)
 - `Install.ps1`;
 - `README.txt`;
 - optionally `ForgeConductor.appinstaller` when an update base URI was supplied.
+
+## Current 1.3.22 candidate — installation pending
+
+The source/package inputs identify 1.3.22 / 1.3.22.0, with 112 Primary/Fallback descriptors. No signed 1.3.22 distribution, installed payload match or plugin catalog upgrade is asserted yet. The installed 1.3.21 connector's native inventory still returned 106 tools without the six provider additions. Reconnect/bootstrap alone cannot install new tools.
+
+[Published 1.3.21](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.21) has separately verified seven-asset publication readback. Its installation and native qualification below remain historical evidence. A future 1.3.22 install must preserve the owner profile, verify all four payload hashes and confirm actual 112/112/5 catalogs before native provider acceptance. See [candidate notes](releases/1.3.22.md) and [pending qualification](validation/HOST-CAPABILITIES-1.3.22.md).
+
+The optional ComfyUI provider is disabled by default. Plugin installation does not start a server, download a checkpoint or enable generation. Explicit owner configuration and actual image_provider_status availability are required; see [provider setup](IMAGE-PROVIDER.md).
 
 ## Verify and install
 
@@ -38,11 +46,11 @@ Before upgrading or restarting the owning Manager, wait for tracked work to fini
 
 For upgrades, install a higher package version with the same stable identity and publisher. The optional `.appinstaller` file checks for updates on launch and in the background.
 
-## Current 1.3.21 implementation
+## Historical published 1.3.21 implementation
 
 The signed 1.3.21.0 package upgraded the unpublished 1.3.20.0 candidate. All four installed, staged and MSIX executable hashes matched, the complete owner profile and protected snapshots were preserved, and installed catalogs and the selected native Qwen cases passed against the recorded source. Publication readback is a separate check.
 
-The source and packaging inputs are aligned to 1.3.21 / 1.3.21.0. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. Publication readback remains a separate check. See [implementation notes](releases/1.3.21.md) and [measured qualification](validation/HOST-CAPABILITIES-1.3.21.md). Download links for the historical published package above retain their original version.
+The published 1.3.21 source and packaging inputs are aligned to 1.3.21 / 1.3.21.0. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. Publication readback remains a separate check. See [implementation notes](releases/1.3.21.md) and [measured qualification](validation/HOST-CAPABILITIES-1.3.21.md). Download links for the historical published package above retain their original version.
 
 ## Historical published 1.3.19 distribution
 

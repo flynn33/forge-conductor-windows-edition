@@ -559,7 +559,8 @@ private:
 };
 
 class NativeCapabilityRecorder final : public Contracts::IWebAccessService,
-    public Contracts::IArtifactDocumentService, public Contracts::IDesktopArtifactService {
+    public Contracts::IArtifactDocumentService, public Contracts::IDesktopArtifactService,
+    public Contracts::IImageProviderService {
 public:
     std::vector<std::string> calls;
     Json lastArguments;
@@ -572,6 +573,7 @@ public:
     Domain::Result<std::string> execute(std::string_view name, std::string_view arguments,
         const Contracts::WorkspaceAuthority& authority, const Domain::OperationContext&) noexcept override
     { lastRoots = authority.trustedRoots(); return record(name, arguments); }
+    void shutdown() noexcept override {}
 private:
     Domain::Result<std::string> record(std::string_view name, std::string_view arguments) noexcept
     {
@@ -636,7 +638,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
 {
     auto catalog = take(Mcp::McpToolCatalog::create());
     const auto tools = catalog->tools();
-    REQUIRE(tools.size() == 106U);
+    REQUIRE(tools.size() == 112U);
 
     const std::map<std::string_view, std::size_t> expectedPackCounts{
         {"AgentToolPack", 9U},
@@ -656,7 +658,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
         {"EvidenceToolPack", 2U}, {"GitHubReadToolPack", 1U}, {"ProcessToolPack", 7U},
         {"HostInspectionToolPack", 3U}, {"ReviewerToolPack", 3U}, {"VerificationToolPack", 2U},
         {"WebAccessToolPack", 3U}, {"OfficeDocumentToolPack", 3U}, {"DesktopToolPack", 7U},
-        {"ImageToolPack", 3U}, {"AgentWorkerToolPack", 3U}, {"ScheduledTaskToolPack", 4U}};
+        {"ImageToolPack", 3U}, {"ImageProviderToolPack", 6U}, {"AgentWorkerToolPack", 3U}, {"ScheduledTaskToolPack", 4U}};
     std::map<std::string_view, std::size_t> actualPackCounts;
     for (const auto& descriptor : tools) {
         ++actualPackCounts[descriptor.tool.pack];
@@ -683,6 +685,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
             descriptor.tool.pack == "VerificationToolPack" ||
             descriptor.tool.pack == "WebAccessToolPack" || descriptor.tool.pack == "OfficeDocumentToolPack" ||
             descriptor.tool.pack == "DesktopToolPack" || descriptor.tool.pack == "ImageToolPack" ||
+            descriptor.tool.pack == "ImageProviderToolPack" ||
             descriptor.tool.pack == "AgentWorkerToolPack" || descriptor.tool.pack == "ScheduledTaskToolPack";
         REQUIRE(schema.value("additionalProperties", true) != closedPack);
     }
@@ -927,13 +930,16 @@ void testRuntimeDispatchAndSchemaPolicy()
     adapterDependencies.webAccess = &nativeCapabilities;
     adapterDependencies.artifactDocuments = &nativeCapabilities;
     adapterDependencies.desktopArtifacts = &nativeCapabilities;
+    adapterDependencies.imageProvider = &nativeCapabilities;
+    auto imageProviderBrokerDependencies = adapterDependencies;
+    auto unavailableImageProviderDependencies = adapterDependencies;
     auto workerBrokerDependencies = adapterDependencies;
     auto brokeredBindingDependencies = adapterDependencies;
     auto brokeredExecutionDependencies = adapterDependencies;
     auto imageAnalysisDependencies = adapterDependencies;
     auto capabilityDependencies = adapterDependencies;
     auto adapter = take(Mcp::McpToolPackAdapter::create(std::move(adapterDependencies)));
-    REQUIRE(adapter->tools().size() == 106U);
+    REQUIRE(adapter->tools().size() == 112U);
 
     const auto authorizeFor = [&] (
                                   const std::string& toolName,
@@ -976,6 +982,78 @@ void testRuntimeDispatchAndSchemaPolicy()
             authority);
     };
 
+    {
+        const Json generation{{"prompt", "Measured provider task"}, {"path", root.value() + "/generated.png"},
+            {"seed", 9007199254740991ULL}, {"width", 512}, {"height", 512}};
+        auto edit = generation; edit["source_path"] = root.value() + "/source.png";
+        edit["mask_path"] = root.value() + "/mask.png"; edit["denoise"] = 0.65;
+        const Json job{{"job_id", "90000000-0000-4000-8000-000000000009"}};
+        const std::vector<std::pair<std::string, Json>> providerCalls{
+            {"image_provider_status", Json::object()}, {"image_generate", generation}, {"image_edit", edit},
+            {"image_job_status", job}, {"image_job_cancel", job}, {"image_job_resume", job}};
+        for (const auto& [name, arguments] : providerCalls) {
+            const auto effect = name == "image_provider_status" || name == "image_job_status"
+                ? Domain::ToolEffect::Read : Domain::ToolEffect::Write;
+            auto result = take(adapter->handle(authorize(name, effect, arguments.dump(), "provider-direct-" + name), authority, context));
+            REQUIRE(result.receipt.ok && nativeCapabilities.calls.back() == name);
+            REQUIRE(nativeCapabilities.lastArguments == arguments && nativeCapabilities.lastRoots == authority.trustedRoots());
+        }
+        nativeCapabilities.response = Json{{"ok", true}, {"state", "completed"},
+            {"image_base64", "iVBORw0KGgo="}, {"image_mime_type", "image/png"}};
+        const auto preview = Json::parse(take(adapter->handle(authorize("image_job_status", Domain::ToolEffect::Read,
+            job.dump(), "provider-preview"), authority, context)).canonicalPayload);
+        REQUIRE(preview.at("image_base64") == "iVBORw0KGgo=" && preview.at("image_mime_type") == "image/png");
+        nativeCapabilities.response.reset();
+        nativeCapabilities.failure = Domain::makeError(Domain::ErrorCodes::HostCapabilityUnavailable, "Provider disabled.");
+        auto disabled = adapter->handle(authorize("image_generate", Domain::ToolEffect::Write,
+            generation.dump(), "provider-disabled"), authority, context);
+        REQUIRE(!disabled && disabled.error().code == Domain::ErrorCodes::HostCapabilityUnavailable);
+        nativeCapabilities.failure.reset();
+        unavailableImageProviderDependencies.imageProvider = nullptr;
+        auto unavailableProvider = take(Mcp::McpToolPackAdapter::create(std::move(unavailableImageProviderDependencies)));
+        auto unavailableResult = unavailableProvider->handle(authorize("image_provider_status", Domain::ToolEffect::Read,
+            "{}", "provider-service-absent"), authority, context);
+        REQUIRE(!unavailableResult && unavailableResult.error().code == Domain::ErrorCodes::HostCapabilityUnavailable);
+        std::size_t brokerCalls{};
+        Json forwarded;
+        imageProviderBrokerDependencies.durableToolBroker = [&](std::string_view name, std::string_view arguments,
+            const Domain::ProjectId& project, const Domain::OperationContext&) {
+            REQUIRE(project == projectId); ++brokerCalls; forwarded = Json::parse(arguments);
+            return Domain::Result<std::string>::success(Json{{"ok", true}, {"tool", name}}.dump());
+        };
+        auto broker = take(Mcp::McpToolPackAdapter::create(std::move(imageProviderBrokerDependencies)));
+        const auto nativeCalls = nativeCapabilities.calls.size();
+        for (const auto& [name, arguments] : providerCalls) {
+            const auto effect = name == "image_provider_status" || name == "image_job_status"
+                ? Domain::ToolEffect::Read : Domain::ToolEffect::Write;
+            const auto result = Json::parse(take(broker->handle(authorize(name, effect, arguments.dump(), "provider-broker-" + name),
+                authority, context)).canonicalPayload);
+            REQUIRE(result.at("broker") == "persistent_manager" && result.at("tool") == name);
+            const auto scope = forwarded.at("_forge_image_scope");
+            REQUIRE(scope.at("project_id") == projectId.value() && scope.at("caller_id") == authority.callerId().value());
+            REQUIRE(scope.at("generation") == authority.generation());
+            REQUIRE(scope.at("trusted_roots") == Json::array({root.value(), secondaryRoot.value()}));
+            forwarded.erase("_forge_image_scope"); REQUIRE(forwarded == arguments);
+        }
+        REQUIRE(brokerCalls == providerCalls.size() && nativeCapabilities.calls.size() == nativeCalls);
+        auto forged = generation; forged["_forge_image_scope"] = Json::object();
+        auto invalid = broker->handle(authorize("image_generate", Domain::ToolEffect::Write,
+            forged.dump(), "provider-public-scope-forgery"), authority, context);
+        REQUIRE(!invalid && invalid.error().code == Domain::ErrorCodes::InvalidRequest);
+        auto relative = generation; relative["path"] = "relative.png";
+        invalid = broker->handle(authorize("image_generate", Domain::ToolEffect::Write,
+            relative.dump(), "provider-relative-output"), authority, context);
+        REQUIRE(!invalid && invalid.error().code == Domain::ErrorCodes::InvalidRequest);
+        for (const auto& [field, value] : std::vector<std::pair<std::string, Json>>{
+            {"seed", -1}, {"seed", 9007199254740992ULL}, {"steps", 101}, {"denoise", 0}, {"denoise", 0.049}, {"cfg", 21},
+            {"timeout_sec", 3601}, {"width", 63}, {"preview_max_dimension", 127}, {"workflow", Json::object()}}) {
+            auto malformed = generation; malformed[field] = value;
+            invalid = broker->handle(authorize("image_generate", Domain::ToolEffect::Write,
+                malformed.dump(), "provider-argument-boundary"), authority, context);
+            REQUIRE(!invalid && invalid.error().code == Domain::ErrorCodes::InvalidRequest);
+        }
+        REQUIRE(brokerCalls == providerCalls.size());
+    }
     {
         const auto imagePath = root.value() + "/sampled-image.png";
         const Json request{{"path", imagePath}, {"samples", Json::array({Json{{"x", 1}, {"y", 0}}})}};
@@ -1104,9 +1182,10 @@ void testRuntimeDispatchAndSchemaPolicy()
     {
         const auto capabilities = Json::parse(take(adapter->handle(authorize("host_capabilities", Domain::ToolEffect::Read,
             "{}", "native-capability-report"), authority, context)).canonicalPayload);
-        REQUIRE(capabilities.at("tool_count") == 106U);
+        REQUIRE(capabilities.at("tool_count") == 112U);
         REQUIRE(capabilities.at("dedicated").at("word_excel_powerpoint_creation") == true);
         REQUIRE(capabilities.at("dedicated").at("independent_image_analysis") == true);
+        REQUIRE(capabilities.at("dedicated").at("optional_generative_image_provider_adapter") == true);
         auto noReviewDependencies = capabilityDependencies;
         noReviewDependencies.reviewerRuns = []() -> Contracts::IManagedRunService* { return nullptr; };
         auto noReview = take(Mcp::McpToolPackAdapter::create(std::move(noReviewDependencies)));

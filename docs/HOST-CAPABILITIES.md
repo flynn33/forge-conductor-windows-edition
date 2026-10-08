@@ -1,6 +1,15 @@
-# Host workflows in 1.3.21
+# Host workflows in the 1.3.22 source candidate
 
-The measurement block below is historical 1.3.19 qualification; it does not qualify the current 1.3.21 implementation.
+## Optional image generation and editing
+
+Choose tools by purpose. image_write draws shapes and text. image_analyze starts an independent read-only interpretation of an existing image, and reviewer_status reads that analysis. To generate through the separately configured ComfyUI provider, first inspect image_provider_status, then start image_generate or image_edit and poll image_job_status. Use image_job_cancel for local publication suppression and image_job_resume for explicit fresh authorized reattachment to an exact existing provider job. Analysis and reviewer status do not start or report generative jobs.
+
+The initial sd1 profile is disabled by default and requires an explicit owner-configured loopback endpoint and compatible checkpoint. Status reports unavailable or incompatible providers; Forge does not start a server or install a model. Inputs require explicit seed, absolute authorized paths and bounded dimensions. Mask red 0 preserves original RGBA exactly. Lost acknowledgements remain unknown without generation replay; status cannot publish recovered work. Cancellation may leave remote inference running. See [provider setup, examples and exact bounds](IMAGE-PROVIDER.md).
+
+The isolated direct-native six-case ComfyUI smoke passed with 128/256-pixel outputs and 2/4/6 steps, including exact 8,192-pixel outside-mask preservation and controlled response-loss recovery. Integrated 1.3.22 Manager IPC/LM Studio qualification, semantic instruction following and full host model quality remain pending or unverified.
+
+
+The measurement block below is historical 1.3.19 qualification; it does not qualify the current 1.3.22 candidate.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,7 +17,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-The current 1.3.21 source catalog defines 106 Primary/Fallback tools, adding `cmake_test_run` and `cmake_test_status` while retaining all previous tools, five CLU governance tools and ten specialist playbooks. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. Call `host_capabilities` before deciding that a category is unavailable: it reports actual tool names, filesystem mode, Manager-backed capabilities, and external connection requirements. `get_forge_status` also reports the selected project's directory and detailed active authority. The full catalog remains available through the existing MCP protocol.
+The current 1.3.22 source catalog defines 112 Primary/Fallback tools, adding `cmake_test_run` and `cmake_test_status` while retaining all previous tools, five CLU governance tools and ten specialist playbooks. Integrated 1.3.22 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. Call `host_capabilities` before deciding that a category is unavailable: it reports actual tool names, filesystem mode, Manager-backed capabilities, and external connection requirements. `get_forge_status` also reports the selected project's directory and detailed active authority. The full catalog remains available through the existing MCP protocol.
 
 Rig's corrected display shows the native conversation observed by the App and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. The preference does not establish live rollover availability. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for the native worker's actual state; its `available` flag becomes true after a successor conversation and handed message are verified. The 1.3.19 App includes this correction from the earlier candidate; final installed/readback and current-chat results are recorded in the versioned verification record. Earlier tests and package evidence retain their recorded source identities.
 
@@ -82,7 +91,7 @@ For deterministic native pixel checks, `image_read` also accepts optional `sampl
 {"path":"reports/diagram.png","authorization":"Analyze the owner-selected diagram for this task","question":"Describe the visible labels and connections."}
 ```
 
-A preview rendered in the chat UI is not proof that the chat model received pixels. The analysis output explicitly comes from a fresh independent run using the configured provider/model. It does not approve a governance gate. Generative image creation remains a separate configured provider capability.
+A preview rendered in the chat UI is not proof that the chat model received pixels. The analysis output explicitly comes from a fresh independent run using the configured provider/model. It does not approve a governance gate. Optional generative image creation uses the six separately configured ComfyUI tools described above; analysis remains read-only.
 
 ## CMake and CTest jobs
 
@@ -126,4 +135,4 @@ Manager reports meaningful transitions through its local notification callback, 
 
 ## Verification and remaining external requirements
 
-Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. See the historical [1.3.19 release notes](releases/1.3.19.md) and [verification](validation/HOST-CAPABILITIES-1.3.19.md) for that artifact's executed checks and exact scope. A listed tool, accepted input, queued schedule, opened browser or submitted input is not proof that the user's final task completed. Inspect actual receipts, output, observed UI and error state. Generative image models, cloud accounts and their credentials remain configured external services; the dedicated native workflows above do not remove existing shell/process or integration routes.
+Integrated 1.3.22 source/package/installed/native qualification remains pending in [the candidate record](validation/HOST-CAPABILITIES-1.3.22.md). Published 1.3.21 evidence retains its original scope. See the historical [1.3.19 release notes](releases/1.3.19.md) and [verification](validation/HOST-CAPABILITIES-1.3.19.md) for that artifact's executed checks and exact scope. A listed tool, accepted input, queued schedule, opened browser or submitted input is not proof that the user's final task completed. Inspect actual receipts, output, observed UI and error state. Generative image models, cloud accounts and their credentials remain configured external services; the dedicated native workflows above do not remove existing shell/process or integration routes.

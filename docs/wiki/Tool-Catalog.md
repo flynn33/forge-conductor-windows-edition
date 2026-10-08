@@ -1,6 +1,6 @@
 # Tool catalog
 
-The current 1.3.21 source provides **106 descriptors** in Primary and Fallback while retaining every original tool, ten specialist playbooks and five CLU governance tools. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. `host_capabilities` reports actual dedicated capabilities, tool names, filesystem mode and external connection requirements; `get_forge_status` adds the selected project/default directory, active roots, process/shell limits and reviewer defaults.
+The current 1.3.22 source provides **112 descriptors** in Primary and Fallback: all original 80 plus 32 additions, ten specialist playbooks and five CLU governance tools. Integrated 1.3.22 source, package, installed Manager/LM Studio and native-model qualification remain pending. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. `host_capabilities` reports advertised dedicated capabilities, tool names and filesystem mode; `get_forge_status` adds selected project/default directory, active roots and current policy. The optional provider's configured/available state comes from `image_provider_status`.
 
 - `agent_cancel`
 - `agent_context`
@@ -56,6 +56,12 @@ The current 1.3.21 source provides **106 descriptors** in Primary and Fallback w
 - `host_capabilities`
 - `http_request`
 - `image_analyze`
+- `image_edit`
+- `image_generate`
+- `image_job_cancel`
+- `image_job_resume`
+- `image_job_status`
+- `image_provider_status`
 - `image_read`
 - `image_write`
 - `instruction_package.read`
@@ -109,4 +115,4 @@ The current 1.3.21 source provides **106 descriptors** in Primary and Fallback w
 - `web_search`
 - `workspace_authority_bind`
 
-The sorted inventory above comes from `tests/fixtures/Mcp/mcp-tools-semantic-golden.json`, the reviewed native catalog fixture. Native CMake/CTest jobs join dedicated web, Office, desktop/browser, image, independent-worker and schedule workflows, with retained process/shell jobs, specialist sessions, read-only reviews, evidence, memory, policy and continuity. Accessibility paging and optional preview dimensions retain explicit native bounds. Image drawing is structured PNG output; generative image models and cloud accounts require separately configured providers/accounts or explicit authorized APIs. Manager-backed workers/schedules retain actual state and frozen/current-policy checks, and local Windows notification receipts distinguish submission from display. See [Native Tools](Native-Tools), [Windows Workflow Capabilities](Windows-workflow-capabilities), [CMake/CTest source guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/CMAKE-CTEST.md) and [1.3.21 release notes](Release-1.3.21). [Published 1.3.19 evidence](Release-1.3.19) retains its original catalog and artifact identity.
+The sorted inventory above comes from `tests/fixtures/Mcp/mcp-tools-semantic-golden.json`. The six new names are `image_edit`, `image_generate`, `image_job_cancel`, `image_job_resume`, `image_job_status` and `image_provider_status`. Existing PNG drawing and independent analysis remain. The optional ComfyUI `sd1` provider is disabled by default and requires an owner-configured loopback endpoint plus an existing compatible checkpoint. `image_provider_status` reads current configuration and core-node/checkpoint inventory; inventory availability does not establish a loaded model or image quality. `image_generate` and `image_edit` return durable jobs. Poll `image_job_status` for actual state, error and publication measurements. `image_job_cancel` suppresses local publication; running remote work may continue. `image_job_resume` requires fresh current authorization and retrieves the existing exact prompt/workflow without a new generation or upload POST. Read-only status cannot resume or publish. Public write-tool admission retains current Write intent/grants; new image destinations additionally require Create and current Read authority. Manager narrows the internal caller scope against current project policy. See [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md), [Native Tools](Native-Tools), [Windows Workflow Capabilities](Windows-workflow-capabilities) and [1.3.22 source notes](Release-1.3.22). Historical [1.3.21](Release-1.3.21) and [1.3.19](Release-1.3.19) evidence retains its own catalogs and artifacts.

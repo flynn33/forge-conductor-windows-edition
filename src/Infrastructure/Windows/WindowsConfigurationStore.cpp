@@ -337,6 +337,12 @@ void rejectSecretFields(const Json& value)
             "estimation_safety_margin", configuration.localModel.estimationSafetyMargin);
     }
 
+    if (const auto* image = optionalObject(document, "image_provider")) {
+        if (const auto enabled = optionalBoolean(*image, "enabled")) configuration.imageProvider.enabled = *enabled;
+        if (const auto endpoint = optionalString(*image, "endpoint")) configuration.imageProvider.endpoint = *endpoint;
+        if (const auto profile = optionalString(*image, "profile")) configuration.imageProvider.profile = *profile;
+        if (const auto checkpoint = optionalString(*image, "checkpoint")) configuration.imageProvider.checkpoint = *checkpoint;
+    }
     auto valid = Domain::validateAppConfig(configuration);
     if (!valid) {
         reject(valid.error().code, valid.error().message);
@@ -408,6 +414,12 @@ void writeKnownConfiguration(Json& document, const Domain::AppConfig& configurat
     localModel["handoff_reserve"] = configuration.localModel.handoffReserve;
     localModel["estimation_safety_margin"] =
         configuration.localModel.estimationSafetyMargin;
+    auto& image = document["image_provider"];
+    if (!image.is_object()) image = Json::object();
+    image["enabled"] = configuration.imageProvider.enabled;
+    image["endpoint"] = configuration.imageProvider.endpoint;
+    image["profile"] = configuration.imageProvider.profile;
+    image["checkpoint"] = configuration.imageProvider.checkpoint;
 }
 
 [[nodiscard]] Json defaultDocument()

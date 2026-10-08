@@ -486,6 +486,39 @@ void shellJobPollingDoesNotTriggerIdenticalCallHandoff()
     REQUIRE(continuity.automaticCalls() == 0U);
 }
 
+void imageJobPollingDoesNotTriggerIdenticalCallHandoff()
+{
+    LegacyContinuityFake continuity;
+    FixedHasher hasher;
+    FixedClock clock;
+    auto guard = take(Mcp::McpInvocationGuard::create(continuity, hasher, clock));
+    const auto caller = client("image-poll-client");
+    for (std::uint64_t index = 1U; index <= 20U; ++index) {
+        const auto call = request(
+            caller,
+            "image_job_status",
+            R"json({"job_id":"10000000-0000-4000-8000-000000000001","wait_sec":1})json",
+            index);
+        const auto operation = context(call, index);
+        const auto admission = take(guard->beforeInvoke(call, descriptor(call), operation));
+        REQUIRE(!admission.immediateOutcome);
+        REQUIRE(guard->pendingCallCount() == 1U);
+        const auto result = take(guard->afterInvoke(
+            call,
+            descriptor(call),
+            Domain::Result<Domain::ToolCallOutcome>::success(successOutcome(call)),
+            operation));
+        REQUIRE(result.receipt.ok);
+        REQUIRE(result.canonicalPayload == R"json({"ok":true})json");
+        REQUIRE(!guard->snapshot(caller).blocked);
+        REQUIRE(!guard->snapshot(caller).handoffPending);
+        REQUIRE(guard->pendingCallCount() == 0U);
+        REQUIRE(guard->trackedLoopClientCount() == 0U);
+    }
+    REQUIRE(continuity.budgetCalls() == 0U);
+    REQUIRE(continuity.automaticCalls() == 0U);
+}
+
 void identicalCallsSoftHandoffHardBlockAndResume()
 {
     LegacyContinuityFake continuity;
@@ -1229,6 +1262,7 @@ int main()
                       Contracts::IContinuityAutomationStatusSource,
                       Mcp::McpInvocationGuard>);
         shellJobPollingDoesNotTriggerIdenticalCallHandoff();
+        imageJobPollingDoesNotTriggerIdenticalCallHandoff();
         identicalCallsSoftHandoffHardBlockAndResume();
         repeatedCallsRetainAuthorizedWorkspaceAndObservedFiles();
         recoveredPacketScopesSuccessorAutomaticAndBudgetPersistence();

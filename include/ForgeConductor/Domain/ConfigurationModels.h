@@ -84,6 +84,15 @@ struct LocalModelConfig final {
     bool operator==(const LocalModelConfig&) const = default;
 };
 
+struct ImageProviderConfig final {
+    bool enabled{};
+    std::string endpoint;
+    std::string profile;
+    std::string checkpoint;
+
+    bool operator==(const ImageProviderConfig&) const = default;
+};
+
 struct AppConfig final {
     LogLevel logLevel{LogLevel::Info};
     std::vector<PathText> allowedRoots;
@@ -95,6 +104,7 @@ struct AppConfig final {
     CoordinatorConfig coordinator;
     LocalModelConfig localModel;
     FileSystemAccessMode fileSystemAccess{FileSystemAccessMode::Workspace};
+    ImageProviderConfig imageProvider;
 
     bool operator==(const AppConfig&) const = default;
 };
@@ -124,10 +134,12 @@ struct AppConfigPatch final {
     std::optional<std::uint32_t> handoffReserve;
     std::optional<std::uint32_t> estimationSafetyMargin;
     std::optional<FileSystemAccessMode> fileSystemAccess;
+    std::optional<ImageProviderConfig> imageProvider;
 };
 
 [[nodiscard]] AppConfig defaultAppConfig();
 [[nodiscard]] Result<void> validateAppConfig(const AppConfig& config);
+[[nodiscard]] Result<void> validateImageProviderConfig(const ImageProviderConfig& config);
 [[nodiscard]] Result<AppConfig> applyConfigPatch(
     const AppConfig& config,
     const AppConfigPatch& patch);

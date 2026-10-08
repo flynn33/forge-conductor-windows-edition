@@ -24,9 +24,17 @@ Production publication replaces `-DevelopmentSigning` with an approved PFX and p
 - Simulated lifecycle tests use disposable roots and copied fixtures. Tests and packaging must never mutate the operator's live `%LOCALAPPDATA%\Forge Conductor` store.
 - Provider-dependent productive inference is reported separately when LM Studio and a loaded model are available; provider absence must produce an actionable disconnected state rather than fabricated success.
 
-## Current 1.3.21 measured verification
+## Current 1.3.22 qualification boundary
 
-The current source catalog contains 106 Primary/Fallback tools. Executed clean-source build/CTest, static gates, package, installed-catalog and measured native-model qualification are recorded in [the 1.3.21 record](validation/HOST-CAPABILITIES-1.3.21.md); no earlier measurement qualifies these binaries.
+The source candidate defines 112 tools. Full Product All, the entire configured CTest graph, final static gates, package persistence, signed-package/installed payload matches, installed 112/112/5 catalogs and native LM Studio image-provider cases remain pending. Read [the candidate record](validation/HOST-CAPABILITIES-1.3.22.md) before making a qualification claim.
+
+The isolated ten-target provider suite and six-case real ComfyUI native smoke are separate measured checks. Tests cover authority narrowing, durable exact-ID recovery without replay, cancellation publication suppression, bounded retention/cache control identity, UUID normalization, WinHTTP boundaries and alpha-aware mask composition. The smoke is manual, excluded from the default build and never a CTest entry. It does not establish Manager IPC, Qwen delivery, semantic editing or a real process/network failure. See [the provider contract](IMAGE-PROVIDER.md).
+
+The narrow current-source Infrastructure entry passed 124/124 groups, including five real-file shared native snapshot reader/revision cases, in 21.94 seconds. This is a narrow source check; actual UI model acknowledgement, plugin cleanup, completed-tool-boundary pause and installed chat recovery remain unverified. Full integrated release checks remain pending.
+
+## Historical published 1.3.21 measured verification
+
+The published 1.3.21 source catalog contains 106 Primary/Fallback tools. Executed clean-source build/CTest, static gates, package, installed-catalog and measured native-model qualification are recorded in [the 1.3.21 record](validation/HOST-CAPABILITIES-1.3.21.md); those observations retain their artifact identity.
 
 The native integration regression runs Windows PowerShell 5.1 through the real process service to require an existing absolute `CommonApplicationData` directory, repeats a successful build and CTest on the same initialized tree with actual phase receipts and counts, and requires the intended failure target's marker before `cmake -E false`. A pre-target MSBuild initialization failure cannot satisfy that expected-failure assertion. These focused checks do not qualify the final 1.3.21 source, package, installed tools or live-model workflows.
 

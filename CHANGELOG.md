@@ -1,6 +1,17 @@
 # Changelog
 
-## 1.3.21 - Durable CMake/CTest jobs and richer desktop/image tools (qualified source and package)
+## 1.3.22 - Optional local image-provider jobs (source candidate; qualification pending)
+
+- Add six optional disabled-by-default ComfyUI tools: image_provider_status, image_generate, image_edit, image_job_status, image_job_cancel and image_job_resume. Retain every previous descriptor, raising Primary/Fallback from 106 to 112 while preserving five CLU tools and ten specialist playbooks.
+- Require explicit owner-selected loopback endpoint, sd1 profile, compatible checkpoint, seed, authorized paths and bounded dimensions. Reuse native WinHTTP/WIC and Manager-issued authority; no model installation, provider startup, paid account, global interrupt or new runtime dependency.
+- Persist exact prompt/workflow and destination/source seals before dispatch. Preserve ambiguous outcomes without resubmission; keep status read-only and require fresh authority for explicit exact-job resume. Cancellation suppresses local publication without claiming remote termination.
+- Preserve exact original RGBA where mask red is zero, including nonopaque alpha. Protect active workers and in-flight API borrowers during bounded cache/evidence retirement; retain published user artifacts and normalize equivalent job UUIDs.
+- Exempt image_job_status from identical-call loop handoff and spell all six image-provider names in initialization/help. Drawing and read-only review do not start generative jobs.
+- Align the shared native chat-file snapshot reader from 32 MiB to the ordinary reader's 64 MiB bound, retaining identity/revision/context checks. Plugin cleanup, loaded-model acknowledgement and completed-tool-boundary corroboration share this helper. The exact live failing caller and installed recovery remain unverified.
+- Preserve 1.3.21 SystemDrive/known-folder handling and all existing desktop, image, CMake/CTest, worker, schedule and continuity contracts.
+- Record the isolated ten-target pass and root-owned six-case real ComfyUI smoke within their exact source/native scope; do not treat them as integrated Manager/LM Studio or host-model-quality qualification.
+- Align active source/package identities to 1.3.22 / 1.3.22.0. Full integrated build/test/package/installed/native/publication qualification remains pending; see [candidate notes](docs/releases/1.3.22.md), [provider guide](docs/IMAGE-PROVIDER.md) and [qualification boundary](docs/validation/HOST-CAPABILITIES-1.3.22.md).
+## 1.3.21 - Durable CMake/CTest jobs and richer desktop/image tools (published)
 
 - Clear stale context telemetry after the selected native LM Studio chat is cleared, while preserving handoff and workspace-binding state. Refresh preferences and clear recovered read errors only after successful observation; a real selected empty chat retains its identity.
 - Add an atomic, Windows-user-protected checkpoint for native visible-chat handoff phases. Fresh project/provider/route authority and exact native message or packet-recovery evidence are required after observer reconstruction. Record Send and New chat before dispatch, retain uncertain outcomes without replay, and expose `recovery_pending` when reconciliation is incomplete. The 118-group Infrastructure suite passed, including the private same-PID observer reconstruction regression and 20 durability cases. Installed observer/UI interruption or connector rollover recovery remains unverified; physical context exhaustion and already-running agent reattachment were not exercised. Historical 1.3.20 checkpoint-process primitive evidence retains its original source identity and is not a current installed qualification.

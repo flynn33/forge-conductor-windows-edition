@@ -1,6 +1,10 @@
-# Current version 1.3.21
+# Current source version 1.3.22
 
-The signed 1.3.21.0 upgrade matched all four installed, staged and MSIX payload hashes and preserved the complete 8,375-file owner profile. Source tests, installed catalogs and the selected native Qwen cases passed. See [the measured 1.3.21 record](Release-1.3.21) for exact source and qualification limits; publication readback is a separate check.
+Product version 1.3.22 and package version 1.3.22.0 are the current source targets. The 112-tool implementation is pending integrated build, signature, package/install, native-model, CI and release qualification. No 1.3.22 download or publication is asserted. The optional image provider is disabled by default and connects only to an explicitly configured existing local service; packaging does not install/start ComfyUI or download models. See [1.3.22 source notes](Release-1.3.22) and [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
+
+## Historical published 1.3.21
+
+The signed 1.3.21.0 upgrade matched all four installed, staged and MSIX payload hashes and preserved the complete 8,375-file owner profile. Source tests, installed catalogs and selected native Qwen cases passed. [Version 1.3.21](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.21) has been published with separate asset readback; these historical results remain bound to its original artifact. See [the measured 1.3.21 record](Release-1.3.21) for exact source and qualification limits.
 
 ## Historical published 1.3.19
 

@@ -63,7 +63,7 @@ void testCanonicalCatalog()
     static_assert(!std::is_copy_constructible_v<Mcp::McpToolCatalog>);
     static_assert(!std::is_move_constructible_v<Mcp::McpToolCatalog>);
 
-    constexpr std::array<std::string_view, 106U> ExpectedNames{
+    constexpr std::array<std::string_view, 112U> ExpectedNames{
         "agent_cancel",
         "agent_context",
         "agent_get",
@@ -118,6 +118,12 @@ void testCanonicalCatalog()
         "host_capabilities",
         "http_request",
         "image_analyze",
+        "image_edit",
+        "image_generate",
+        "image_job_cancel",
+        "image_job_resume",
+        "image_job_status",
+        "image_provider_status",
         "image_read",
         "image_write",
         "instruction_package.read",
@@ -199,8 +205,8 @@ void testCanonicalCatalog()
             ++writeEffects;
         }
     }
-    REQUIRE(readEffects == 49U);
-    REQUIRE(writeEffects == 57U);
+    REQUIRE(readEffects == 51U);
+    REQUIRE(writeEffects == 61U);
     REQUIRE(descriptor(tools, "agent_run_status").tool.effect == Domain::ToolEffect::Write);
     REQUIRE(descriptor(tools, "agent_run_start").tool.requiresProject);
     REQUIRE(descriptor(tools, "agent_run_status").tool.requiresProject);
@@ -228,6 +234,36 @@ void testCanonicalCatalog()
     REQUIRE(analysisSchema.at("properties").at("authorization").at("maxLength") == 1024);
     REQUIRE(analysisSchema.at("properties").at("receive_timeout_sec").at("default") == 600);
     REQUIRE(analysisSchema.at("properties").at("receive_timeout_sec").at("maximum") == 3600);
+    for (const auto toolName : {"image_generate", "image_edit"}) {
+        const auto provider = schema(tools, toolName);
+        REQUIRE(descriptor(tools, toolName).tool.effect == Domain::ToolEffect::Write);
+        REQUIRE(descriptor(tools, toolName).tool.requiresProject && !descriptor(tools, toolName).tool.requiresShell);
+        REQUIRE(provider.at("additionalProperties") == false);
+        REQUIRE(provider.at("properties").at("prompt").at("minLength") == 1);
+        REQUIRE(provider.at("properties").at("prompt").at("maxLength") == 4096);
+        REQUIRE(provider.at("properties").at("seed").at("minimum") == 0);
+        REQUIRE(provider.at("properties").at("seed").at("maximum") == 9007199254740991LL);
+        REQUIRE(provider.at("properties").at("steps").at("default") == 20);
+        REQUIRE(provider.at("properties").at("cfg").at("default") == 7);
+        REQUIRE(provider.at("properties").at("denoise").at("minimum") == 0.05);
+        REQUIRE(provider.at("properties").at("denoise").at("default") == 1.0);
+        REQUIRE(provider.at("properties").at("timeout_sec").at("default") == 1800);
+        REQUIRE(provider.at("properties").at("timeout_sec").at("maximum") == 3600);
+        REQUIRE(!provider.at("properties").contains("workflow") && !provider.at("properties").contains("provider"));
+        auto required = Json::array({"prompt", "path", "seed", "width", "height"});
+        if (std::string_view{toolName} == "image_edit") required.push_back("source_path");
+        REQUIRE(provider.at("required") == required);
+    }
+    for (const auto toolName : {"image_provider_status", "image_job_status", "image_job_cancel", "image_job_resume"}) {
+        const auto provider = schema(tools, toolName);
+        const auto effect = std::string_view{toolName} == "image_provider_status" || std::string_view{toolName} == "image_job_status"
+            ? Domain::ToolEffect::Read : Domain::ToolEffect::Write;
+        REQUIRE(descriptor(tools, toolName).tool.effect == effect);
+        REQUIRE(provider.at("additionalProperties") == false);
+        REQUIRE(provider.at("required") == (std::string_view{toolName} == "image_provider_status" ? Json::array() : Json::array({"job_id"})));
+    }
+    REQUIRE(schema(tools, "image_job_status").at("properties").at("wait_sec").at("maximum") == 60);
+    REQUIRE(schema(tools, "image_job_resume").at("properties").size() == 1U);
     REQUIRE(schema(tools, "image_read").at("required") == Json::array({"path"}));
     const auto sampleSchema = schema(tools, "image_read").at("properties").at("samples");
     REQUIRE(sampleSchema.at("type") == "array" && sampleSchema.at("minItems") == 1 && sampleSchema.at("maxItems") == 64);
@@ -244,7 +280,7 @@ void testCanonicalCatalog()
     REQUIRE(desktopReadSchema.at("properties").at("offset").at("maximum") == 2147483647);
     REQUIRE(desktopReadSchema.at("properties").at("limit").at("maximum") == 300);
     REQUIRE(descriptor(tools, "desktop_read").tool.description.find("next_offset") != std::string::npos);
-    for (const auto toolName : {"image_read", "image_write", "desktop_capture", "image_analyze"}) {
+    for (const auto toolName : {"image_read", "image_write", "desktop_capture", "image_analyze", "image_generate", "image_edit"}) {
         const auto imageSchema = schema(tools, toolName);
         const auto& dimension = imageSchema.at("properties").at("preview_max_dimension");
         REQUIRE(dimension.at("minimum") == 128 && dimension.at("maximum") == 2048 && dimension.at("default") == 256);

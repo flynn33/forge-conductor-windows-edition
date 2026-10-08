@@ -85,6 +85,7 @@
 #include "ForgeConductor/NativeTools/Windows/WindowsPdfService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsArtifactDocumentService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsDesktopArtifactService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsImageProviderService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsWebAccessService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsShellService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsEvidenceService.h"
@@ -669,6 +670,7 @@ private:
     std::unique_ptr<NativeToolsWindows::WindowsPdfService> pdf_;
     std::unique_ptr<NativeToolsWindows::WindowsArtifactDocumentService> artifactDocuments_;
     std::unique_ptr<NativeToolsWindows::WindowsDesktopArtifactService> desktopArtifacts_;
+    std::unique_ptr<NativeToolsWindows::WindowsImageProviderService> imageProvider_;
     std::unique_ptr<NativeToolsWindows::WindowsWebAccessService> webAccess_;
     std::unique_ptr<NativeToolsWindows::WindowsGitService> git_;
     std::unique_ptr<NativeToolsWindows::WindowsShellService> shell_;
@@ -1062,6 +1064,10 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         *projectWorkspaceAuthority_, *atomicFileStore_);
     desktopArtifacts_ = std::make_unique<NativeToolsWindows::WindowsDesktopArtifactService>(
         *projectWorkspaceAuthority_, *atomicFileStore_);
+    imageProvider_ = std::make_unique<NativeToolsWindows::WindowsImageProviderService>(
+        *projectWorkspaceAuthority_, *atomicFileStore_, *configurationStore_,
+        *dataAuthority_, *dataScope_, childPath(process.dataRoot(), "image-jobs"),
+        *uuidGenerator_, *clock_, *hasher_);
     webAccess_ = std::make_unique<NativeToolsWindows::WindowsWebAccessService>();
     git_ = std::make_unique<NativeToolsWindows::WindowsGitService>(
         discoverGitExecutable(), processSupervisor_);
@@ -1304,6 +1310,7 @@ void ManagerCompositionRoot::Impl::initializePersistence(
     toolDependencies.webAccess = webAccess_.get();
     toolDependencies.artifactDocuments = artifactDocuments_.get();
     toolDependencies.desktopArtifacts = desktopArtifacts_.get();
+    toolDependencies.imageProvider = imageProvider_.get();
     toolDependencies.reviewerRuns = [this]() -> Contracts::IManagedRunService* { return reviewerRuns_.get(); };
     toolDependencies.workerRuns = [this]() -> Contracts::IManagedRunService* { return workerRuns_.get(); };
     toolDependencies.scheduledTasks = [this]() -> Contracts::IScheduledTaskService* { return scheduledTasks_.get(); };
@@ -1954,6 +1961,7 @@ void ManagerCompositionRoot::Impl::shutdownServices(
         }
         if (scheduledTasks_) scheduledTasks_->shutdown();
         if (workerRuns_) workerRuns_->shutdown();
+        if (imageProvider_) imageProvider_->shutdown();
         if (managedRuns_) {
             managedRuns_->shutdown();
         }

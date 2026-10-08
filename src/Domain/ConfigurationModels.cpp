@@ -3,6 +3,8 @@
 #include "ForgeConductor/Domain/Utf8.h"
 
 #include <utility>
+#include <algorithm>
+#include <charconv>
 
 namespace ForgeConductor::Domain {
 namespace {
@@ -46,8 +48,41 @@ AppConfig defaultAppConfig()
         LocalModelConfig{}};
 }
 
+Result<void> validateImageProviderConfig(const ImageProviderConfig& config)
+{
+    const auto invalid = [] {
+        return Result<void>::failure(makeError(ErrorCodes::InvalidRequest,
+            "Image provider requires an explicit loopback HTTP(S) endpoint with port, sd1 profile, and safe .safetensors checkpoint basename."));
+    };
+    if (config.enabled && (config.endpoint.empty() || config.profile.empty() || config.checkpoint.empty()))
+        return invalid();
+    if (!config.endpoint.empty()) {
+        auto endpoint = std::string_view{config.endpoint};
+        if (endpoint.starts_with("http://")) endpoint.remove_prefix(7U);
+        else if (endpoint.starts_with("https://")) endpoint.remove_prefix(8U);
+        else return invalid();
+        if (endpoint.starts_with("127.0.0.1:")) endpoint.remove_prefix(10U);
+        else if (endpoint.starts_with("[::1]:")) endpoint.remove_prefix(6U);
+        else return invalid();
+        unsigned port{};
+        const auto parsed = std::from_chars(endpoint.data(), endpoint.data() + endpoint.size(), port);
+        if (endpoint.empty() || endpoint.size() > 5U || parsed.ec != std::errc{} ||
+            parsed.ptr != endpoint.data() + endpoint.size() || port == 0U || port > 65535U ||
+            std::to_string(port) != endpoint) return invalid();
+    }
+    if (!config.profile.empty() && config.profile != "sd1") return invalid();
+    if (!config.checkpoint.empty() && (config.checkpoint.size() > 128U ||
+        !config.checkpoint.ends_with(".safetensors") || config.checkpoint.starts_with('.') ||
+        !std::all_of(config.checkpoint.begin(), config.checkpoint.end(), [](const unsigned char c) {
+            return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '.';
+        }))) return invalid();
+    return Result<void>::success();
+}
+
 Result<void> validateAppConfig(const AppConfig& config)
 {
+    if (auto valid = validateImageProviderConfig(config.imageProvider); !valid) return valid;
     if (config.fileSystemAccess != FileSystemAccessMode::Workspace &&
         config.fileSystemAccess != FileSystemAccessMode::Host) {
         return Result<void>::failure(makeError(
@@ -123,6 +158,7 @@ Result<AppConfig> applyConfigPatch(const AppConfig& config, const AppConfigPatch
     if (patch.logLevel) updated.logLevel = *patch.logLevel;
     if (patch.allowedRoots) updated.allowedRoots = *patch.allowedRoots;
     if (patch.fileSystemAccess) updated.fileSystemAccess = *patch.fileSystemAccess;
+    if (patch.imageProvider) updated.imageProvider = *patch.imageProvider;
     if (patch.shellEnabled) updated.shell.enabled = *patch.shellEnabled;
     if (patch.shellTimeout) updated.shell.defaultTimeout = *patch.shellTimeout;
     if (patch.dashboardHost) updated.dashboard.host = *patch.dashboardHost;

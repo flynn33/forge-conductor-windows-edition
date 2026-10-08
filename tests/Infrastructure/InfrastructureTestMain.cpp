@@ -16,6 +16,7 @@ void registerLMStudioServeVerifierTests(TestRegistry& tests);
 void registerUnicodeCanonicalizerWindowsTests(TestRegistry& tests);
 void registerWindowsLMStudioEnvironmentTests(TestRegistry& tests);
 void registerWindowsLMStudioConversationReaderTests(TestRegistry& tests);
+void registerWindowsLMStudioChatControlTests(TestRegistry& tests);
 void registerWindowsLMStudioHostActivatorTests(TestRegistry& tests);
 
 } // namespace ForgeConductor::Tests
@@ -82,6 +83,7 @@ int main(int argc, char** argv)
     ForgeConductor::Tests::registerUnicodeCanonicalizerWindowsTests(tests);
     ForgeConductor::Tests::registerWindowsLMStudioEnvironmentTests(tests);
     ForgeConductor::Tests::registerWindowsLMStudioConversationReaderTests(tests);
+    ForgeConductor::Tests::registerWindowsLMStudioChatControlTests(tests);
     ForgeConductor::Tests::registerWindowsLMStudioHostActivatorTests(tests);
 
     std::size_t passed = 0U;

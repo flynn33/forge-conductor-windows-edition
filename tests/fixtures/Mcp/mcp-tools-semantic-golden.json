@@ -1532,6 +1532,239 @@
       "name": "image_analyze"
     },
     {
+      "description": "Start a Manager-owned image variation or masked diffusion edit using the explicitly configured optional ComfyUI provider. Requires an absolute authorized source_path, output path, prompt, seed, width and height; dimensions must match the source and optional mask. Mask red values select edits; zero preserves exact original RGBA. Returns a job ID; image_job_status reports actual provider state and published preview. No model installation or server startup.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cfg": {
+            "default": 7,
+            "maximum": 20,
+            "minimum": 0,
+            "type": "number"
+          },
+          "denoise": {
+            "default": 1.0,
+            "maximum": 1,
+            "minimum": 0.05,
+            "type": "number"
+          },
+          "height": {
+            "maximum": 1024,
+            "minimum": 64,
+            "type": "integer"
+          },
+          "mask_path": {
+            "maxLength": 32768,
+            "minLength": 1,
+            "type": "string"
+          },
+          "negative_prompt": {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          "path": {
+            "maxLength": 32768,
+            "minLength": 1,
+            "type": "string"
+          },
+          "preview_max_dimension": {
+            "default": 256,
+            "maximum": 2048,
+            "minimum": 128,
+            "type": "integer"
+          },
+          "prompt": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "seed": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "source_path": {
+            "maxLength": 32768,
+            "minLength": 1,
+            "type": "string"
+          },
+          "steps": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "timeout_sec": {
+            "default": 1800,
+            "maximum": 3600,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "width": {
+            "maximum": 1024,
+            "minimum": 64,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "path",
+          "seed",
+          "width",
+          "height",
+          "source_path"
+        ],
+        "type": "object"
+      },
+      "name": "image_edit"
+    },
+    {
+      "description": "Start a Manager-owned image generation using the explicitly configured optional ComfyUI provider. Requires an absolute authorized output path, prompt, seed, width and height. Returns a job ID; image_job_status reports actual provider state and published preview. Provider is disabled by default; no model installation or server startup.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "cfg": {
+            "default": 7,
+            "maximum": 20,
+            "minimum": 0,
+            "type": "number"
+          },
+          "denoise": {
+            "default": 1.0,
+            "maximum": 1,
+            "minimum": 0.05,
+            "type": "number"
+          },
+          "height": {
+            "maximum": 1024,
+            "minimum": 64,
+            "type": "integer"
+          },
+          "negative_prompt": {
+            "maxLength": 4096,
+            "type": "string"
+          },
+          "path": {
+            "maxLength": 32768,
+            "minLength": 1,
+            "type": "string"
+          },
+          "preview_max_dimension": {
+            "default": 256,
+            "maximum": 2048,
+            "minimum": 128,
+            "type": "integer"
+          },
+          "prompt": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "type": "string"
+          },
+          "seed": {
+            "maximum": 9007199254740991,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "steps": {
+            "default": 20,
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "timeout_sec": {
+            "default": 1800,
+            "maximum": 3600,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "width": {
+            "maximum": 1024,
+            "minimum": 64,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "prompt",
+          "path",
+          "seed",
+          "width",
+          "height"
+        ],
+        "type": "object"
+      },
+      "name": "image_generate"
+    },
+    {
+      "description": "Request cancellation of one project-owned image job. Exact pending provider jobs may be removed from the queue; active cancellation suppresses local publication and can leave remote generation running. Read image_job_status for actual cancellation confirmation. Never interrupts a shared provider process.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 36,
+            "minLength": 36,
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "image_job_cancel"
+    },
+    {
+      "description": "Reattach fresh caller authority to a recovered project-owned image job before publishing its exact existing provider result. Revalidates scope, provider settings and unchanged output destination. Never resubmits generation; missing or uncertain provider history remains unknown. Read image_job_status for the actual result.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 36,
+            "minLength": 36,
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "image_job_resume"
+    },
+    {
+      "description": "Read a project-owned Manager image job across MCP reconnects with actual provider state, explicit errors, artifact hashes and a bounded image preview after publication. Optional wait_sec waits at most 60 seconds. Uncertain submissions and recovered unfinished jobs are not resubmitted automatically.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 36,
+            "minLength": 36,
+            "type": "string"
+          },
+          "wait_sec": {
+            "default": 0,
+            "maximum": 60,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "image_job_status"
+    },
+    {
+      "description": "Inspect the explicitly configured optional ComfyUI endpoint, node contracts and checkpoint inventory without starting the server or loading a model. Reports disabled, unavailable and incompatible providers explicitly; catalog presence alone does not establish generation availability.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "image_provider_status"
+    },
+    {
       "description": "Decode an authorized local PNG/JPEG/GIF/BMP/TIFF/ICO using native Windows codecs and return a PNG preview with original dimensions. Optional samples (1..64 exact source x/y pixel coordinates) return measured RGBA8 values; decoded-frame and emitted-preview SHA-256 identify the actual bytes. Optional preview_max_dimension (128..2048, default 256) requests more detail; adaptive resizing retains the 512 KiB encoded bound. These measurements do not establish the chat model's inference input; use image_analyze and reviewer_status for independent visual interpretation.",
       "inputSchema": {
         "additionalProperties": false,

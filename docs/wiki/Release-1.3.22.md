@@ -1,0 +1,15 @@
+# 1.3.22 source candidate
+
+Current source: **1.3.22**, Windows package identity **1.3.22.0**, **112 Primary/Fallback tools** and five CLU tools. All previous descriptors and specialist playbooks remain. Integrated build, complete CTest, signed-package, installed-catalog, native LM Studio and publication qualification are **pending**.
+
+Six optional ComfyUI tools add generation, source variation/masked editing, read-only status, local cancellation and explicit exact-job resume: image_provider_status, image_generate, image_edit, image_job_status, image_job_cancel, image_job_resume. The provider is disabled by default and needs an explicit owner-selected loopback endpoint, sd1 profile and compatible checkpoint. Forge does not start the provider, install a model or interrupt shared remote inference.
+
+image_write draws shapes and text; image_analyze and reviewer_status interpret an existing image. Provider jobs use the six tools above. An accepted job or preview is not completed generation or model perception.
+
+The earlier isolated ten-target suite and root-owned six-case real ComfyUI smoke passed within their recorded scope. Five generation POSTs, exact outside-mask RGBA preservation, running local cancellation and controlled acknowledgement-loss recovery were measured. They do not qualify integrated 1.3.22, Manager IPC, LM Studio delivery, semantic editing or full host model quality.
+
+See [provider contract](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md), [source notes](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/releases/1.3.22.md) and [qualification boundary](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.22.md).
+
+[Published 1.3.21](Release-1.3.21) retains its original 163-test, 106/106/5-catalog and native-model evidence, plus separate publication readback. [Published 1.3.19](Release-1.3.19) and superseded 1.3.20 remain historical. No 1.3.22 download or publication is asserted.
+
+The narrow source Infrastructure check passed 124/124 groups, including five shared reader/revision file cases. Actual installed UI callers and current-chat recovery remain unverified. A separate read-only post-run provider history check confirmed all five exact terminal workflows with no new inference.

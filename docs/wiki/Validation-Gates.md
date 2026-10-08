@@ -1,6 +1,10 @@
-# Current 1.3.21 measured verification
+# Current 1.3.22 verification scope
 
-## Measured 1.3.21 qualification
+The current source targets product 1.3.22 / package 1.3.22.0 with 112 Primary/Fallback tools. Integrated source/build, Product All, static/package, installed catalog, Manager IPC, LM Studio/Qwen and CI qualification remain pending. See [1.3.22 source notes](Release-1.3.22) and [current verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.22.md).
+
+An isolated direct-native ComfyUI smoke run passed six cases, including generation, unmasked editing, exact masked RGBA preservation, observed running cancellation and explicit recovery after a controlled lost acknowledgement. The helper deliberately withheld an observed matching HTTP 200; it did not exercise a real network outage. These checks used private fixture-issued scopes and do not qualify integrated Manager IPC, LM Studio/Qwen delivery, semantic instruction following or model quality. Independent evidence readback verified all five receipt payload/workflow seals, one trace generation POST per exact prompt, four PNG byte/pixel hashes and 8,192 unchanged outside-mask RGBA pixels. The HTTP trace retains response hashes, not raw queue/history bodies; running/terminal observations and before/after status preservation rely on the helper's captured runtime assertions. Same-process service reconstruction is separate from an actual Manager/process crash. See [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
+
+## Historical published 1.3.21 qualification
 
 Clean source `39adf553df320120d214bd90cc49223359054ede`, tree `c1b295cae2c0a01ce334526d99af6bc3e7b3a243`, passed **163/163 Release CTest entries in 67.14 seconds**, Product All, all three static gates and package persistence. The signed 1.3.21.0 package matched all four installed/staged/MSIX executable hashes; the offline owner-profile comparison preserved **8,375 files / 407,592,939 bytes** and the four protected snapshots. Installed Primary/Fallback/CLU catalogs returned **106/106/5** tools. The existing selected Qwen conversation supplied **13 verified native cases** across pixel receipts, CMake/CTest, desktop paging, independent image analysis and expected native errors. The separate original authority probe verified **7 cases / 63 actual requests** without model inference.
 
@@ -10,7 +14,7 @@ Continuity source fixtures passed **118 Infrastructure groups**, including the o
 
 Stock LM Studio MCP image metadata remains distinct from model image input and independent analysis. Higher-resolution previews and native RGBA samples do not establish exact OCR or change that stock bridge. Generative image providers and cloud accounts require separately configured services. Windows CI passed for the recorded 1.3.21 source, as linked in the verification record. Publication readback is a separate check.
 
-The current source/package identity is 1.3.21 / 1.3.21.0 with 106 Primary/Fallback tools. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. Publication and CI readbacks remain separate observed checks. See [the current source notes](Release-1.3.21). Historical measurements below retain their original identities.
+The historical published source/package identity above is 1.3.21 / 1.3.21.0 with 106 Primary/Fallback tools. Clean-source, signed-package, installed-catalog and measured native-model qualification passed for that artifact. Its [published release](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.21) and separate CI/asset readbacks retain their recorded identities. See [the historical source notes](Release-1.3.21). The measurements below retain their original identities and do not qualify 1.3.22.
 
 ## Historical published 1.3.19 verification
 
@@ -173,4 +177,6 @@ The source-bound staging and package manifests record exact commit/tree and file
 .\scripts\package.ps1 -DevelopmentSigning
 ```
 
-**Next:** [Release 1.3.21](Release-1.3.21) · [Developer Setup](Getting-Started) · [Roadmap](Roadmap)
+**Next:** [1.3.22 source notes](Release-1.3.22) · [Published 1.3.21 qualification](Release-1.3.21) · [Developer Setup](Getting-Started) · [Roadmap](Roadmap)
+
+A separate post-run ComfyUI history readback used seven GETs and no POSTs, verified all five exact prompt IDs/full graphs and terminal success, empty queues and unchanged provider ownership. It does not replay the earlier running observation. The narrow source Infrastructure check passed 124/124 groups, including five real-file shared snapshot cases; installed UI callers and the full source/package/LM Studio graph remain pending. See [the 1.3.22 qualification boundary](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.22.md).

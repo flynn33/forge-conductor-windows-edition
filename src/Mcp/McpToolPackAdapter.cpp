@@ -2341,10 +2341,14 @@ public:
                 "\nCall host_capabilities before claiming that a tool category is missing. "
                 "Native tools include web_search/web_fetch/http_request; document_write (.docx), "
                 "spreadsheet_write (.xlsx), presentation_write (.pptx), PDF, image_read/image_write/image_analyze, "
-                "desktop_list/read/capture/click/type/key and browser_open. Image writing creates shapes and text; "
-                "Image previews may be displayed without supplying pixels to the chat model; use image_analyze, "
-                "then reviewer_status, for a fresh independent visual interpretation. "
-                "generative artwork and cloud accounts require connected providers. "
+                "desktop_list/read/capture/click/type/key and browser_open. image_write draws shapes and text. "
+                "image_analyze starts a read-only interpretation of an existing image; reviewer_status reads that analysis result. "
+                "Drawing and analysis do not start generative image jobs. Image previews may be displayed without supplying pixels to the chat model. "
+                "image_provider_status checks the explicitly configured optional ComfyUI provider. "
+                "For generation use image_generate; for source variation or masked editing use image_edit. "
+                "Poll image_job_status for the generated artifact, cancel with image_job_cancel, "
+                "or reattach to the exact existing provider job with image_job_resume without generation replay. "
+                "Generative artwork and cloud accounts require connected providers. "
                 "agent_spawn/poll/cancel run independent scoped tasks, and schedule_create/list/run_now/cancel persist scheduled work. "
                 "The connector starts or attaches to its matching Manager; inspect durable_manager availability and startup_error. "
                 "Filesystem mode is selected by the owner; host mode grants available local volumes under ordinary Windows permissions "
@@ -2733,6 +2737,54 @@ private:
             if (!result) return propagate<Json>(std::move(result));
             return Domain::Result<Json>::success(Json::parse(result.value()));
         }
+        if (name == "image_provider_status" || name == "image_generate" || name == "image_edit" ||
+            name == "image_job_status" || name == "image_job_cancel" || name == "image_job_resume") {
+            if (dependencies_.durableToolBroker) {
+                auto brokerArguments = arguments;
+                if (name == "image_generate" || name == "image_edit") {
+                    for (const auto field : {"path", "source_path", "mask_path"}) {
+                        const auto found = arguments.find(field);
+                        if (found == arguments.end()) continue;
+                        const auto& path = found->get_ref<const std::string&>();
+                        if (!isAbsoluteToolPath(path)) return failure<Json>(Domain::ErrorCodes::InvalidRequest,
+                            "Image provider paths must be absolute.");
+                        auto authorized = authorizePath(dependencies_.workspaceAuthority, authority, path,
+                            std::string_view{field} == "path" ? Domain::FileAccess::Write : Domain::FileAccess::Read,
+                            false, context, &observation, ContinuityPathRole::Path);
+                        if (!authorized) return propagate<Json>(std::move(authorized));
+                        brokerArguments[field] = authorized.value().canonicalPath().value();
+                    }
+                }
+                const auto accessName = [](const Domain::FileAccess access) {
+                    switch (access) {
+                    case Domain::FileAccess::Read: return "read";
+                    case Domain::FileAccess::Write: return "write";
+                    case Domain::FileAccess::Create: return "create";
+                    case Domain::FileAccess::Delete: return "delete";
+                    case Domain::FileAccess::Execute: return "execute";
+                    }
+                    return "unknown";
+                };
+                Json roots = Json::array(), grants = Json::array(), denials = Json::array();
+                for (const auto& root : authority.trustedRoots()) roots.push_back(root.value());
+                for (const auto access : authority.grants()) grants.push_back(accessName(access));
+                for (const auto access : authority.denials()) denials.push_back(accessName(access));
+                brokerArguments["_forge_image_scope"] = Json{{"project_id", authority.projectId().value()},
+                    {"caller_id", authority.callerId().value()}, {"generation", authority.generation()},
+                    {"trusted_roots", std::move(roots)}, {"grants", std::move(grants)},
+                    {"denials", std::move(denials)}, {"shell_enabled", authority.shellEnabled()}};
+                auto result = dependencies_.durableToolBroker(name, brokerArguments.dump(), authority.projectId(), context);
+                if (!result) return propagate<Json>(std::move(result));
+                auto payload = Json::parse(result.value());
+                payload["broker"] = "persistent_manager";
+                return Domain::Result<Json>::success(std::move(payload));
+            }
+            if (!dependencies_.imageProvider) return failure<Json>(Domain::ErrorCodes::HostCapabilityUnavailable,
+                "Optional image generation requires the durable Manager and an explicitly configured provider.");
+            auto result = dependencies_.imageProvider->execute(name, arguments.dump(), authority, context);
+            if (!result) return propagate<Json>(std::move(result));
+            return Domain::Result<Json>::success(Json::parse(result.value()));
+        }
         if (name == "host_capabilities") {
             Json names = Json::array();
             for (const auto& item : dependencies_.catalog.tools()) names.push_back(item.tool.name);
@@ -2751,11 +2803,14 @@ private:
                     {"desktop_accessibility_capture_input", dependencies_.desktopArtifacts != nullptr},
                     {"native_image_drawing_and_vision_preview", dependencies_.desktopArtifacts != nullptr},
                     {"independent_image_analysis", dependencies_.desktopArtifacts != nullptr && independentReview},
+                    {"optional_generative_image_provider_adapter", dependencies_.imageProvider != nullptr ||
+                        static_cast<bool>(dependencies_.durableToolBroker)},
                     {"pdf_creation", true}, {"shell_and_process_execution", authority.shellEnabled()},
                     {"independent_read_only_review", independentReview}}},
                 {"execution_permissions", "ordinary_windows_account_permissions_without_elevation"},
                 {"shell_absolute_paths_and_network", "not_sandboxed_by_filesystem_tool_roots"},
                 {"external_connections_required", {"generative_image_model", "cloud_email_calendar_chat_accounts"}},
+                {"generative_image_provider", "Optional and disabled by default; call image_provider_status for configured endpoint, node/checkpoint compatibility and current availability."},
                 {"agent_playbooks", "agent_run_start_is_a_current_model_specialist_session_not_parallel_inference"},
                 {"reviewer_gate_approval", false},
                 {"independent_mutable_workers", static_cast<bool>(dependencies_.workerRuns || dependencies_.durableToolBroker)},

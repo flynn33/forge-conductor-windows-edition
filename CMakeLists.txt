@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.3.21
+    VERSION 1.3.22
     LANGUAGES CXX RC
 )
 
@@ -495,6 +495,9 @@ set(FORGE_NATIVE_TOOLS_WINDOWS_SOURCES
     src/NativeTools/Windows/WindowsPdfService.cpp
     src/NativeTools/Windows/WindowsArtifactDocumentService.cpp
     src/NativeTools/Windows/WindowsDesktopArtifactService.cpp
+    src/NativeTools/Windows/ImageProviderCodec.cpp
+    src/NativeTools/Windows/WindowsImageProviderHttpTransport.cpp
+    src/NativeTools/Windows/WindowsImageProviderService.cpp
     src/NativeTools/Windows/WindowsWebAccessService.cpp
     src/NativeTools/Windows/WindowsShellService.cpp
     src/NativeTools/Windows/CMakeTestSupport.cpp
@@ -2568,6 +2571,7 @@ if(BUILD_TESTING)
         tests/Infrastructure/StorageWindowsTests.cpp
         tests/Infrastructure/WindowsLMStudioEnvironmentTests.cpp
         tests/Infrastructure/WindowsLMStudioConversationReaderTests.cpp
+        tests/Infrastructure/WindowsLMStudioChatControlTests.cpp
         tests/Infrastructure/WindowsLMStudioHostActivatorTests.cpp
         tests/Infrastructure/WindowsLMStudioServeVerifierTests.cpp
         tests/Infrastructure/WindowsUnicodeCanonicalizerTests.cpp
@@ -3560,6 +3564,27 @@ if(BUILD_TESTING)
         COMMAND $<TARGET_FILE:ForgeConductor.NativeTools.DesktopArtifactTests>)
     set_tests_properties(ForgeConductor.NativeTools.DesktopArtifactTests PROPERTIES
         LABELS "T-UNIT;T-INTEGRATION;T-DOC;T-SEC" TIMEOUT 120)
+
+    foreach(FORGE_IMAGE_TEST IN ITEMS Service HttpTransport Codec)
+        set(FORGE_IMAGE_TEST_TARGET "ForgeConductor.NativeTools.ImageProvider${FORGE_IMAGE_TEST}Tests")
+        add_executable(${FORGE_IMAGE_TEST_TARGET}
+            "tests/NativeTools/WindowsImageProvider${FORGE_IMAGE_TEST}Tests.cpp")
+        forge_configure_native_target(${FORGE_IMAGE_TEST_TARGET})
+        target_include_directories(${FORGE_IMAGE_TEST_TARGET} PRIVATE src tests)
+        target_link_libraries(${FORGE_IMAGE_TEST_TARGET} PRIVATE
+            ForgeConductor::NativeTools.Windows nlohmann_json::nlohmann_json ws2_32 advapi32 crypt32)
+        add_test(NAME ${FORGE_IMAGE_TEST_TARGET} COMMAND $<TARGET_FILE:${FORGE_IMAGE_TEST_TARGET}>)
+        set_tests_properties(${FORGE_IMAGE_TEST_TARGET} PROPERTIES
+            LABELS "T-UNIT;T-INTEGRATION;T-IMAGE;T-SEC" TIMEOUT 120)
+    endforeach()
+
+    add_executable(ForgeConductor.NativeTools.ImageProviderSmoke EXCLUDE_FROM_ALL
+        tests/NativeTools/WindowsImageProviderSmoke.cpp)
+    forge_configure_native_target(ForgeConductor.NativeTools.ImageProviderSmoke)
+    target_include_directories(ForgeConductor.NativeTools.ImageProviderSmoke PRIVATE src)
+    target_link_libraries(ForgeConductor.NativeTools.ImageProviderSmoke PRIVATE
+        ForgeConductor::NativeTools.Windows ForgeConductor::Infrastructure.Windows
+        nlohmann_json::nlohmann_json crypt32)
 
     add_executable(ForgeConductor.NativeTools.PdfTests
         tests/NativeTools/WindowsPdfServiceTests.cpp)

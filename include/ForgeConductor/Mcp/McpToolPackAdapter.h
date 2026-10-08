@@ -23,6 +23,7 @@
 #include "ForgeConductor/Contracts/IWebAccessService.h"
 #include "ForgeConductor/Contracts/IArtifactDocumentService.h"
 #include "ForgeConductor/Contracts/IDesktopArtifactService.h"
+#include "ForgeConductor/Contracts/IImageProviderService.h"
 
 #include <chrono>
 #include <cstdint>
@@ -89,6 +90,7 @@ struct McpToolPackDependencies final {
     std::function<Contracts::IManagedRunService*()> workerRuns;
     std::function<Contracts::IScheduledTaskService*()> scheduledTasks;
     std::string managerStartupError;
+    Contracts::IImageProviderService* imageProvider{};
 };
 
 // Parses source-compatible tool arguments into transport-neutral Domain

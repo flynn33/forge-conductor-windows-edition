@@ -2,15 +2,15 @@
 
 The primary `forge-conductor` MCP worker owns native visible LM Studio chat rollover. Workspace saves **Auto Continuity** for the exact project/provider pair. CLU remains governance; Fallback remains an independent general-catalog integration. No fourth plugin or Forge credential is introduced.
 
-## Current 1.3.21 checkpoint source
+## Current 1.3.22 source and inherited checkpoint contract
 
-The Primary worker now persists the interrupted native handoff phase alongside the existing saved packet. The 118-group Infrastructure suite passed, including the private same-PID observer reconstruction regression and 20 durability cases. Installed observer/UI interruption or connector rollover recovery remains unverified; physical context exhaustion and already-running agent reattachment were not exercised. Historical 1.3.20 checkpoint-process primitive evidence retains its original source identity and is not a current installed qualification. Historical 1.3.5/1.3.11 checks retain their original identities.
+The Primary worker retains the interrupted native handoff checkpoint introduced in 1.3.21 alongside the saved packet. The historical published 1.3.21 source passed 118 Infrastructure groups, including the private same-PID observer reconstruction regression and 20 durability cases. Those measurements do not qualify the integrated 1.3.22 source or installed observer interruption/connector rollover. The narrow 1.3.22 Infrastructure entry passed 124/124 groups, including five shared reader/revision cases; installed UI callers and handoff remain unverified. Physical context exhaustion and already-running agent reattachment remain unverified. Historical 1.3.20 checkpoint-process primitive evidence and 1.3.5/1.3.11 checks retain their original identities. See [1.3.22 source notes](Release-1.3.22) and [published 1.3.21 qualification](Release-1.3.21).
 
 A current-user DPAPI checkpoint lives at `continuity/lmstudio-visible-<project-id>.checkpoint` under the routed Forge home. The existing authorized atomic store publishes its schema, source contract, revision, scope and bounded state; plaintext is limited to 8 MiB and stored content to 10 MiB. One exclusive Windows file handle owns native UI writing across projects on that home and is released on worker exit. A saved checkpoint, lock filename or PID does not grant current workspace authority.
 
 Reconstruction requires fresh authorized project/root, home, LM Studio root/executable, provider and Primary/Fallback/CLU routing confirmation. The retained phase includes predecessor/successor identities, exact packet body/write sequence, messages and native effect receipts. Before New chat or Send, the worker checkpoints an `uncertain` receipt and records confirmation only after native evidence. Uncertain effects are not automatically replayed.
 
-Read `get_forge_status.visible_chat_continuity.state` and `handoff_recovery`. `recovery_pending` carries the recorded phase, identities, reason and `automatic_replay: false`; it retains unfinished work and is not completion. Reconciliation uses the freshly selected recorded chat and exact new message evidence, or matching successor `context_get` packet recovery followed by a successful Forge tool result. Another empty or third chat is insufficient. Changed scope, malformed/integrity-invalid checkpoints, unavailable ownership/storage and missing selected chat defer controls. See [Troubleshooting](Troubleshooting#current-1321-checkpoint-recovery).
+Read `get_forge_status.visible_chat_continuity.state` and `handoff_recovery`. `recovery_pending` carries the recorded phase, identities, reason and `automatic_replay: false`; it retains unfinished work and is not completion. Reconciliation uses the freshly selected recorded chat and exact new message evidence, or matching successor `context_get` packet recovery followed by a successful Forge tool result. Another empty or third chat is insufficient. Changed scope, malformed/integrity-invalid checkpoints, unavailable ownership/storage and missing selected chat defer controls. See [Troubleshooting](Troubleshooting).
 
 ## Project-scoped recovery
 
@@ -37,7 +37,7 @@ The accepted 1.3.11 installed checks verify enabled, unblocked native observing 
 
 ## Historical durability limits through 1.3.19
 
-The next paragraph preserves the earlier in-process limitation; it predates the current 1.3.21 checkpoint implementation. Physical exhaustion and already-running agent reattachment remain separate qualification work.
+The next paragraph preserves the earlier in-process limitation; it predates the checkpoint implementation introduced in 1.3.21 and retained in 1.3.22. Physical exhaustion and already-running agent reattachment remain separate qualification work.
 
 The packet is persisted, but the in-flight UI handoff phase is process-local. Recovery of that interrupted phase after MCP worker eviction/restart is unfinished. Historical rollover qualification did not exercise physical exhaustion or reattachment of an already-running agent. A fresh CLU initialize was not exercised in that historical native rollover; its packet context uses the shared bootstrap path, and Primary/Fallback provide recovery tools.
 

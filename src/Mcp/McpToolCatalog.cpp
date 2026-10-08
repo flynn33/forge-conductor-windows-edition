@@ -94,6 +94,12 @@ constexpr std::array<SourceDescriptor, McpToolCatalog::ExpectedToolCount>
         {"host_capabilities", "Report actual dedicated capabilities, tool names, filesystem mode and root authority, and external services needing a connection. Consult before claiming a capability is absent.", "HostInspectionToolPack", Read, false, false},
         {"http_request", "Perform an explicit HTTP/HTTPS GET, HEAD, POST, PUT, PATCH, DELETE or OPTIONS with bounded caller-supplied headers/body. Mutating methods can change remote state and require task authorization; only GET/HEAD follow redirects. No ambient credentials/cookies; report actual HTTP status and truncation.", "WebAccessToolPack", Write, true, false},
         {"image_analyze", "Start a fresh independent read-only visual review of an authorized decoded image with explicit authorization. Returns an asynchronous run ID; use reviewer_status for the actual model analysis, usage, sealed outcome and infrastructure errors. Optional preview_max_dimension (128..2048, default 256) requests more image detail within the 512 KiB encoded bound. Use this when LM Studio displays an image preview without supplying pixels to its chat model. No executor history or policy approval is included.", "ImageToolPack", Write, true, false},
+        {"image_edit", "Start a Manager-owned image variation or masked diffusion edit using the explicitly configured optional ComfyUI provider. Requires an absolute authorized source_path, output path, prompt, seed, width and height; dimensions must match the source and optional mask. Mask red values select edits; zero preserves exact original RGBA. Returns a job ID; image_job_status reports actual provider state and published preview. No model installation or server startup.", "ImageProviderToolPack", Write, true, false},
+        {"image_generate", "Start a Manager-owned image generation using the explicitly configured optional ComfyUI provider. Requires an absolute authorized output path, prompt, seed, width and height. Returns a job ID; image_job_status reports actual provider state and published preview. Provider is disabled by default; no model installation or server startup.", "ImageProviderToolPack", Write, true, false},
+        {"image_job_cancel", "Request cancellation of one project-owned image job. Exact pending provider jobs may be removed from the queue; active cancellation suppresses local publication and can leave remote generation running. Read image_job_status for actual cancellation confirmation. Never interrupts a shared provider process.", "ImageProviderToolPack", Write, true, false},
+        {"image_job_resume", "Reattach fresh caller authority to a recovered project-owned image job before publishing its exact existing provider result. Revalidates scope, provider settings and unchanged output destination. Never resubmits generation; missing or uncertain provider history remains unknown. Read image_job_status for the actual result.", "ImageProviderToolPack", Write, true, false},
+        {"image_job_status", "Read a project-owned Manager image job across MCP reconnects with actual provider state, explicit errors, artifact hashes and a bounded image preview after publication. Optional wait_sec waits at most 60 seconds. Uncertain submissions and recovered unfinished jobs are not resubmitted automatically.", "ImageProviderToolPack", Read, true, false},
+        {"image_provider_status", "Inspect the explicitly configured optional ComfyUI endpoint, node contracts and checkpoint inventory without starting the server or loading a model. Reports disabled, unavailable and incompatible providers explicitly; catalog presence alone does not establish generation availability.", "ImageProviderToolPack", Read, true, false},
         {"image_read", "Decode an authorized local PNG/JPEG/GIF/BMP/TIFF/ICO using native Windows codecs and return a PNG preview with original dimensions. Optional samples (1..64 exact source x/y pixel coordinates) return measured RGBA8 values; decoded-frame and emitted-preview SHA-256 identify the actual bytes. Optional preview_max_dimension (128..2048, default 256) requests more detail; adaptive resizing retains the 512 KiB encoded bound. These measurements do not establish the chat model's inference input; use image_analyze and reviewer_status for independent visual interpretation.", "ImageToolPack", Read, true, false},
         {"image_write", "Render rectangles, ellipses, lines and Unicode text to an authorized native PNG, returning an image preview. Optional preview_max_dimension (128..2048, default 256) requests more detail within the 512 KiB encoded bound; the written image keeps its full dimensions. Supports diagrams/charts; generative artwork requires a separate image provider.", "ImageToolPack", Write, true, false},
         {"instruction_package.read", "Read a selected instruction package by queue_row_id from get_forge_status. Returns its pinned text and coverage, with cursor and byte-offset paging.", "InstructionPackageToolPack", Read, true, false},
@@ -298,6 +304,37 @@ using Property = std::pair<std::string_view, Json>;
             {"question", nonempty(boundedText(4096U))}, {"receive_timeout_sec", std::move(timeout)},
             {"preview_max_dimension", imagePreviewDimension}},
             {"path", "authorization"}, AdditionalProperties::Denied);
+    }
+    if (name == "image_provider_status") return objectSchema({}, {}, AdditionalProperties::Denied);
+    if (name == "image_job_status" || name == "image_job_cancel" || name == "image_job_resume") {
+        auto jobId = boundedText(36U); jobId["minLength"] = 36;
+        auto result = objectSchema({{"job_id", std::move(jobId)}}, {"job_id"}, AdditionalProperties::Denied);
+        if (name == "image_job_status") {
+            auto wait = boundedInteger(0, 60); wait["default"] = 0;
+            result["properties"]["wait_sec"] = std::move(wait);
+        }
+        return result;
+    }
+    if (name == "image_generate" || name == "image_edit") {
+        auto prompt = boundedText(4096U); prompt["minLength"] = 1;
+        auto absolutePath = boundedText(32'768U); absolutePath["minLength"] = 1;
+        auto steps = boundedInteger(1, 100); steps["default"] = 20;
+        auto timeout = boundedInteger(1, 3600); timeout["default"] = 1800;
+        auto result = objectSchema({{"prompt", std::move(prompt)}, {"path", absolutePath},
+            {"seed", boundedInteger(0, 9'007'199'254'740'991LL)},
+            {"width", boundedInteger(64, 1024)}, {"height", boundedInteger(64, 1024)},
+            {"negative_prompt", boundedText(4096U)}, {"steps", std::move(steps)},
+            {"cfg", Json{{"type", "number"}, {"minimum", 0}, {"maximum", 20}, {"default", 7}}},
+            {"denoise", Json{{"type", "number"}, {"minimum", 0.05}, {"maximum", 1},
+                {"default", 1.0}}},
+            {"timeout_sec", std::move(timeout)}, {"preview_max_dimension", imagePreviewDimension}},
+            {"prompt", "path", "seed", "width", "height"}, AdditionalProperties::Denied);
+        if (name == "image_edit") {
+            result["properties"]["source_path"] = absolutePath;
+            result["properties"]["mask_path"] = std::move(absolutePath);
+            result["required"].push_back("source_path");
+        }
+        return result;
     }
     if (name == "image_read") {
         const auto sample = objectSchema({{"x", boundedInteger(0, 4095)}, {"y", boundedInteger(0, 4095)}},

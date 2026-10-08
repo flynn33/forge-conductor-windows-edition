@@ -53,6 +53,12 @@ namespace {
         name == "schedule_create" || name == "schedule_list" || name == "schedule_cancel" || name == "schedule_run_now";
 }
 
+[[nodiscard]] bool imageScopeTool(const std::string_view name) noexcept
+{
+    return name == "image_provider_status" || name == "image_generate" || name == "image_edit" ||
+        name == "image_job_status" || name == "image_job_cancel" || name == "image_job_resume";
+}
+
 struct WorkerToolCall final {
     std::string arguments;
     Contracts::WorkspaceAuthority authority;
@@ -79,15 +85,37 @@ struct WorkerToolCall final {
         };
         auto arguments = Json::parse(request.canonicalArguments, callback);
         if (!arguments.is_object()) throw std::invalid_argument{"Broker arguments must be an object."};
-        const auto found = arguments.find("_forge_worker_scope");
-        if (found == arguments.end()) return Domain::Result<WorkerToolCall>::success({request.canonicalArguments, baseline});
-        if (!workerScopeTool(request.toolName)) throw std::invalid_argument{"Worker scope is not valid for this tool."};
+        const bool imageScope = imageScopeTool(request.toolName);
+        const char* const scopeField = imageScope ? "_forge_image_scope" : "_forge_worker_scope";
+        if (arguments.contains(imageScope ? "_forge_worker_scope" : "_forge_image_scope"))
+            throw std::invalid_argument{"Broker scope is not valid for this tool."};
+        const auto found = arguments.find(scopeField);
+        if (found == arguments.end()) {
+            if (imageScope) throw std::invalid_argument{"Image jobs require fresh inherited scope."};
+            return Domain::Result<WorkerToolCall>::success({request.canonicalArguments, baseline});
+        }
+        if (!imageScope && !workerScopeTool(request.toolName)) throw std::invalid_argument{"Worker scope is not valid for this tool."};
         const auto& scope = *found;
-        if (!scope.is_object() || scope.size() != 4U || !scope.contains("trusted_roots") ||
+        if (!scope.is_object() || scope.size() != (imageScope ? 7U : 4U) || !scope.contains("trusted_roots") ||
             !scope.contains("grants") || !scope.contains("denials") || !scope.contains("shell_enabled") ||
             !scope.at("shell_enabled").is_boolean() || !scope.at("trusted_roots").is_array() ||
             scope.at("trusted_roots").empty() || scope.at("trusted_roots").size() > 32U)
             throw std::invalid_argument{"Worker scope fields or root bounds are invalid."};
+        if (imageScope) {
+            if (!scope.contains("project_id") || !scope.at("project_id").is_string() ||
+                !scope.contains("caller_id") || !scope.at("caller_id").is_string() ||
+                !scope.contains("generation") || !scope.at("generation").is_number_unsigned() ||
+                scope.at("generation").get<std::uint64_t>() == 0U)
+                throw std::invalid_argument{"Image scope provenance fields are invalid."};
+            auto project = Domain::ProjectId::parse(scope.at("project_id").get<std::string>());
+            auto caller = Domain::ClientId::parse(scope.at("caller_id").get<std::string>());
+            if (!project || !caller) throw std::invalid_argument{"Image scope provenance identities are invalid."};
+            if (project.value() != request.projectId || project.value() != baseline.projectId())
+                return Domain::Result<WorkerToolCall>::failure(error(Domain::ErrorCodes::ProjectScopeMismatch,
+                    "Image broker scope belongs to a different project."));
+            // The pipe authenticates the Windows user and profile. A serialized
+            // CLI caller/generation is provenance, not a new authority issuer.
+        }
         std::vector<Domain::PathText> requestedRoots;
         for (const auto& root : scope.at("trusted_roots")) {
             if (!root.is_string()) throw std::invalid_argument{"Worker roots must be strings."};
@@ -128,7 +156,7 @@ struct WorkerToolCall final {
             std::find(grants.begin(), grants.end(), Domain::FileAccess::Execute) != grants.end();
         auto narrowed = issuer.narrow(baseline, roots, grants, shell, baseline.generation() + 1U, context);
         if (!narrowed) return Domain::Result<WorkerToolCall>::failure(std::move(narrowed).error());
-        arguments.erase("_forge_worker_scope");
+        arguments.erase(scopeField);
         return Domain::Result<WorkerToolCall>::success({arguments.dump(), std::move(narrowed).value()});
     } catch (const Json::exception&) {
         return Domain::Result<WorkerToolCall>::failure(error(Domain::ErrorCodes::InvalidRequest, "Broker arguments or worker scope contain invalid JSON types."));
@@ -3653,6 +3681,7 @@ private:
                     // This current-user authenticated pipe is the durable job
                     // broker. General desktop tool execution remains disabled.
                     const bool brokered = workerScopeTool(payload.toolName)
+                        || imageScopeTool(payload.toolName)
                         || payload.toolName == "cmake_test_run"
                         || payload.toolName == "cmake_test_status"
                         || payload.toolName == "workspace_authority_bind"

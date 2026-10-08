@@ -1,6 +1,12 @@
 # Native LM Studio chat Auto Continuity
 
-## Current 1.3.21 source contract
+## Current 1.3.22 snapshot boundary — qualification pending
+
+The shared WindowsLMStudioChatControl native file reader now uses the same 64 MiB bound as the ordinary conversation reader. Its consumers include plugin cleanup, saved loaded-model acknowledgement and completed-native-tool-boundary pause corroboration. The previous shared helper used 32 MiB and described an oversized native snapshot as an integration-field update error. The current source reports a general snapshot-bound error and keeps the existing file identity/revision and cancellation/deadline checks.
+
+A frozen large current chat exceeds 32 MiB, but its three current plugins do not establish which shared caller failed. The narrow Infrastructure entry passed 124/124 groups, including five real-file shared-reader/revision cases, in 21.94 seconds. It did not exercise actual UI model acknowledgement, plugin cleanup, completed-tool-boundary pause or concurrent mutation during the read. Installed current-chat recovery and full integrated qualification remain pending. This change does not prove visible rollover, physical context exhaustion or interrupted Send/New chat recovery. The 1.3.21 checkpoint measurements below retain their original artifact identity.
+
+## Retained 1.3.21 source contract and historical checks
 
 The Primary stdio MCP composition continues to own `WindowsLMStudioChatContinuity`; Fallback and CLU do not start competing native rollover workers. The current source adds durable phase reconstruction through `LMStudioChatCheckpoint` and New chat/Send effect receipts in `WindowsLMStudioChatControl`. The 118-group Infrastructure suite passed, including the private same-PID observer reconstruction regression and 20 durability cases. Installed observer/UI interruption or connector rollover recovery remains unverified; physical context exhaustion and already-running agent reattachment were not exercised. Historical 1.3.20 checkpoint-process primitive evidence retains its original source identity and is not a current installed qualification. The historical checks below do not qualify this new behavior.
 

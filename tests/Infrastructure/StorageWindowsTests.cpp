@@ -2806,6 +2806,43 @@ void configurationFileSystemAccessIsOwnerPersistedAndStrict()
     }
 }
 
+void configurationOptionalImageProviderIsStrictAndPreservesOwnerFields()
+{
+    ConfigurationFixture fixture;
+    MemoryAtomicFileStore files;
+    files.exists = true;
+    files.content = bytes(R"({"schema_version":1,"future":"preserved","image_provider":{"future_mode":"owner"}})");
+    WindowsConfigurationStore store{files, fixture.readPath, fixture.writePath, fixture.createPath, fixture.backupReadPath};
+    require(!take(store.load(liveContext())).imageProvider.enabled,
+        "A configuration with no explicit enabled provider gained network generation.");
+    Domain::AppConfigPatch patch;
+    patch.imageProvider = Domain::ImageProviderConfig{true,"http://127.0.0.1:8188","sd1","cyberrealistic_final2.safetensors"};
+    require(take(store.update(patch,liveContext())).imageProvider == *patch.imageProvider,
+        "Explicit image-provider settings were not committed.");
+    const auto document = nlohmann::json::parse(text(files.content));
+    require(document.at("future") == "preserved" && document.at("image_provider").at("future_mode") == "owner" &&
+        document.at("image_provider").at("enabled") == true,
+        "Image-provider update changed unrelated owner fields.");
+    WindowsConfigurationStore reopened{files,fixture.readPath,fixture.writePath,fixture.createPath,fixture.backupReadPath};
+    require(take(reopened.load(liveContext())).imageProvider == *patch.imageProvider,
+        "Explicit image-provider settings did not survive reopen.");
+    const auto before = files.content;
+    for (const auto& endpoint : {"http://localhost:8188","http://127.0.0.1:8188/","http://user@127.0.0.1:8188", "http://127.0.0.1:08188", "http://192.168.0.1:8188", "http://127.0.0.1:0"}) {
+        patch.imageProvider->endpoint = endpoint;
+        requireError(reopened.update(patch,liveContext()),Domain::ErrorCodes::InvalidRequest,
+            "Noncanonical, ambient, remote or credential-bearing provider endpoint was accepted.");
+        require(files.content == before,"Invalid provider configuration changed durable bytes.");
+    }
+    patch.imageProvider->endpoint = "https://[::1]:8188";
+    require(Domain::validateImageProviderConfig(*patch.imageProvider).hasValue(),"Explicit IPv6 HTTPS loopback was rejected.");
+    for (const auto& checkpoint : {"../model.safetensors","C:/model.safetensors",".hidden.safetensors", "model.ckpt", "model name.safetensors"}) {
+        patch.imageProvider->checkpoint = checkpoint;
+        requireError(reopened.update(patch,liveContext()),Domain::ErrorCodes::InvalidRequest,
+            "Unsafe or unsupported checkpoint basename was accepted.");
+        require(files.content == before,"Invalid checkpoint changed durable bytes.");
+    }
+}
+
 void configurationRecoversOnlyFromValidBackup()
 {
     ConfigurationFixture fixture;
@@ -3284,6 +3321,8 @@ void registerStorageWindowsTests(TestRegistry &tests)
             configurationPreservesUnknownFieldsAndUsesBackup);
     addTest(tests, "storage.config.filesystem-access",
             configurationFileSystemAccessIsOwnerPersistedAndStrict);
+    addTest(tests, "storage.config.optional-image-provider",
+            configurationOptionalImageProviderIsStrictAndPreservesOwnerFields);
     addTest(tests, "storage.config.valid-backup-recovery",
             configurationRecoversOnlyFromValidBackup);
     addTest(tests, "storage.config.hostile-json",

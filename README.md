@@ -1,6 +1,13 @@
 # Forge Conductor for Windows
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.21 implementation.
+## Current 1.3.22 source candidate
+
+The source defines **112 Primary/Fallback tools** and package identity **1.3.22.0**. Six optional ComfyUI tools add image generation, variation/masked editing, job status, local cancellation and explicit resume. The provider is disabled by default. The integrated build, complete test graph, package, installed catalogs, Manager IPC, native LM Studio and publication checks remain pending. The installed published 1.3.21 connector still has 106 tools; source inventory is not proof of installed availability.
+
+See [provider contract](docs/IMAGE-PROVIDER.md), [candidate notes](docs/releases/1.3.22.md) and [qualification boundary](docs/validation/HOST-CAPABILITIES-1.3.22.md). The root-owned isolated native Comfy smoke passed six bounded cases; it does not establish integrated delivery, semantic editing or full host model quality. [Published 1.3.21](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.21) passed separate seven-asset digest/readback verification; its measurements below remain historical.
+
+
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.22 candidate.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,7 +15,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-## Measured 1.3.21 qualification
+## Historical published 1.3.21 qualification
 
 Clean source `39adf553df320120d214bd90cc49223359054ede`, tree `c1b295cae2c0a01ce334526d99af6bc3e7b3a243`, passed **163/163 Release CTest entries in 67.14 seconds**, Product All, all three static gates and package persistence. The signed 1.3.21.0 package matched all four installed/staged/MSIX executable hashes; the offline owner-profile comparison preserved **8,375 files / 407,592,939 bytes** and the four protected snapshots. Installed Primary/Fallback/CLU catalogs returned **106/106/5** tools. The existing selected Qwen conversation supplied **13 verified native cases** across pixel receipts, CMake/CTest, desktop paging, independent image analysis and expected native errors. The separate original authority probe verified **7 cases / 63 actual requests** without model inference.
 
@@ -24,9 +31,9 @@ Forge Conductor is a native Windows 11 workspace and MCP tool server for project
 
 The installed, unpublished 1.3.20.0 candidate was superseded after repeated native CMake builds exposed an MSBuild `FileTracker.InitializeCommonApplicationDataPaths` failure before the requested target. The 1.3.21 source adds the bounded `SystemDrive` default and strengthens the native known-folder, repeated-build and intended-failure regressions. Measured 1.3.21 source, package, installed-catalog and native-model checks passed; retained 1.3.20 attempts keep their original source and package identities.
 
-The current source version is **1.3.21**, with **106 tools** in Primary and Fallback, ten specialist playbooks and CLU's five governance tools. LM Studio models can use dedicated web search/fetch/HTTP, native DOCX/XLSX/PPTX creation, Windows desktop observation and input, PNG drawing, image previews and independent image analysis, native CMake/CTest jobs, independent model workers, and persistent model-task schedules. Owner-selected host filesystem access covers ordinary local volumes while relative paths keep the selected project as their default. The narrower workspace mode remains selectable. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. See the [capability guide](docs/HOST-CAPABILITIES.md), [1.3.21 release notes](docs/releases/1.3.21.md) and [measured verification record](docs/validation/HOST-CAPABILITIES-1.3.21.md). Published 1.3.19 evidence remains historical above.
+The current source version is **1.3.22**, with **112 tools** in Primary and Fallback, ten specialist playbooks and CLU's five governance tools. LM Studio models can use dedicated web search/fetch/HTTP, native DOCX/XLSX/PPTX creation, Windows desktop observation and input, PNG drawing, image previews and independent image analysis, native CMake/CTest jobs, independent model workers, and persistent model-task schedules. Owner-selected host filesystem access covers ordinary local volumes while relative paths keep the selected project as their default. The narrower workspace mode remains selectable. Integrated 1.3.22 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. See the [capability guide](docs/HOST-CAPABILITIES.md), [1.3.22 release notes](docs/releases/1.3.22.md) and [measured verification record](docs/validation/HOST-CAPABILITIES-1.3.22.md). Published 1.3.19 evidence remains historical above.
 
-Native Office files and PNG drawings require neither Office nor Python. Scheduled model tasks require Manager to stay running; future schedules restore after restart, while interrupted runs with uncertain effects require explicit authorization before another attempt. Generative artwork and cloud email, calendar, or chat accounts require separately configured providers or authorized APIs. `host_capabilities` reports the implemented tools, current filesystem policy, and these connection requirements.
+Native Office files and PNG drawings require neither Office nor Python. Scheduled model tasks require Manager to stay running; future schedules restore after restart, while interrupted runs with uncertain effects require explicit authorization before another attempt. Optional generative artwork uses an explicitly configured ComfyUI provider; cloud email, calendar and chat accounts retain separately configured connections or authorized APIs. `host_capabilities` reports the implemented tools, current filesystem policy, and these connection requirements.
 
 `image_analyze` starts an authorized independent read-only vision run from a local image. Poll `reviewer_status` for its actual output, errors and token usage. `image_read`, `image_write`, `desktop_capture` and `image_analyze` accept optional `preview_max_dimension` 128–2,048, default 256; adaptive resizing retains the 512 KiB base64-encoded preview bound and reports final dimensions and reduction metadata. Invalid preview parameters are rejected before write/capture effects. LM Studio 0.4.25's stock MCP result stores image metadata rather than a model image file part. The independent analysis route uses Forge's Responses image path and retains the three existing integrations; larger previews do not change that stock bridge boundary or guarantee exact OCR.
 
@@ -65,7 +72,7 @@ Requirements and commands are in [Build](docs/BUILD.md) and [Testing](docs/TESTI
 ./scripts/Run-Static-Gates.ps1
 ```
 
-Current implementation and qualification limits are recorded in the [1.3.21 notes](docs/releases/1.3.21.md) and [measured capability verification record](docs/validation/HOST-CAPABILITIES-1.3.21.md). Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. Each qualified distribution records its exact commit, tree, MSIX hash and payload-manifest hash. The [published 1.3.19 release notes](docs/releases/1.3.19.md) and [historical verification record](docs/validation/HOST-CAPABILITIES-1.3.19.md) retain their own artifact identity.
+Current source contracts and pending integrated qualification are recorded in [the 1.3.22 notes](docs/releases/1.3.22.md) and [qualification record](docs/validation/HOST-CAPABILITIES-1.3.22.md). Published 1.3.21 and 1.3.19 records retain their exact artifact identities; no 1.3.22 distribution is asserted.
 
 Historical 1.3.19 checks are recorded separately in the measured qualification above. The installed, unpublished [1.3.18 investigation](docs/validation/HOST-CAPABILITIES-1.3.18.md) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact.
 

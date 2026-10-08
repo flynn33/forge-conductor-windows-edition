@@ -2,7 +2,7 @@
 
 ## Current product documentation
 
-The current source implementation is 1.3.21 with 106 Primary/Fallback tools; Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. Earlier release and verification entries retain their named artifact identities.
+The current source implementation is 1.3.22 with 112 Primary/Fallback tools; Integrated 1.3.22 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. Earlier release and verification entries retain their named artifact identities.
 
 - [README](../README.md)
 - [Product status](STATUS.md)
@@ -15,12 +15,15 @@ The current source implementation is 1.3.21 with 106 Primary/Fallback tools; Cle
 - [Capability map](PARITY.md)
 - [Dedicated host capability guide](HOST-CAPABILITIES.md)
 - [Native CMake/CTest job contracts and examples](CMAKE-CTEST.md)
+- [Optional ComfyUI image-provider contracts and examples](IMAGE-PROVIDER.md)
 - [Wiki publication sources](wiki/README.md)
 - [Windows toolchain](WINDOWS_TOOLCHAIN.md)
 - [Post-1.0 enhancements](DEFERRED.md)
 - [Packaging inputs](../packaging/README.md)
-- [1.3.21 release notes](releases/1.3.21.md)
-- [1.3.21 measured qualification record](validation/HOST-CAPABILITIES-1.3.21.md)
+- [1.3.22 source candidate notes](releases/1.3.22.md)
+- [1.3.22 qualification boundary — pending](validation/HOST-CAPABILITIES-1.3.22.md)
+- [Historical published 1.3.21 release notes](releases/1.3.21.md)
+- [Historical published 1.3.21 measured qualification record](validation/HOST-CAPABILITIES-1.3.21.md)
 - [Unpublished 1.3.20 installed investigation, superseded](releases/1.3.20.md)
 - [Historical published release 1.3.19](releases/1.3.19.md)
 - [Historical 1.3.19 installed capability verification](validation/HOST-CAPABILITIES-1.3.19.md)

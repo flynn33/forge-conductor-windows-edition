@@ -717,8 +717,16 @@ void durableVisibleHandoffRecoveryCases()
         f.fixture.fileFixture.save(conversation(Json::array({message(Json::array({version(Json::array({generation(31000U,32768U)}))}))})));
         f.pending();require(f.sends==0U && f.creations==0U,"storage failure did not stop the pending native effect");
         f.publicationBlock.reset();
-        f.fault=VisibleHandoffFixture::Fault::None;f.reconstruct();f.run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet";});
+        f.fault=VisibleHandoffFixture::Fault::None;f.reconstruct();f.run([&](const Json& status) {
+            if(status.value("state",std::string{})!="waiting_for_model_packet" || f.sends.load()!=1U) return false;
+            const auto state=f.checkpoint().at("state");
+            return state.at("packet_request_acknowledged")==true && state.at("effect").is_object() &&
+                state.at("effect").at("stage")=="confirmed";
+        });
         require(f.sends==1U,"a definitely undispatched request did not recover after storage became writable");
+        const auto recovered=f.checkpoint().at("state");
+        require(recovered.at("packet_request_acknowledged")==true && recovered.at("effect").at("stage")=="confirmed",
+            "the recovered packet request lacked a durable confirmed effect receipt");
     });
     run("post_dispatch_storage_failure",[] {
         VisibleHandoffFixture f;f.fault=VisibleHandoffFixture::Fault::AfterDispatchStorage;

@@ -1,6 +1,7 @@
 #include "TestSupport.h"
 
 #include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioEnvironment.h"
+#include "ForgeConductor/Mcp/McpToolCatalog.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsFileSystem.h"
 #include "Fakes/DeterministicWorkspaceAuthority.h"
 
@@ -608,13 +609,13 @@ void testConnectionHealthSnapshotIsBoundedAndCached()
                 Domain::LMStudioConnectorRole::Primary,
                 true,
                 std::string{"2025-11-25"},
-                106U,
+                Mcp::McpToolCatalog::ExpectedToolCount,
                 "Primary role ready."},
             Domain::LMStudioConnectorHealth{
                 Domain::LMStudioConnectorRole::Fallback,
                 true,
                 std::string{"2025-11-25"},
-                106U,
+                Mcp::McpToolCatalog::ExpectedToolCount,
                 "Fallback role ready."},
             Domain::LMStudioConnectorHealth{
                 Domain::LMStudioConnectorRole::Clu,
@@ -628,7 +629,8 @@ void testConnectionHealthSnapshotIsBoundedAndCached()
             "A consistent measured role-health snapshot was rejected.");
     const auto cached = take(environment.connectionHealth(context));
     require(cached.state == Domain::LMStudioConnectionState::Ready &&
-                cached.roles.size() == 3U && cached.roles[0].toolCount == 106U,
+                cached.roles.size() == 3U &&
+                cached.roles[0].toolCount == Mcp::McpToolCatalog::ExpectedToolCount,
             "The connection-health snapshot was not cached exactly.");
 
     auto inconsistent = ready;
@@ -657,7 +659,7 @@ void testConnectionHealthSnapshotIsBoundedAndCached()
             Domain::LMStudioConnectorRole::Primary,
             false,
             std::string{"2025-11-25"},
-            106U,
+            Mcp::McpToolCatalog::ExpectedToolCount,
             "Primary role failed after a prior measurement."}},
         Domain::LMStudioConnectionState::Unavailable};
     requireError(

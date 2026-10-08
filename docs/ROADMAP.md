@@ -1,6 +1,6 @@
 # Roadmap
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.21 implementation.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.22 candidate.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,15 +8,17 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-## Current source version: 1.3.21
+## Current source version: 1.3.22 — qualification pending
 
-Version 1.3.21 implements 106 Primary/Fallback tools while preserving all original tools, ten specialist playbooks and five CLU tools. Native CMake/CTest run/status jobs, paged accessibility reads and optional higher-resolution bounded image previews extend dedicated web, native Office documents, desktop/browser, PNG/image analysis, independent managed workers and persistent schedules. Existing shell/process jobs, reviews, memory, policy, deployment and continuity remain. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. See the [capability guide](HOST-CAPABILITIES.md), [CMake/CTest guide](CMAKE-CTEST.md), [implementation notes](releases/1.3.21.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.21.md).
+Version 1.3.22 implements 112 Primary/Fallback tools while preserving all original tools, ten specialist playbooks and five CLU tools. Native CMake/CTest run/status jobs, paged accessibility reads and optional higher-resolution bounded image previews extend dedicated web, native Office documents, desktop/browser, PNG/image analysis, independent managed workers and persistent schedules. Existing shell/process jobs, reviews, memory, policy, deployment and continuity remain. Integrated 1.3.22 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. See the [capability guide](HOST-CAPABILITIES.md), [CMake/CTest guide](CMAKE-CTEST.md), [implementation notes](releases/1.3.22.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.22.md).
 
 The 1.3.21 source persists the interrupted native handoff phase in a bounded, current-user DPAPI checkpoint. A single writer owns native controls; reconstruction requires fresh project/provider/route confirmation and selected-chat evidence. Uncertain New chat or Send effects remain `recovery_pending` and are not replayed. The 118-group Infrastructure suite passed, including the private same-PID observer reconstruction regression and 20 durability cases. Installed observer/UI interruption or connector rollover recovery remains unverified; physical context exhaustion and already-running agent reattachment were not exercised. Historical 1.3.20 checkpoint-process primitive evidence retains its original source identity and is not a current installed qualification. See the [continuity implementation](implementation/CONTEXT-CONTINUITY.md).
 
 The following limitation records the historical qualification through 1.3.19, before the 1.3.21 checkpoint implementation:
 
 Historical Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
+
+The source candidate adds optional image_provider_status, image_generate, image_edit, image_job_status, image_job_cancel and image_job_resume through an explicit disabled-by-default ComfyUI profile. Native masking, durable exact-ID recovery, local cancellation and no replay are bounded contracts; semantic quality and integrated delivery require separate evidence. See [provider contract](IMAGE-PROVIDER.md).
 
 ## Follow-up
 

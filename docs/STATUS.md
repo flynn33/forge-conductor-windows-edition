@@ -1,6 +1,13 @@
 # Product status
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.21 implementation.
+## Current 1.3.22 source candidate
+
+The source defines **112 Primary/Fallback tools** and package identity **1.3.22.0**. Six optional ComfyUI tools add image generation, variation/masked editing, job status, local cancellation and explicit resume. The provider is disabled by default. The integrated build, complete test graph, package, installed catalogs, Manager IPC, native LM Studio and publication checks remain pending. The installed published 1.3.21 connector still has 106 tools; source inventory is not proof of installed availability.
+
+See [provider contract](IMAGE-PROVIDER.md), [candidate notes](releases/1.3.22.md) and [qualification boundary](validation/HOST-CAPABILITIES-1.3.22.md). The root-owned isolated native Comfy smoke passed six bounded cases; it does not establish integrated delivery, semantic editing or full host model quality. [Published 1.3.21](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.21) passed separate seven-asset digest/readback verification; its measurements below remain historical.
+
+
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.22 candidate.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,7 +15,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-## Measured 1.3.21 qualification
+## Historical published 1.3.21 qualification
 
 Clean source `39adf553df320120d214bd90cc49223359054ede`, tree `c1b295cae2c0a01ce334526d99af6bc3e7b3a243`, passed **163/163 Release CTest entries in 67.14 seconds**, Product All, all three static gates and package persistence. The signed 1.3.21.0 package matched all four installed/staged/MSIX executable hashes; the offline owner-profile comparison preserved **8,375 files / 407,592,939 bytes** and the four protected snapshots. Installed Primary/Fallback/CLU catalogs returned **106/106/5** tools. The existing selected Qwen conversation supplied **13 verified native cases** across pixel receipts, CMake/CTest, desktop paging, independent image analysis and expected native errors. The separate original authority probe verified **7 cases / 63 actual requests** without model inference.
 
@@ -20,7 +27,7 @@ Stock LM Studio MCP image metadata remains distinct from model image input and i
 
 
 
-The current source version is 1.3.21 / Windows package identity 1.3.21.0, with 106 Primary/Fallback tools, ten specialist playbooks and five CLU tools. Native CMake/CTest jobs, paged desktop accessibility reads and optional higher-resolution bounded previews extend dedicated web, native Office, desktop/browser, image analysis, independent workers and schedules. Owner-selected host/workspace filesystem modes and existing contracts remain. Clean-source, signed-package, installed-catalog and measured native-model qualification passed; the 1.3.21 verification record states the exact scope and limits. See [capabilities](HOST-CAPABILITIES.md), [CMake/CTest](CMAKE-CTEST.md), [implementation notes](releases/1.3.21.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.21.md).
+The current source version is 1.3.22 / Windows package identity 1.3.22.0, with 112 Primary/Fallback tools, ten specialist playbooks and five CLU tools. Native CMake/CTest jobs, paged desktop accessibility reads and optional higher-resolution bounded previews extend dedicated web, native Office, desktop/browser, image analysis, independent workers and schedules. Owner-selected host/workspace filesystem modes and existing contracts remain. Integrated 1.3.22 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. See [capabilities](HOST-CAPABILITIES.md), [CMake/CTest](CMAKE-CTEST.md), [implementation notes](releases/1.3.22.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.22.md).
 
 The historical 1.3.19 source, installed and current-chat results are recorded above. The installed, unpublished [1.3.18 investigation](validation/HOST-CAPABILITIES-1.3.18.md) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact.
 

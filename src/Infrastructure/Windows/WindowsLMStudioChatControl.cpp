@@ -14,6 +14,7 @@
 #include <UIAutomation.h>
 
 #include "Detail/UniqueHandle.h"
+#include "Detail/LMStudioNativeChatFile.h"
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
@@ -32,6 +33,8 @@ namespace ForgeConductor::Infrastructure::Windows {
 namespace {
 
 using Clock = std::chrono::steady_clock;
+using Detail::readNativeChatFile;
+using Detail::sameRevision;
 
 [[nodiscard]] Domain::Error capabilityError(std::string message)
 {
@@ -1074,10 +1077,9 @@ struct ChatWindow final {
     return Domain::Result<bool>::success(false);
 }
 
-struct NativeChatFile final {
-    std::string bytes;
-    BY_HANDLE_FILE_INFORMATION revision{};
-};
+} // namespace
+
+namespace Detail {
 
 [[nodiscard]] bool sameRevision(
     const BY_HANDLE_FILE_INFORMATION& left, const BY_HANDLE_FILE_INFORMATION& right)
@@ -1104,10 +1106,10 @@ struct NativeChatFile final {
         return Domain::Result<NativeChatFile>::failure(capabilityError(
             "Reading the selected LM Studio chat revision failed (Windows error " + std::to_string(::GetLastError()) + ")."));
     }
-    constexpr std::size_t MaximumChatBytes = 32U * 1024U * 1024U;
+    constexpr std::size_t MaximumChatBytes = 64U * 1024U * 1024U;
     if (snapshot.revision.nFileSizeHigh != 0U || snapshot.revision.nFileSizeLow > MaximumChatBytes) {
         return Domain::Result<NativeChatFile>::failure(capabilityError(
-            "The selected LM Studio chat exceeds the 32 MiB integration-field update bound; no field was changed."));
+            "The selected LM Studio chat exceeds the 64 MiB native snapshot bound."));
     }
     snapshot.bytes.resize(snapshot.revision.nFileSizeLow);
     std::size_t offset{};
@@ -1131,10 +1133,14 @@ struct NativeChatFile final {
     }
     if (!sameRevision(snapshot.revision, after)) {
         return Domain::Result<NativeChatFile>::failure(Domain::makeError(Domain::ErrorCodes::Conflict,
-            "The selected LM Studio chat changed while its integration field was read; no field was changed.", true));
+            "The selected LM Studio chat changed while its native snapshot was read; retry.", true));
     }
     return Domain::Result<NativeChatFile>::success(std::move(snapshot));
 }
+
+} // namespace Detail
+
+namespace {
 
 [[nodiscard]] Domain::Result<std::pair<std::size_t, std::size_t>> pluginArrayRange(
     const std::string& bytes)

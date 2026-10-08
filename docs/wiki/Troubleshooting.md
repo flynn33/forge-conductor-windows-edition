@@ -38,19 +38,19 @@ A saved packet or local connection ID alone is not native successor proof. Inspe
 
 ### Historical native qualification through 1.3.19
 
-The next two paragraphs record the earlier implementation and its measured limits; they do not describe the current 1.3.21 checkpoint source.
+The next two paragraphs record the earlier implementation and its measured limits; they do not describe the retained checkpoint source in the 1.3.22 candidate.
 
 Auto Continuity was verified with a reserve-triggered pause, not physical context exhaustion. Rollover was verified while the primary MCP worker stayed alive. Interrupted handoff after idle-process eviction is not durable and is not claimed.
 
 If the primary MCP worker was evicted during handoff, durable packet records may still exist but automatic recovery of the interrupted UI phase is not implemented. Do not describe that state as completed. Physical exhaustion and already-running agent reattachment were not exercised by the 1.3.5 reserve-pressure verification.
 
-### Current 1.3.21 checkpoint recovery
+### Current 1.3.22 checkpoint contract — installed recovery unverified
 
 The source now checkpoints the native phase, exact packet revision, conversation identities and New chat/Send receipts. Inspect `get_forge_status.visible_chat_continuity.state` and `handoff_recovery` for `recovery_pending`, its recorded phase, reason, packet ID, predecessor/successor IDs and `automatic_replay: false`. That state retains unfinished work; it is not a completed rollover.
 
 Confirm the intended current project/provider and Primary/Fallback/CLU routes, then select the recorded predecessor or exact successor identified by the recovery reason. Reconstruction compares fresh selected-chat message/tool evidence with the checkpoint. An uncertain New chat or Send is never automatically repeated. A different empty chat, a saved packet alone, or a UI success label cannot settle an ambiguous dispatch. Exact packet recovery through `context_get` followed by a successful Forge tool in the successor can provide reconciliation evidence.
 
-Checkpoint schema, integrity, scope, ownership or storage failures defer native controls. Keep the reported error and retained packet; do not clear the checkpoint or resend an uncertain mutation as routine repair. The 118-group Infrastructure suite passed, including the private same-PID observer reconstruction regression and 20 durability cases. Installed observer/UI interruption or connector rollover recovery remains unverified; physical context exhaustion and already-running agent reattachment were not exercised. Historical 1.3.20 checkpoint-process primitive evidence retains its original source identity and is not a current installed qualification. See [Auto Continuity](Continuity) for storage bounds and the evidence contract.
+Checkpoint schema, integrity, scope, ownership or storage failures defer native controls. Keep the reported error and retained packet; do not clear the checkpoint or resend an uncertain mutation as routine repair. Historical published 1.3.21 source fixtures passed the 118-group Infrastructure suite, including the private same-PID observer reconstruction regression and 20 durability cases. Installed observer/UI interruption or connector rollover recovery remains unverified; physical context exhaustion and already-running agent reattachment were not exercised. Historical 1.3.20 checkpoint-process primitive evidence retains its original source identity and is not a current installed qualification. See [Auto Continuity](Continuity) for storage bounds and the evidence contract.
 
 ## Recovered packet has no actionable goal
 
@@ -75,3 +75,7 @@ For native `filesystem_access_denied`, retain the reported operation/path/Win32 
 Call `host_capabilities` and inspect runtime version/catalog before claiming a category is absent. Repair/reconnect the intended integrations after an upgrade. Dedicated Office writing and native PNG drawing do not require Python or Office; generative image providers and cloud accounts still need configured connections. A browser launch or desktop input receipt requires observing the resulting UI.
 
 For schedules, inspect actual `latest_run`, `needs_attention`, `last_notification`, history and errors. Manager must remain running to fire tasks. An uncertain interrupted run blocks automatic replay; inspect its effects before explicitly authorizing run-now. A Windows toast submission receipt never confirms banner display. Disabled settings or missing installed identity remain notification failures, without changing the model run or Windows settings.
+
+### Image drawing, analysis and generation
+
+The installed 1.3.21 native catalog has 106 tools and lacks the six provider additions. image_write draws shapes/text; image_analyze and reviewer_status inspect an existing image. A 1.3.22 source catalog is not an installed upgrade. Once installed and qualified, generation uses image_generate/image_edit and image_job_status, with explicit configured ComfyUI availability from image_provider_status. Local image_job_cancel and exact-job image_job_resume have separate authority/effect contracts; neither reviewer_status nor a model claim proves generation completion. See [provider contract](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
