@@ -626,6 +626,142 @@ void contextsAttachAndCloseFailTypedWithoutClosingSharedDatabase()
         Support::activeContext("dashboard-operational-shared-database-open")));
 }
 
+void explicitCutoffRetainsExpiredHistoryAndRejectsCurrentOverflow()
+{
+    Fixture fixture{L"dashboard-operational-presence-cutoff-history"};
+    for (std::size_t index{}; index < 257U; ++index) {
+        fixture.savePresence(
+            "expired-presence-" + std::to_string(index),
+            "primary", "expired-deployment", 301U,
+            "D:\\workspaces\\expired", atSeconds(50), atSeconds(100));
+    }
+    fixture.savePresence(
+        "current-presence", "fallback", "current-deployment", 302U,
+        "D:\\workspaces\\current", atSeconds(150), atSeconds(175));
+    const auto current = take(fixture.operational->snapshot(
+        1U, 1U, 256U,
+        Support::activeContext("dashboard-cutoff-excludes-expired"),
+        atSeconds(175)));
+    require(current.presence.size() == 1U &&
+                current.presence.front().clientId == "current-presence",
+            "explicit cutoff did not return the complete current presence");
+    requireError(fixture.operational->snapshot(
+        1U, 1U, 256U,
+        Support::activeContext("dashboard-full-history-still-overflows")),
+        Domain::ErrorCodes::LimitExceeded);
+    const auto history = take(fixture.operational->snapshot(
+        1U, 1U, 300U,
+        Support::activeContext("dashboard-cutoff-preserved-history")));
+    require(history.presence.size() == 258U,
+            "reading the cutoff deleted expired presence history");
+
+    for (std::size_t index{}; index < 256U; ++index) {
+        fixture.savePresence(
+            "active-presence-" + std::to_string(index),
+            "clu", "active-deployment", 303U,
+            "D:\\workspaces\\active", atSeconds(175), atSeconds(200));
+    }
+    requireError(fixture.operational->snapshot(
+        1U, 1U, 256U,
+        Support::activeContext("dashboard-current-presence-still-overflows"),
+        atSeconds(175)), Domain::ErrorCodes::LimitExceeded);
+}
+
+void cutoffIsInclusiveAcrossPersistedPrecisionAndPreservesOrdering()
+{
+    Fixture fixture{L"dashboard-operational-presence-cutoff-boundary"};
+    const auto boundary = atSeconds(1'700'005'000);
+    fixture.savePresence(
+        "boundary-a", "primary", "boundary-deployment", 401U,
+        "D:\\boundary\\a", boundary, boundary);
+    fixture.savePresence(
+        "boundary-z", "fallback", "boundary-deployment", 402U,
+        "D:\\boundary\\z", boundary, boundary);
+    fixture.savePresence(
+        "whole-second", "clu", "boundary-deployment", 403U,
+        "D:\\boundary\\whole", boundary, boundary);
+    fixture.savePresence(
+        "future-presence", "manager", "boundary-deployment", 404U,
+        "D:\\boundary\\future", boundary, boundary + 1s);
+    fixture.savePresence(
+        "expired-by-one-ms", "primary", "boundary-deployment", 405U,
+        "D:\\boundary\\expired", boundary - 1ms, boundary - 1ms);
+    fixture.closeWriters();
+    SqliteDatabase database{fixture.databasePath()};
+    database.execute(
+        "UPDATE client_presence SET last_seen_at=substr(last_seen_at,1,19)||'Z' "
+        "WHERE client_id='whole-second';");
+    const auto inclusive = take(fixture.operational->snapshot(
+        1U, 1U, 4U,
+        Support::activeContext("dashboard-cutoff-inclusive"), boundary));
+    require(inclusive.presence.size() == 4U,
+            "inclusive cutoff dropped a boundary or future heartbeat");
+    require(inclusive.presence[0].clientId == "future-presence" &&
+                inclusive.presence[1].clientId == "whole-second" &&
+                inclusive.presence[2].clientId == "boundary-z" &&
+                inclusive.presence[3].clientId == "boundary-a",
+            "cutoff changed deterministic presence ordering");
+    require(inclusive.presence[1].lastHeartbeat == boundary,
+            "cutoff changed whole-second timestamp decoding");
+    const auto fractional = take(fixture.operational->snapshot(
+        1U, 1U, 4U,
+        Support::activeContext("dashboard-cutoff-fractional-boundary"),
+        boundary + 1ms));
+    require(fractional.presence.size() == 1U &&
+                fractional.presence.front().clientId == "future-presence",
+            "whole-second heartbeat incorrectly satisfied a fractional cutoff");
+    const auto precise = take(fixture.operational->snapshot(
+        1U, 1U, 4U,
+        Support::activeContext("dashboard-cutoff-submillisecond-boundary"),
+        boundary + Domain::UtcTimePoint::duration{1}));
+    require(precise.presence.size() == 1U &&
+                precise.presence.front().clientId == "future-presence",
+            "a cutoff between stored milliseconds included an earlier row");
+}
+
+void optionalCutoffPreservesEmptyFutureAndContextFailures()
+{
+    Fixture fixture{L"dashboard-operational-presence-cutoff-admission"};
+    require(take(fixture.operational->snapshot(
+        1U, 1U, 1U, Support::activeContext("dashboard-cutoff-empty"),
+        atSeconds(100))).presence.empty(),
+        "empty cutoff snapshot invented presence");
+    fixture.savePresence(
+        "cutoff-admission", "primary", "cutoff-deployment", 501U,
+        "D:\\cutoff\\admission", atSeconds(100), atSeconds(100));
+    require(take(fixture.operational->snapshot(
+        1U, 1U, 1U, Support::activeContext("dashboard-future-cutoff"),
+        atSeconds(200))).presence.empty(),
+        "a supported future cutoff did not preserve existing read semantics");
+    requireError(fixture.operational->snapshot(
+        1U, 1U, 1U, Support::activeContext("dashboard-negative-cutoff"),
+        Domain::UtcTimePoint{} - Domain::UtcTimePoint::duration{1}),
+        Domain::ErrorCodes::InvalidRequest);
+    requireError(fixture.operational->snapshot(
+        1U, 1U, 1U, Support::activeContext("dashboard-outside-cutoff-range"),
+        Domain::UtcTimePoint::max()), Domain::ErrorCodes::InvalidRequest);
+    std::stop_source cancellation;
+    cancellation.request_stop();
+    auto cancelled = Support::activeContext("dashboard-cutoff-cancelled");
+    cancelled.cancellation = cancellation.get_token();
+    requireError(fixture.operational->snapshot(
+        1U, 1U, 1U, cancelled, atSeconds(100)),
+        Domain::ErrorCodes::Cancelled);
+    auto expired = Support::activeContext("dashboard-cutoff-expired");
+    expired.deadline = std::chrono::steady_clock::now() - 1ms;
+    requireError(fixture.operational->snapshot(
+        1U, 1U, 1U, expired, atSeconds(100)),
+        Domain::ErrorCodes::DeadlineExceeded);
+    fixture.closeWriters();
+    SqliteDatabase database{fixture.databasePath()};
+    database.execute(
+        "UPDATE client_presence SET last_seen_at='not-a-timestamp' "
+        "WHERE client_id='cutoff-admission';");
+    requireError(fixture.operational->snapshot(
+        1U, 1U, 1U, Support::activeContext("dashboard-cutoff-hostile-heartbeat"),
+        atSeconds(100)), Domain::ErrorCodes::IntegrityFailure);
+}
+
 struct TestCase final {
     const char* name;
     void (*run)();
@@ -635,7 +771,13 @@ struct TestCase final {
 
 int wmain()
 {
-    const std::array<TestCase, 6U> tests{{
+    const std::array<TestCase, 9U> tests{{
+        {"explicit cutoff retains expired history and rejects current overflow",
+         explicitCutoffRetainsExpiredHistoryAndRejectsCurrentOverflow},
+        {"cutoff is inclusive across persisted precision and preserves ordering",
+         cutoffIsInclusiveAcrossPersistedPrecisionAndPreservesOrdering},
+        {"optional cutoff preserves empty future and context failures",
+         optionalCutoffPreservesEmptyFutureAndContextFailures},
         {"canonical snapshot has deterministic ordering and content",
          canonicalSnapshotHasDeterministicOrderingAndContent},
         {"complete collections fail rather than truncate",

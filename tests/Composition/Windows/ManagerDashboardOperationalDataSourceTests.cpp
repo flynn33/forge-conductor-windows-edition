@@ -14,6 +14,7 @@
 #include "Persistence/PersistenceTestSupport.h"
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -269,7 +270,7 @@ void mapsTheAtomicProjectionWithoutReconstructingPresence()
         4242U,
         "C:\\Projects\\Forge",
         atSeconds(110),
-        atSeconds(130));
+        atSeconds(175));
 
     auto value = take(fixture.adapter->snapshot(
         Dashboard::DashboardApplicationLimits::MaximumOpenSessions,
@@ -295,7 +296,7 @@ void mapsTheAtomicProjectionWithoutReconstructingPresence()
         mappedPresence.workingDirectory.value() == "C:\\Projects\\Forge",
         "presence working directory changed");
     require(
-        mappedPresence.lastHeartbeat == atSeconds(130),
+        mappedPresence.lastHeartbeat == atSeconds(175),
         "presence heartbeat changed");
 
     fixture.saveSession(session(
@@ -312,6 +313,57 @@ void mapsTheAtomicProjectionWithoutReconstructingPresence()
             Support::activeContext("manager-operational-open-overflow")),
         Domain::ErrorCodes::LimitExceeded,
         "the adapter did not preserve the open-session overflow failure");
+}
+
+void expiresOnlyPresenceAtInjectedClockWithoutDeletingHistory()
+{
+    Fixture fixture;
+    for (std::size_t index{}; index < 257U; ++index) {
+        fixture.savePresence(
+            "expired-adapter-" + std::to_string(index),
+            "expired-adapter-deployment", 601U, "D:\\adapter\\expired",
+            atSeconds(100), atSeconds(174));
+    }
+    fixture.savePresence(
+        "current-boundary", "current-adapter-deployment", 602U,
+        "D:\\adapter\\boundary", atSeconds(100), atSeconds(175));
+    fixture.savePresence(
+        "current-recent", "current-adapter-deployment", 603U,
+        "D:\\adapter\\recent", atSeconds(100), atSeconds(199));
+    fixture.savePresence(
+        "future-adapter", "current-adapter-deployment", 604U,
+        "D:\\adapter\\future", atSeconds(100), atSeconds(210));
+    const auto expected = session(
+        "f0000000-0000-4000-8000-000000000001",
+        Domain::SessionStatus::Open, std::nullopt, 100, 120);
+    fixture.saveSession(expected);
+    const auto current = take(fixture.adapter->snapshot(
+        1U, 1U, 3U, Support::activeContext("manager-presence-cutoff")));
+    require(current.presence.size() == 3U &&
+                current.presence[0].clientId == "future-adapter" &&
+                current.presence[1].clientId == "current-recent" &&
+                current.presence[2].clientId == "current-boundary",
+            "Manager cutoff did not use the injected clock or preserve future presence");
+    require(current.openSessions.size() == 1U &&
+                current.recentSessions.size() == 1U &&
+                current.openSessions.front().id == expected.id &&
+                current.recentSessions.front().id == expected.id,
+            "presence cutoff changed the complete session projection");
+    requireError(fixture.adapter->snapshot(
+        1U, 1U, 2U, Support::activeContext("manager-current-presence-overflow")),
+        Domain::ErrorCodes::LimitExceeded,
+        "Manager silently truncated current presence overflow");
+    requireError(fixture.operational->snapshot(
+        1U, 1U, 3U, Support::activeContext("manager-default-history-overflow")),
+        Domain::ErrorCodes::LimitExceeded,
+        "Manager cutoff changed the complete-history default");
+    const auto history = take(fixture.operational->snapshot(
+        1U, 1U, 300U, Support::activeContext("manager-presence-history-retained")));
+    require(history.presence.size() == 260U,
+            "Manager cutoff deleted stored expired presence");
+    requireError(fixture.adapter->snapshot(1U, 1U, 3U, cancelledContext()),
+        Domain::ErrorCodes::Cancelled,
+        "Manager presence cutoff did not preserve cancellation");
 }
 
 void routesBoundedDiagnosticTailReadsWithoutChangingRecords()
@@ -449,6 +501,7 @@ int main()
 {
     try {
         mapsTheAtomicProjectionWithoutReconstructingPresence();
+        expiresOnlyPresenceAtInjectedClockWithoutDeletingHistory();
         routesBoundedDiagnosticTailReadsWithoutChangingRecords();
         administrativelyClosesOnlyTheConcreteSessionAtTheInjectedClock();
         preservesDependencyFailuresAndOwnsNoDependencyLifecycle();

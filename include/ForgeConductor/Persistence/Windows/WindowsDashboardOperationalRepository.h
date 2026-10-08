@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -33,6 +34,8 @@ struct WindowsDashboardPresenceProjection final {
 
 // One consistent central-database observation. Open sessions are complete up
 // to the caller's maximum; recent sessions are the intentional newest-N view.
+// Presence is complete within the optional cutoff, or complete history when
+// the cutoff is absent. Reading a cutoff never removes stored presence.
 struct WindowsDashboardOperationalProjection final {
     std::vector<Domain::AgentSession> openSessions;
     std::vector<Domain::AgentSession> recentSessions;
@@ -60,7 +63,8 @@ public:
         std::size_t maximumOpenSessions,
         std::size_t maximumRecentSessions,
         std::size_t maximumPresenceRecords,
-        const Domain::OperationContext& context) noexcept;
+        const Domain::OperationContext& context,
+        std::optional<Domain::UtcTimePoint> presenceNotBefore = std::nullopt) noexcept;
 
     void close() noexcept;
 

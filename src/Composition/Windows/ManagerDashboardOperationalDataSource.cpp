@@ -5,6 +5,7 @@
 #include "ForgeConductor/Persistence/Windows/WindowsAgentSessionRepository.h"
 #include "ForgeConductor/Persistence/Windows/WindowsDashboardOperationalRepository.h"
 
+#include <chrono>
 #include <utility>
 
 namespace ForgeConductor::Composition::Windows {
@@ -45,7 +46,8 @@ ManagerDashboardOperationalDataSource::snapshot(
             maximumOpenSessions,
             maximumRecentSessions,
             maximumPresenceRecords,
-            context);
+            context,
+            clock_.utcNow() - std::chrono::seconds{25});
         if (!projection) {
             return Domain::Result<
                 Application::DashboardOperationalSourceSnapshot>::failure(

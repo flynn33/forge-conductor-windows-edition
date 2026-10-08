@@ -8,10 +8,12 @@
 #include "Infrastructure/Windows/Detail/UtfConversion.h"
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <ctime>
 #include <limits>
 #include <memory>
@@ -58,6 +60,9 @@ constexpr std::string_view SnapshotSql =
     "NULL AS status,NULL AS summary,NULL AS created_at,NULL AS updated_at,"
     "client_id AS presence_client_id,role,process_id,working_directory,"
     "last_seen_at FROM client_presence "
+    "WHERE (? IS NULL OR "
+    "CASE WHEN length(last_seen_at)=20 "
+    "THEN substr(last_seen_at,1,19)||'.000Z' ELSE last_seen_at END>=?) "
     "ORDER BY last_seen_at DESC,client_id DESC LIMIT ?) "
     "SELECT * FROM open_rows UNION ALL SELECT * FROM recent_rows "
     "UNION ALL SELECT * FROM presence_rows "
@@ -312,6 +317,44 @@ template <typename Identifier>
         std::chrono::milliseconds{*millisecond};
 }
 
+[[nodiscard]] std::string presenceCutoffText(const Domain::UtcTimePoint cutoff)
+{
+    const auto elapsed = cutoff.time_since_epoch();
+    if (elapsed < Domain::UtcTimePoint::duration::zero()) {
+        fail(Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest,
+            "The presence cutoff must be at or after the Unix epoch."));
+    }
+    // Persisted heartbeat precision is milliseconds. Round the lower bound up
+    // so an earlier stored millisecond cannot satisfy a more precise cutoff.
+    const auto milliseconds =
+        std::chrono::ceil<std::chrono::milliseconds>(elapsed);
+    const auto seconds =
+        std::chrono::duration_cast<std::chrono::seconds>(milliseconds);
+    const auto fractional = milliseconds -
+        std::chrono::duration_cast<std::chrono::milliseconds>(seconds);
+    const __time64_t encoded = static_cast<__time64_t>(seconds.count());
+    std::tm utc{};
+    if (::_gmtime64_s(&utc, &encoded) != 0 || utc.tm_year + 1900 > 9999) {
+        fail(Domain::makeError(
+            Domain::ErrorCodes::InvalidRequest,
+            "The presence cutoff is outside the supported UTC range."));
+    }
+    std::array<char, 25U> buffer{};
+    const int written = std::snprintf(
+        buffer.data(), buffer.size(),
+        "%04d-%02d-%02dT%02d:%02d:%02d.%03lldZ",
+        utc.tm_year + 1900, utc.tm_mon + 1, utc.tm_mday,
+        utc.tm_hour, utc.tm_min, utc.tm_sec,
+        static_cast<long long>(fractional.count()));
+    if (written != 24) {
+        fail(Domain::makeError(
+            Domain::ErrorCodes::InternalFailure,
+            "The presence cutoff could not be formatted canonically."));
+    }
+    return std::string{buffer.data(), static_cast<std::size_t>(written)};
+}
+
 [[nodiscard]] Domain::AgentSession readSession(
     const WinsqliteStatement& statement)
 {
@@ -514,12 +557,16 @@ WindowsDashboardOperationalRepository::snapshot(
     const std::size_t maximumOpenSessions,
     const std::size_t maximumRecentSessions,
     const std::size_t maximumPresenceRecords,
-    const Domain::OperationContext& context) noexcept
+    const Domain::OperationContext& context,
+    const std::optional<Domain::UtcTimePoint> presenceNotBefore) noexcept
 {
     return guarded<WindowsDashboardOperationalProjection>([&]() {
         requireValidLimit(maximumOpenSessions, "Maximum open sessions");
         requireValidLimit(maximumRecentSessions, "Maximum recent sessions");
         requireValidLimit(maximumPresenceRecords, "Maximum presence records");
+        const auto cutoff = presenceNotBefore
+            ? std::optional<std::string>{presenceCutoffText(*presenceNotBefore)}
+            : std::nullopt;
         auto& store = requireStore(
             implementation_ ? implementation_->repositoryStore() : nullptr);
         return take(runOnStore<WindowsDashboardOperationalProjection>(
@@ -535,8 +582,15 @@ WindowsDashboardOperationalRepository::snapshot(
                     take(statement.bindInt64(
                         2,
                         static_cast<std::int64_t>(maximumRecentSessions)));
+                    if (cutoff) {
+                        take(statement.bindText(3, *cutoff));
+                        take(statement.bindText(4, *cutoff));
+                    } else {
+                        take(statement.bindNull(3));
+                        take(statement.bindNull(4));
+                    }
                     take(statement.bindInt64(
-                        3,
+                        5,
                         static_cast<std::int64_t>(maximumPresenceRecords + 1U)));
 
                     WindowsDashboardOperationalProjection projection;
