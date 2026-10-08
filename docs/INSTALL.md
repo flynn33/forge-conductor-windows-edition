@@ -1,6 +1,6 @@
 # Install Forge Conductor
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.24 candidate.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.25 candidate.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,7 +8,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-The current Forge Conductor source identity is 1.3.24 (Windows package 1.3.24.0), targeting Windows 11 x64. Integrated 1.3.24 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. The published 1.3.19 distribution remains historical evidence above. A distribution contains:
+The current Forge Conductor source identity is 1.3.25 (Windows package 1.3.25.0), targeting Windows 11 x64. Integrated 1.3.25 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. The published 1.3.19 distribution remains historical evidence above. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
 - `distribution.json` and payload hashes;
@@ -17,11 +17,11 @@ The current Forge Conductor source identity is 1.3.24 (Windows package 1.3.24.0)
 - `README.txt`;
 - optionally `ForgeConductor.appinstaller` when an update base URI was supplied.
 
-## Current 1.3.24 candidate — installation pending
+## Current 1.3.25 candidate — installation pending
 
-The source/package inputs identify 1.3.24 / 1.3.24.0 with 112 Primary/Fallback descriptors. Signed packaging, installation and catalog acceptance for this candidate are pending. The superseded 1.3.22.0 installation passed exact four-payload and complete prelaunch profile-preservation checks; its actual selected Primary status reported 112 tools. That single native status result does not qualify the full installed Primary/Fallback/CLU catalog comparison or any integrated image-provider workflow.
+The source/package inputs identify 1.3.25 / 1.3.25.0 with 112 Primary/Fallback descriptors. Signed packaging, installation and catalog acceptance for this candidate are pending. The superseded 1.3.22.0 installation passed exact four-payload and complete prelaunch profile-preservation checks; its actual selected Primary status reported 112 tools. That single native status result does not qualify the full installed Primary/Fallback/CLU catalog comparison or any integrated image-provider workflow.
 
-[Published 1.3.21](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.21) has separately verified seven-asset publication readback. Its installation and native qualification below remain historical evidence. A future 1.3.24 install must preserve the owner profile, verify all four payload hashes and confirm actual 112/112/5 catalogs before native provider acceptance. See [candidate notes](releases/1.3.24.md) and [pending qualification](validation/HOST-CAPABILITIES-1.3.24.md).
+[Published 1.3.21](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.21) has separately verified seven-asset publication readback. Its installation and native qualification below remain historical evidence. A future 1.3.25 install must preserve the owner profile, verify all four payload hashes and confirm actual 112/112/5 catalogs before native provider acceptance. See [candidate notes](releases/1.3.25.md) and [pending qualification](validation/HOST-CAPABILITIES-1.3.25.md).
 
 The optional ComfyUI provider is disabled by default. Plugin installation does not start a server, download a checkpoint or enable generation. Explicit owner configuration and actual image_provider_status availability are required; see [provider setup](IMAGE-PROVIDER.md).
 

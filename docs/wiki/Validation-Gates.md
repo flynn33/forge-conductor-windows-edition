@@ -1,6 +1,6 @@
-# Current 1.3.24 verification scope
+# Current 1.3.25 verification scope
 
-The current source targets product 1.3.24 / package 1.3.24.0 with 112 Primary/Fallback tools. Integrated source/build, Product All, static/package, installed catalog, Manager IPC, LM Studio/Qwen and CI qualification remain pending. See [1.3.24 source notes](Release-1.3.24) and [current verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.24.md).
+The current source targets product 1.3.25 / package 1.3.25.0 with 112 Primary/Fallback tools. Integrated source/build, Product All, static/package, installed catalog, Manager IPC, LM Studio/Qwen and CI qualification remain pending. See [1.3.25 source notes](Release-1.3.25) and [current verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.25.md).
 
 An isolated direct-native ComfyUI smoke run passed six cases, including generation, unmasked editing, exact masked RGBA preservation, observed running cancellation and explicit recovery after a controlled lost acknowledgement. The helper deliberately withheld an observed matching HTTP 200; it did not exercise a real network outage. These checks used private fixture-issued scopes and do not qualify integrated Manager IPC, LM Studio/Qwen delivery, semantic instruction following or model quality. Independent evidence readback verified all five receipt payload/workflow seals, one trace generation POST per exact prompt, four PNG byte/pixel hashes and 8,192 unchanged outside-mask RGBA pixels. The HTTP trace retains response hashes, not raw queue/history bodies; running/terminal observations and before/after status preservation rely on the helper's captured runtime assertions. Same-process service reconstruction is separate from an actual Manager/process crash. See [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
 
@@ -26,7 +26,7 @@ Continuity source fixtures passed **118 Infrastructure groups**, including the o
 
 Stock LM Studio MCP image metadata remains distinct from model image input and independent analysis. Higher-resolution previews and native RGBA samples do not establish exact OCR or change that stock bridge. Generative image providers and cloud accounts require separately configured services. Windows CI passed for the recorded 1.3.21 source, as linked in the verification record. Publication readback is a separate check.
 
-The historical published source/package identity above is 1.3.21 / 1.3.21.0 with 106 Primary/Fallback tools. Clean-source, signed-package, installed-catalog and measured native-model qualification passed for that artifact. Its [published release](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.21) and separate CI/asset readbacks retain their recorded identities. See [the historical source notes](Release-1.3.21). The measurements below retain their original identities and do not qualify 1.3.24.
+The historical published source/package identity above is 1.3.21 / 1.3.21.0 with 106 Primary/Fallback tools. Clean-source, signed-package, installed-catalog and measured native-model qualification passed for that artifact. Its [published release](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.21) and separate CI/asset readbacks retain their recorded identities. See [the historical source notes](Release-1.3.21). The measurements below retain their original identities and do not qualify 1.3.25.
 
 ## Historical published 1.3.19 verification
 
@@ -189,6 +189,6 @@ The source-bound staging and package manifests record exact commit/tree and file
 .\scripts\package.ps1 -DevelopmentSigning
 ```
 
-**Next:** [1.3.24 source notes](Release-1.3.24) · [Published 1.3.21 qualification](Release-1.3.21) · [Developer Setup](Getting-Started) · [Roadmap](Roadmap)
+**Next:** [1.3.25 source notes](Release-1.3.25) · [Published 1.3.21 qualification](Release-1.3.21) · [Developer Setup](Getting-Started) · [Roadmap](Roadmap)
 
-The separately scoped 1.3.22 post-run ComfyUI readback used seven GETs and no POSTs, verified the five exact prompt IDs/full graphs and terminal history, empty queues and unchanged provider ownership. It does not replay earlier running observations or qualify integrated Manager/LM Studio delivery. The earlier 124-group reader check and later final 166-test source pass retain their own 1.3.22 identities. See [the retained 1.3.22 record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.22.md). All 1.3.24 checks remain pending.
+The separately scoped 1.3.22 post-run ComfyUI readback used seven GETs and no POSTs, verified the five exact prompt IDs/full graphs and terminal history, empty queues and unchanged provider ownership. It does not replay earlier running observations or qualify integrated Manager/LM Studio delivery. The earlier 124-group reader check and later final 166-test source pass retain their own 1.3.22 identities. See [the retained 1.3.22 record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.22.md). All 1.3.25 checks remain pending.

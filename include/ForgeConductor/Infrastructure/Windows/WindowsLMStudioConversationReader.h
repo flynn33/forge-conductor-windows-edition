@@ -27,6 +27,10 @@ struct LMStudioConversationObservation final {
     std::string projectIdentifier;
     std::uint64_t usedTokens{};
     std::uint64_t contextCapacity{};
+    // LM Studio's cached full rendered prompt count, admitted only for the
+    // same model instance and capacity as the selected provider observation.
+    // Refreshed before/after outer predictions; not current KV usage.
+    std::optional<std::uint64_t> cachedRenderedPromptTokens;
     bool overflow{};
     bool toolsActive{};
     std::string stopReason;
@@ -38,8 +42,8 @@ struct LMStudioConversationObservation final {
 };
 
 // Reads LM Studio's selected, persisted conversation without changing it.
-// Token observations come from the selected generation's provider statistics,
-// not the conversation list's aggregate tokenCount.
+// Provider usage comes from the latest selected generation's statistics.
+// The separate native tokenCount cache projects the full rendered prompt.
 class WindowsLMStudioConversationReader final {
 public:
     [[nodiscard]] static Domain::Result<

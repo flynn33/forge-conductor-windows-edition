@@ -142,7 +142,8 @@ std::optional<std::uint64_t> fieldTokens(
         return std::nullopt;
     }
     for (const auto& field : config["fields"]) {
-        if (field.is_object() && field.value("key", std::string{}) == key &&
+        if (field.is_object() && field.contains("key") && field["key"].is_string() &&
+            field["key"].get_ref<const std::string&>() == key &&
             field.contains("value")) {
             return tokenNumber(field["value"]);
         }
@@ -420,6 +421,17 @@ void observeConversation(
             if (used && capacity && *capacity > 0U) {
                 observation.usedTokens = *used;
                 observation.contextCapacity = *capacity;
+                const auto model = document.find("lastUsedModel");
+                if (model != document.end() && model->is_object() &&
+                    model->contains("identifier") && (*model)["identifier"].is_string() &&
+                    !(*model)["identifier"].get_ref<const std::string&>().empty() &&
+                    info.contains("identifier") && info["identifier"].is_string() &&
+                    (*model)["identifier"] == info["identifier"] &&
+                    model->contains("instanceLoadTimeConfig") &&
+                    fieldTokens((*model)["instanceLoadTimeConfig"], "llm.load.contextLength") == capacity &&
+                    document.contains("tokenCount")) {
+                    observation.cachedRenderedPromptTokens = tokenNumber(document["tokenCount"]);
+                }
                 observation.generationEvidence = Json{
                     {"message_index", messageIndex}, {"selected_version", *selected},
                     {"step_index", stepIndex}, {"genInfo", info}}.dump();

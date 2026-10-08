@@ -1,6 +1,6 @@
 # Native CMake and CTest jobs
 
-This guide describes the current 1.3.24 implementation contract. Integrated 1.3.24 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. The examples below are request examples; actual results are recorded separately. See [Testing](TESTING.md) for the repository's verification workflow. Historical 1.3.19 measurements retain their original artifact identity.
+This guide describes the current 1.3.25 implementation contract. Integrated 1.3.25 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. The examples below are request examples; actual results are recorded separately. See [Testing](TESTING.md) for the repository's verification workflow. Historical 1.3.19 measurements retain their original artifact identity.
 
 `cmake_test_run` starts a durable, project-owned job in an explicit initialized CMake build tree. `cmake_test_status` reads its actual phase outcomes, validated JUnit counts and paged failure details. The existing `process_read_log`, `process_wait`, `process_poll` and `process_kill` tools operate on the returned `job_id`.
 
@@ -130,6 +130,6 @@ The hashes bind the bytes captured by Forge and detect subsequent changes agains
 
 ## Qualification status
 
-The native integration regression runs Windows PowerShell 5.1 through the real process service to require an existing absolute `CommonApplicationData` directory, repeats a successful build and CTest on the same initialized tree with actual phase receipts and counts, and requires the intended failure target's marker before `cmake -E false`. A pre-target MSBuild initialization failure cannot satisfy that expected-failure assertion. These historical 1.3.21 focused checks do not qualify the integrated 1.3.24 source, package, installed tools or live-model workflows.
+The native integration regression runs Windows PowerShell 5.1 through the real process service to require an existing absolute `CommonApplicationData` directory, repeats a successful build and CTest on the same initialized tree with actual phase receipts and counts, and requires the intended failure target's marker before `cmake -E false`. A pre-target MSBuild initialization failure cannot satisfy that expected-failure assertion. These historical 1.3.21 focused checks do not qualify the integrated 1.3.25 source, package, installed tools or live-model workflows.
 
-This document is based on reviewed native request, phase, report-parser, durable-receipt and MCP schema/serialization paths. Historical 1.3.21 qualification retains its exact scope. Integrated 1.3.24 qualification remains pending; see [the current boundary](validation/HOST-CAPABILITIES-1.3.24.md). Failed attempts and historical 1.3.19 evidence retain their original identities.
+This document is based on reviewed native request, phase, report-parser, durable-receipt and MCP schema/serialization paths. Historical 1.3.21 qualification retains its exact scope. Integrated 1.3.25 qualification remains pending; see [the current boundary](validation/HOST-CAPABILITIES-1.3.25.md). Failed attempts and historical 1.3.19 evidence retain their original identities.

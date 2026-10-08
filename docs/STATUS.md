@@ -1,11 +1,16 @@
 # Product status
 
-## Current 1.3.24 source candidate
+## Current 1.3.25 source candidate
 
-The 1.3.24 candidate defines **112 Primary/Fallback tools** and package identity **1.3.24.0**, retaining every existing tool, ten specialist playbooks and five CLU tools. It retains the Manager-owned observer and adjusts native recovery comparison for the client-local Boolean context_budget_cleared annotation added after the authorized callback. Primary supplies authorized adapter results and workspace scope through an internal bounded bridge; Fallback and CLU read status. Actual native admission, one writer, fresh scope checks and no replay of uncertain New chat or Send remain required. Final 1.3.24 build, complete tests, static gates, package persistence, signed installation, catalogs, native workflows, CI and publication are pending.
+The **1.3.25 source candidate / Windows package 1.3.25.0** retains 112 Primary/Fallback descriptors, five CLU tools, ten specialist playbooks and every existing feature. Native continuity adds a separately admitted cached rendered prompt count to pressure evaluation while preserving latest-generation provider usage and telemetry. Cache admission requires the selected native model identifier and matching loaded context capacity; it does not establish generation freshness or current KV usage. Manager remains the observer owner and Primary supplies authorized adapter results and workspace scope. All final 1.3.25 source, build, complete graph, static/persistence, signed installation, catalogs, native/image workflows, CI and release checks remain **pending**. No earlier 1.3.24 pass is a current 1.3.25 qualification.
 
-See [candidate notes](releases/1.3.24.md), [pending qualification](validation/HOST-CAPABILITIES-1.3.24.md) and [provider contract](IMAGE-PROVIDER.md). The isolated direct-native six-case ComfyUI smoke retains its [1.3.22 evidence identity](validation/HOST-CAPABILITIES-1.3.22.md); integrated delivery, semantic editing and full host model quality remain unqualified. [Published 1.3.21](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.21) retains separate seven-asset digest/readback evidence.
+See [candidate notes](releases/1.3.25.md), [pending qualification](validation/HOST-CAPABILITIES-1.3.25.md) and [retained 1.3.24 scopes](validation/HOST-CAPABILITIES-1.3.24.md).
 
+## Superseded 1.3.24 installed investigation
+
+The installed, unpublished **1.3.24 / 1.3.24.0** artifact at source `83d133df8aeb3801c6813be57d0dd81dfe56b6ea`, tree `3c38cb4390605c6f581debe7da9f27609daad3da`, passed Product All, all three static gates, package persistence and **167/167 Release tests in 96.38 seconds**. Exact-source Windows CI run 37745306780 passed **167/167 in 135.32 seconds**. Its development-signed installation matched all four executable images and all **323 payload files**, preserving **8,505 profile files / 414,180,807 bytes** and four protected snapshots before launch. Installed catalogs returned **112/112/5**, retaining every prior 106 descriptor. Original authority and fresh CLI checks passed **7 cases / 63 requests** and **8 cases / 38 requests**. Public image-provider acceptance passed **7 cases / 47 requests**; selected Qwen image-provider acceptance verified **16 actual pairs across all six image tools**, and native acceptance verified **8 calls across five groups**. These eleven completed scopes did not establish automatic continuity, and no 1.3.24 release was published. They do not qualify the 1.3.25 candidate.
+
+The frozen active 86-message conversation stored a cached full rendered prompt count of **264,415**, with loaded capacity **262,144**, while its latest selected provider generation reported **130,969** total tokens (130,895 prompt plus 74 predicted) under `rollingWindow`. LM Studio's shipped writer counts the complete rendered selected history, system prompt and tool definitions into `tokenCount`; its overflow-retry path can retain a smaller history suffix. Forge 1.3.24 based pressure on latest provider usage and ignored that cached full-prompt projection. This source gap prevented the cached projection from triggering rollover. The individual backend overflow-error invocation and exact discarded prefix were not captured. The cached count has no generation freshness timestamp and is distinct from current KV-cache usage. Automatic native New/Send remained without qualification.
 
 ## Superseded 1.3.23 installed investigation
 
@@ -19,7 +24,7 @@ The superseded installed 1.3.22 candidate at source `9178abdf12998af56df4860a56b
 
 See [retained 1.3.22 measurements](validation/HOST-CAPABILITIES-1.3.22.md).
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.24 candidate.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.25 candidate.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -39,7 +44,7 @@ Stock LM Studio MCP image metadata remains distinct from model image input and i
 
 
 
-The current source version is 1.3.24 / Windows package identity 1.3.24.0, with 112 Primary/Fallback tools, ten specialist playbooks and five CLU tools. Native CMake/CTest jobs, paged desktop accessibility reads and optional higher-resolution bounded previews extend dedicated web, native Office, desktop/browser, image analysis, independent workers and schedules. Owner-selected host/workspace filesystem modes and existing contracts remain. Integrated 1.3.24 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. See [capabilities](HOST-CAPABILITIES.md), [CMake/CTest](CMAKE-CTEST.md), [implementation notes](releases/1.3.24.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.24.md).
+The current source version is 1.3.25 / Windows package identity 1.3.25.0, with 112 Primary/Fallback tools, ten specialist playbooks and five CLU tools. Native CMake/CTest jobs, paged desktop accessibility reads and optional higher-resolution bounded previews extend dedicated web, native Office, desktop/browser, image analysis, independent workers and schedules. Owner-selected host/workspace filesystem modes and existing contracts remain. Integrated 1.3.25 build, complete tests, signed-package, installed-catalog and native LM Studio qualification are pending; isolated provider checks do not qualify these binaries. See [capabilities](HOST-CAPABILITIES.md), [CMake/CTest](CMAKE-CTEST.md), [implementation notes](releases/1.3.25.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.25.md).
 
 The historical 1.3.19 source, installed and current-chat results are recorded above. The installed, unpublished [1.3.18 investigation](validation/HOST-CAPABILITIES-1.3.18.md) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact.
 
@@ -62,7 +67,7 @@ The installed 1.3.11 Release suite passed 153/153; signed installation, all thre
 | Packages | Universal inventory and streamed hashes; callable `instruction_package.read` returns the selected project queue row and paged content. |
 | Status | `get_forge_status` returns project ID/folder and binding source, ordered package paths, policy source/revision, tool names/count, and agent count. |
 | Governance | Bound repository reading, structured evidence evaluation, findings, model tool-result notifications, visible findings/correction history, and redacted export. |
-| Auto Continuity | The 1.3.24 candidate uses a Manager-lifetime observer and authorized Primary observations. Actual native messages/effects, packet retrieval and a following Forge result gate completion; installed qualification is pending. |
+| Auto Continuity | The 1.3.25 candidate uses a Manager-lifetime observer and authorized Primary observations. Actual native messages/effects, packet retrieval and a following Forge result gate completion; installed qualification is pending. |
 | Telemetry layout | Real WinUI observer with injected Manager measured zero Rig position transitions across 16 polls; injected CPU values kept updating. |
 | Packet view | Saved packet list and detail, refresh, delete selected packet, and clear all packets. |
 | Settings | Load/save/readback/revert/test/restart controls remain; record selection plus delete buttons replaces the old scope-maintenance scheme. |

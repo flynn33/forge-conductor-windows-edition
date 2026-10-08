@@ -1,10 +1,15 @@
 # Changelog
 
-## 1.3.24 - Native recovery result annotation comparison (source candidate; qualification pending)
+## 1.3.25 - Cached rendered prompt pressure (source candidate; qualification pending)
 
-- Compare the authorized Manager recovery callback with actual delivered Primary context_get evidence while accepting only a client-local Boolean context_budget_cleared annotation absent from the callback. Keep packet, source/scope, call-boundary and following-tool checks exact; preserve uncertain New chat/Send without replay.
-- Retain Manager-owned observer lifetime, the authenticated bounded observe/status bridge, every existing tool/service and unchanged 112/112/5 source inventory. Correct in-app setup help to describe Manager ownership and authorized Primary observations.
-- Align product/package inputs to 1.3.24 / 1.3.24.0. Complete source, signed installation, catalogs, native continuity/image workflows, CI and release checks are pending. See [candidate notes](docs/releases/1.3.24.md) and [qualification boundary](docs/validation/HOST-CAPABILITIES-1.3.24.md).
+- Admit the native cached full rendered prompt only for the selected model identifier and loaded capacity, keeping actual latest-generation provider usage separate. Use the larger count at initial pressure and after pause, with distinct source/headroom diagnostics.
+- Preserve Manager lifetime, all native effect guards and existing tool/service/catalog contracts. All final source, package/install, native, CI and release checks are pending. See [candidate notes](docs/releases/1.3.25.md).
+
+## 1.3.24 - Superseded installed investigation
+
+The installed, unpublished **1.3.24 / 1.3.24.0** artifact at source `83d133df8aeb3801c6813be57d0dd81dfe56b6ea`, tree `3c38cb4390605c6f581debe7da9f27609daad3da`, passed Product All, all three static gates, package persistence and **167/167 Release tests in 96.38 seconds**. Exact-source Windows CI run 37745306780 passed **167/167 in 135.32 seconds**. Its development-signed installation matched all four executable images and all **323 payload files**, preserving **8,505 profile files / 414,180,807 bytes** and four protected snapshots before launch. Installed catalogs returned **112/112/5**, retaining every prior 106 descriptor. Original authority and fresh CLI checks passed **7 cases / 63 requests** and **8 cases / 38 requests**. Public image-provider acceptance passed **7 cases / 47 requests**; selected Qwen image-provider acceptance verified **16 actual pairs across all six image tools**, and native acceptance verified **8 calls across five groups**. These eleven completed scopes did not establish automatic continuity, and no 1.3.24 release was published. They do not qualify the 1.3.25 candidate.
+
+The frozen active 86-message conversation stored a cached full rendered prompt count of **264,415**, with loaded capacity **262,144**, while its latest selected provider generation reported **130,969** total tokens (130,895 prompt plus 74 predicted) under `rollingWindow`. LM Studio's shipped writer counts the complete rendered selected history, system prompt and tool definitions into `tokenCount`; its overflow-retry path can retain a smaller history suffix. Forge 1.3.24 based pressure on latest provider usage and ignored that cached full-prompt projection. This source gap prevented the cached projection from triggering rollover. The individual backend overflow-error invocation and exact discarded prefix were not captured. The cached count has no generation freshness timestamp and is distinct from current KV-cache usage. Automatic native New/Send remained without qualification.
 
 ## 1.3.23 - Manager lifetime for native chat continuity (installed, unpublished, superseded)
 

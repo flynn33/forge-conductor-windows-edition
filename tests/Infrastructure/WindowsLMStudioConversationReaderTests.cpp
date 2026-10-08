@@ -20,6 +20,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <thread>
 
@@ -124,7 +125,9 @@ void selectedProviderStatisticsAndTerminalTools()
         "project identifier did not come from the root's registry");
     require(observation->usedTokens == 18000U &&
         observation->contextCapacity == 32768U,
-        "reader used unselected version or aggregate tokenCount");
+        "reader used an unselected version or replaced provider usage with a cached prompt count");
+    require(!observation->cachedRenderedPromptTokens,
+        "an unbound cached prompt count was admitted without a selected model identity");
     require(Json::parse(observation->generationEvidence) == Json{
         {"message_index", 0U}, {"selected_version", 1U}, {"step_index", 0U},
         {"genInfo", generation(18000U, 32768U)["genInfo"]}},
@@ -132,6 +135,205 @@ void selectedProviderStatisticsAndTerminalTools()
     require(!observation->overflow && !observation->toolsActive,
         "unselected overflow or completed tool blocked the pause");
     require(observation->plugins.size() == 3U, "plugin bindings were lost");
+}
+
+Json renderedPromptConversation(const Json& count)
+{
+    auto selected = generation(130969U, 262144U);
+    selected["genInfo"]["identifier"] = "qwen/qwen3.8-27b";
+    selected["genInfo"]["indexedModelIdentifier"] = "qwen/qwen3.8-27b";
+    auto document = conversation(Json::array({
+        message(Json::array({version(Json::array({selected}))}))}));
+    document["tokenCount"] = count;
+    document["lastUsedModel"] = Json{{"identifier", "qwen/qwen3.8-27b"},
+        {"indexedModelIdentifier", "deployment-prefix:qwen/qwen3.8-27b"},
+        {"instanceLoadTimeConfig", {{"fields", Json::array({
+            Json{{"key", "llm.load.contextLength"}, {"value", 262144U}}})}}}};
+    return document;
+}
+
+void cachedRenderedPromptRemainsSeparateFromProviderStatistics()
+{
+    ConversationFixture fixture;
+    fixture.save(renderedPromptConversation(264415U));
+    TestContext context;
+    const auto observation = take(WindowsLMStudioConversationReader::read(
+        fixture.path(), context.active()));
+    require(observation && observation->cachedRenderedPromptTokens == 264415U,
+        "the full rendered prompt count was lost after a smaller provider generation");
+    require(observation->usedTokens == 130969U &&
+        observation->contextCapacity == 262144U && !observation->overflow &&
+        observation->stopReason == "eosFound",
+        "a cached prompt larger than capacity changed actual provider usage or overflow");
+    const auto evidence = Json::parse(observation->generationEvidence);
+    require(evidence.at("genInfo").at("stats").at("totalTokensCount") == 130969U &&
+        !evidence.at("genInfo").contains("tokenCount"),
+        "the cached prompt count was presented as timestamped provider generation evidence");
+}
+
+void cachedRenderedPromptNumericAdmission()
+{
+    ConversationFixture fixture;
+    TestContext context;
+    const auto verify = [&](const Json& document,
+                            const std::optional<std::uint64_t> expected) {
+        fixture.save(document);
+        const auto observation = take(WindowsLMStudioConversationReader::read(
+            fixture.path(), context.active()));
+        require(observation && observation->cachedRenderedPromptTokens == expected,
+            "cached rendered prompt numeric admission differed from its integer contract");
+        require(observation->usedTokens == 130969U &&
+            observation->contextCapacity == 262144U && !observation->overflow,
+            "an absent or invalid cached count changed provider statistics");
+    };
+    verify(renderedPromptConversation(0U), 0U);
+    verify(renderedPromptConversation(std::int64_t{264415}), 264415U);
+    verify(renderedPromptConversation((std::numeric_limits<std::uint64_t>::max)()),
+        (std::numeric_limits<std::uint64_t>::max)());
+    auto absent = renderedPromptConversation(264415U);
+    absent.erase("tokenCount");
+    verify(absent, std::nullopt);
+    for (const auto& invalid : Json::array({nullptr, true, false, -1, 1.25,
+             264415.0, "264415", Json::array({264415U}),
+             Json{{"value", 264415U}}})) {
+        verify(renderedPromptConversation(invalid), std::nullopt);
+    }
+}
+
+void cachedRenderedPromptRequiresSelectedModelBinding()
+{
+    ConversationFixture fixture;
+    TestContext context;
+    const auto verify = [&](const Json& document, const bool admitted) {
+        fixture.save(document);
+        const auto observation = take(WindowsLMStudioConversationReader::read(
+            fixture.path(), context.active()));
+        require(observation && observation->usedTokens == 130969U &&
+            observation->contextCapacity == 262144U && !observation->overflow,
+            "cached prompt model admission changed selected provider usage");
+        require(observation->cachedRenderedPromptTokens ==
+                (admitted ? std::optional<std::uint64_t>{264415U} : std::nullopt),
+            "cached rendered prompt was bound to a missing, different, or unselected model");
+    };
+    auto document = renderedPromptConversation(264415U);
+    document.erase("lastUsedModel");
+    verify(document, false);
+    for (const auto& invalid : Json::array({nullptr, "qwen/qwen3.8-27b",
+             Json::object(), Json{{"identifier", nullptr}},
+             Json{{"identifier", 1}}, Json{{"identifier", ""}},
+             Json{{"identifier", "qwen/qwen3.8-27b-other"}},
+             Json{{"identifier", "QWEN/qwen3.8-27b"}}})) {
+        document = renderedPromptConversation(264415U);
+        if (invalid.is_object()) {
+            document["lastUsedModel"] = invalid;
+            document["lastUsedModel"]["instanceLoadTimeConfig"] =
+                renderedPromptConversation(264415U)["lastUsedModel"]["instanceLoadTimeConfig"];
+        } else {
+            document["lastUsedModel"] = invalid;
+        }
+        verify(document, false);
+    }
+    for (const auto& invalid : Json::array({nullptr, 1, ""})) {
+        document = renderedPromptConversation(264415U);
+        document["messages"][0]["versions"][0]["steps"][0]["genInfo"]
+            ["identifier"] = invalid;
+        verify(document, false);
+    }
+    document = renderedPromptConversation(264415U);
+    document["messages"][0]["versions"][0]["steps"][0]["genInfo"]
+        .erase("identifier");
+    verify(document, false);
+
+    document = renderedPromptConversation(264415U);
+    document["lastUsedModel"].erase("instanceLoadTimeConfig");
+    verify(document, false);
+    for (const auto& invalid : Json::array({nullptr, "262144",
+             Json::object(), Json{{"fields", Json::array()}}})) {
+        document = renderedPromptConversation(264415U);
+        document["lastUsedModel"]["instanceLoadTimeConfig"] = invalid;
+        verify(document, false);
+    }
+    for (const auto& invalid : Json::array({0U, -1, 262144.0, "262144", 131072U})) {
+        document = renderedPromptConversation(264415U);
+        document["lastUsedModel"]["instanceLoadTimeConfig"]["fields"][0]["value"] = invalid;
+        verify(document, false);
+    }
+    for (const auto& malformed : Json::array({
+             Json{{"key", 1}, {"value", 262144U}},
+             Json{{"key", nullptr}, {"value", 262144U}},
+             Json{{"value", 262144U}}})) {
+        document = renderedPromptConversation(264415U);
+        document["lastUsedModel"]["instanceLoadTimeConfig"]["fields"] =
+            Json::array({malformed});
+        verify(document, false);
+        document["lastUsedModel"]["instanceLoadTimeConfig"]["fields"].push_back(
+            Json{{"key", "llm.load.contextLength"}, {"value", 262144U}});
+        verify(document, true);
+    }
+
+    auto unselected = generation(262144U, 262144U, "contextLengthReached");
+    unselected["genInfo"]["identifier"] = "different-model";
+    unselected["genInfo"]["indexedModelIdentifier"] = "different-model";
+    auto selected = generation(130969U, 262144U);
+    selected["genInfo"]["identifier"] = "qwen/qwen3.8-27b";
+    selected["genInfo"]["indexedModelIdentifier"] = "qwen/qwen3.8-27b";
+    document = renderedPromptConversation(264415U);
+    document["messages"] = Json::array({message(Json::array({
+        version(Json::array({unselected})), version(Json::array({selected}))}), 1U)});
+    document["lastUsedModel"]["identifier"] = "different-model";
+    verify(document, false);
+    document["lastUsedModel"]["identifier"] = "qwen/qwen3.8-27b";
+    verify(document, true);
+
+    document["messages"] = Json::array({message(Json::array({
+        version(Json::array({unselected, selected}))}))});
+    document["lastUsedModel"]["identifier"] = "different-model";
+    verify(document, false);
+    document["lastUsedModel"]["identifier"] = "qwen/qwen3.8-27b";
+    verify(document, true);
+}
+
+void cachedRenderedPromptRequiresValidProviderGeneration()
+{
+    ConversationFixture fixture;
+    TestContext context;
+    const auto verify = [&](const Json& document) {
+        fixture.save(document);
+        const auto observation = take(WindowsLMStudioConversationReader::read(
+            fixture.path(), context.active()));
+        require(observation && !observation->cachedRenderedPromptTokens &&
+            observation->usedTokens == 0U &&
+            observation->generationEvidence.empty(),
+            "a cached prompt fabricated valid provider usage or generation evidence");
+        require(observation->contextCapacity == 262144U,
+            "missing provider usage discarded the independently loaded model capacity");
+    };
+    auto document = renderedPromptConversation(264415U);
+    document["messages"] = Json::array();
+    verify(document);
+    document = renderedPromptConversation(264415U);
+    document["messages"][0]["versions"][0]["steps"][0].erase("genInfo");
+    verify(document);
+    document = renderedPromptConversation(264415U);
+    document["messages"][0]["versions"][0]["steps"][0]["genInfo"]
+        .erase("stats");
+    verify(document);
+    document = renderedPromptConversation(264415U);
+    document["messages"][0]["versions"][0]["steps"][0]["genInfo"]["stats"]
+        .erase("totalTokensCount");
+    verify(document);
+    document = renderedPromptConversation(264415U);
+    document["messages"][0]["versions"][0]["steps"][0]["genInfo"]["stats"]
+        ["totalTokensCount"] = -1;
+    verify(document);
+    document = renderedPromptConversation(264415U);
+    document["messages"][0]["versions"][0]["steps"][0]["genInfo"]
+        .erase("loadModelConfig");
+    verify(document);
+    document = renderedPromptConversation(264415U);
+    document["messages"][0]["versions"][0]["steps"][0]["genInfo"]
+        ["loadModelConfig"]["fields"][0]["value"] = 0U;
+    verify(document);
 }
 
 void overflowAndActiveTools()
@@ -755,6 +957,281 @@ public:
     Fault fault{Fault::None};
     Infrastructure::Windows::Detail::UniqueHandle publicationBlock;
 };
+
+Json visibleContinuityTraceEvent(const VisibleHandoffFixture& fixture, const std::string_view event,
+    const std::size_t expectedMatches=1U)
+{
+    const auto path=fixture.fixture.fileFixture.root()/"home"/"continuity"/
+        ("lmstudio-chat-trace-"+std::to_string(::GetCurrentProcessId())+".jsonl");
+    std::ifstream input{path,std::ios::binary};
+    require(static_cast<bool>(input),"private visible continuity trace is missing");
+    Json found;std::size_t matches{};std::string line;
+    while(std::getline(input,line)) {
+        const auto value=Json::parse(line);
+        if(value.value("event",std::string{})==event) {found=value;++matches;}
+    }
+    require(matches==expectedMatches,"private continuity trace did not retain exactly "+
+        std::to_string(expectedMatches)+" "+std::string{event}+" events");
+    return found;
+}
+
+void cachedPromptPressureRequestsPacketWithSeparateProviderEvidence()
+{
+    VisibleHandoffFixture f;
+    f.fixture.fileFixture.save(renderedPromptConversation(264415U));
+    const auto status=f.run([](const Json& observed) {
+        return observed.value("state",std::string{})=="waiting_for_model_packet";
+    });
+    require(f.sends==1U && f.creations==0U,"cached prompt pressure did not request exactly one model packet without creating a chat");
+    const auto& telemetry=status.at("context_telemetry");
+    require(telemetry.at("tokens_used")==130969U && telemetry.at("context_capacity")==262144U &&
+        telemetry.at("headroom_tokens")==120935U && !telemetry.at("overflow").get<bool>(),
+        "cached prompt pressure replaced measured provider usage, headroom, or physical overflow");
+    require(telemetry.at("cached_rendered_prompt_tokens")==264415U && telemetry.at("pressure_tokens")==264415U &&
+        telemetry.at("pressure_source")=="cached_rendered_prompt" && telemetry.at("pressure_headroom_tokens")==0U,
+        "cached full prompt projection did not independently explain rollover pressure");
+    const auto note=telemetry.at("cached_prompt_note").get<std::string>();
+    require(note.find("before")!=std::string::npos && note.find("after")!=std::string::npos &&
+        note.find("not current KV usage")!=std::string::npos,
+        "cached prompt telemetry omitted its refresh boundary or current-KV limitation");
+    require(f.lastText.find("Provider measured 130969 tokens of 262144")!=std::string::npos &&
+        f.lastText.find("cached full rendered prompt")!=std::string::npos &&
+        f.lastText.find("264415")!=std::string::npos && f.lastText.find("not current KV usage")!=std::string::npos,
+        "the model packet request conflated cached projected tokens with actual provider measurement");
+    for(const auto event:{"context_pressure_detected","context_pressure_pause"}) {
+        const auto trace=visibleContinuityTraceEvent(f,event);
+        require(trace.at("provider_used")==130969U && trace.at("cached_rendered_prompt_tokens")==264415U &&
+            trace.at("pressure_tokens")==264415U && trace.at("pressure_source")=="cached_rendered_prompt" &&
+            !trace.at("overflow").get<bool>(),"pressure trace did not retain distinct cached and provider evidence");
+    }
+}
+
+void cachedPromptPressureUsesMaximumWithoutPromotingInvalidCache()
+{
+    for(const Json count:{Json(0U),Json(130968U),Json(130969U),Json(180000U),Json(nullptr),Json(-1),Json("264415")}) {
+        VisibleHandoffFixture f;f.fixture.fileFixture.save(renderedPromptConversation(count));
+        const auto status=f.run([](const Json& observed) {
+            return observed.contains("context_telemetry") && observed["context_telemetry"].value("available",false);
+        });
+        const auto& telemetry=status.at("context_telemetry");
+        const bool larger=count==Json(180000U);
+        const auto pressure=larger?180000U:130969U;
+        require(f.sends==0U && f.creations==0U && status.at("state")=="observing",
+            "a safe or invalid cached projection dispatched a model request");
+        require(telemetry.at("tokens_used")==130969U && telemetry.at("headroom_tokens")==120935U &&
+            telemetry.at("pressure_tokens")==pressure && telemetry.at("pressure_headroom_tokens")==
+                (larger?71904U:120935U) && telemetry.at("pressure_source")==
+                (larger?"cached_rendered_prompt":"latest_provider_generation"),
+            "cached projection reduced actual usage or failed to preserve the larger safe pressure signal");
+        if(count.is_number_unsigned()) require(telemetry.at("cached_rendered_prompt_tokens")==count,
+            "an admitted safe cache disappeared from telemetry");
+        else require(telemetry.at("cached_rendered_prompt_tokens").is_null(),
+            "an invalid cache became pressure telemetry");
+    }
+    VisibleHandoffFixture f;auto document=renderedPromptConversation(264415U);
+    document["lastUsedModel"]["identifier"]="different-model";f.fixture.fileFixture.save(document);
+    const auto status=f.run([](const Json& observed) {return observed.contains("context_telemetry") &&
+        observed["context_telemetry"].value("available",false);});
+    require(f.sends==0U && status["context_telemetry"]["cached_rendered_prompt_tokens"].is_null() &&
+        status["context_telemetry"]["pressure_tokens"]==130969U,
+        "a mismatched model cache triggered visible continuity pressure");
+}
+
+void cachedPromptPressurePreservesProviderPressureAndOverflow()
+{
+    for(const bool overflow:{false,true}) {
+        VisibleHandoffFixture f;auto document=renderedPromptConversation(1000U);
+        auto& stats=document["messages"][0]["versions"][0]["steps"][0]["genInfo"]["stats"];
+        stats["totalTokensCount"]=overflow?130969U:240000U;
+        stats["stopReason"]=overflow?"contextLengthReached":"eosFound";
+        f.fixture.fileFixture.save(document);
+        const auto status=f.run([](const Json& observed) {return observed.value("state",std::string{})=="waiting_for_model_packet";});
+        const auto& telemetry=status.at("context_telemetry");
+        require(f.sends==1U && f.creations==0U && telemetry.at("tokens_used")==stats.at("totalTokensCount") &&
+            telemetry.at("cached_rendered_prompt_tokens")==1000U && telemetry.at("overflow")==overflow &&
+            telemetry.at("pressure_source")==(overflow?"provider_overflow":"latest_provider_generation"),
+            "a smaller cache suppressed actual provider pressure or changed the physical overflow source");
+        require(telemetry.at("pressure_tokens")==static_cast<unsigned>(overflow?262144U:240000U) &&
+            telemetry.at("pressure_headroom_tokens")==static_cast<unsigned>(overflow?0U:11904U),
+            "provider overflow pressure telemetry contradicted the resolved emergency budget");
+        for(const auto event:{"context_pressure_detected","context_pressure_pause"}) {
+            const auto trace=visibleContinuityTraceEvent(f,event);
+            require(trace.at("provider_used")==stats.at("totalTokensCount") &&
+                trace.at("cached_rendered_prompt_tokens")==1000U &&
+                trace.at("pressure_tokens")==static_cast<unsigned>(overflow?262144U:240000U) &&
+                trace.at("remaining")==static_cast<unsigned>(overflow?0U:11904U) &&
+                trace.at("pressure_action")==(overflow?"emergency":"rollover"),
+                "physical overflow trace lost its actual provider usage or emergency pressure budget");
+        }
+    }
+}
+
+void cachedPromptPressureRereadsProjectionAtConfirmedPause()
+{
+    for(const auto change:{"lower","absent","model_mismatch","capacity_mismatch","no_provider_evidence","no_capacity","still_high"}) {
+        VisibleHandoffFixture f;f.fixture.fileFixture.save(renderedPromptConversation(264415U));
+        std::atomic<std::size_t> pauses{};
+        f.controls->pause=[&](const auto&,std::string_view,const auto&) {
+            auto fresh=renderedPromptConversation(std::string_view{change}=="still_high"?240000U:0U);
+            if(std::string_view{change}=="absent") fresh.erase("tokenCount");
+            if(std::string_view{change}=="model_mismatch") {
+                fresh["tokenCount"]=264415U;fresh["lastUsedModel"]["identifier"]="different-model";
+            }
+            if(std::string_view{change}=="capacity_mismatch") {
+                fresh["tokenCount"]=264415U;
+                fresh["lastUsedModel"]["instanceLoadTimeConfig"]["fields"][0]["value"]=131072U;
+            }
+            if(std::string_view{change}=="no_provider_evidence") {
+                auto& stats=fresh["messages"][0]["versions"][0]["steps"][0]["genInfo"]["stats"];
+                stats.erase("totalTokensCount");stats["stopReason"]="contextLengthReached";
+            }
+            if(std::string_view{change}=="no_capacity") {
+                fresh["messages"][0]["versions"][0]["steps"][0]["genInfo"].erase("loadModelConfig");
+                fresh["lastUsedModel"].erase("instanceLoadTimeConfig");
+            }
+            f.fixture.fileFixture.save(fresh);++pauses;return Domain::Result<bool>::success(true);
+        };
+        if(std::string_view{change}=="still_high") {
+            f.run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet";});
+            require(pauses==1U && f.sends==1U && f.creations==0U &&
+                f.lastText.find("240000")!=std::string::npos && f.lastText.find("264415")==std::string::npos,
+                "the confirmed-pause packet request used the stale pre-pause projection");
+            const auto trace=visibleContinuityTraceEvent(f,"context_pressure_pause");
+            require(trace.at("cached_rendered_prompt_tokens")==240000U && trace.at("pressure_tokens")==240000U,
+                "the pause trace did not use the fresh admitted projection");
+        } else {
+            const bool lostProvider=std::string_view{change}=="no_provider_evidence" || std::string_view{change}=="no_capacity";
+            const auto status=f.run([&](const Json& observed) {
+                return pauses.load()>0U && observed.value("state",std::string{})=="observing" &&
+                    observed.contains("context_telemetry") && observed["context_telemetry"].contains("pressure_tokens") &&
+                    (lostProvider?(!observed["context_telemetry"].value("available",true) &&
+                        observed["context_telemetry"]["pressure_tokens"].is_null()):
+                        observed["context_telemetry"]["pressure_tokens"]==130969U);
+            });
+            require(pauses==1U && f.sends==0U && f.creations==0U &&
+                !status.contains("error") && (lostProvider?status["context_telemetry"]["pressure_source"].is_null():
+                    status["context_telemetry"]["pressure_source"]=="latest_provider_generation"),
+                "a withdrawn projection or lost provider observation dispatched a packet or became an operational error after pause");
+        }
+    }
+}
+
+void cachedPromptPressureTraceDeduplicatesAndReentersAfterNormal()
+{
+    VisibleHandoffFixture f;auto document=renderedPromptConversation(264415U);
+    document["messages"][0]["versions"][0]["steps"].push_back(Json{{"type","toolStatus"},
+        {"statusState",{{"status",{{"type","callingTool"}}}}}});
+    f.fixture.fileFixture.save(document);std::atomic<std::size_t> pauses{};
+    f.controls->pause=[&](const auto&,std::string_view,const auto&) {++pauses;return Domain::Result<bool>::success(true);};
+    const auto first=f.run([](const Json& observed) {return observed.contains("context_telemetry") &&
+        observed["context_telemetry"].value("tools_active",false);});
+    visibleContinuityTraceEvent(f,"context_pressure_detected");
+    const auto same=f.run([&](const Json& observed) {return observed.contains("context_telemetry") &&
+        observed["context_telemetry"]["observed_at_unix_ms"]>first["context_telemetry"]["observed_at_unix_ms"];});
+    visibleContinuityTraceEvent(f,"context_pressure_detected");
+    TestContext operation;
+    const auto initial=take(WindowsLMStudioConversationReader::read(f.fixture.fileFixture.path(),operation.active()));
+    require(initial.has_value(),"private cached-pressure trace fixture lost its provider observation");
+    document["tokenCount"]=0U;f.fixture.fileFixture.save(document);
+    f.run([&](const Json& observed) {return observed.contains("context_telemetry") &&
+        observed["context_telemetry"]["observed_at_unix_ms"]>same["context_telemetry"]["observed_at_unix_ms"] &&
+        observed["context_telemetry"]["pressure_source"]=="latest_provider_generation";});
+    visibleContinuityTraceEvent(f,"context_pressure_detected");
+    document["tokenCount"]=264415U;f.fixture.fileFixture.save(document);
+    const auto changed=take(WindowsLMStudioConversationReader::read(f.fixture.fileFixture.path(),operation.active()));
+    require(changed && changed->generationEvidence==initial->generationEvidence,
+        "pressure trace re-entry accidentally changed the selected provider generation");
+    const auto reentered=f.run([](const Json& observed) {return observed.contains("context_telemetry") &&
+        observed["context_telemetry"]["cached_rendered_prompt_tokens"]==264415U &&
+        observed["context_telemetry"]["pressure_source"]=="cached_rendered_prompt";});
+    const auto trace=visibleContinuityTraceEvent(f,"context_pressure_detected",2U);
+    require(trace.at("cached_rendered_prompt_tokens")==264415U && trace.at("provider_used")==130969U,
+        "a return to the identical cached count after Normal did not emit fresh pressure evidence");
+    f.run([&](const Json& observed) {return observed.contains("context_telemetry") &&
+        observed["context_telemetry"]["observed_at_unix_ms"]>reentered["context_telemetry"]["observed_at_unix_ms"];});
+    visibleContinuityTraceEvent(f,"context_pressure_detected",2U);
+    document["tokenCount"]=300000U;f.fixture.fileFixture.save(document);
+    f.run([](const Json& observed) {return observed.contains("context_telemetry") &&
+        observed["context_telemetry"]["cached_rendered_prompt_tokens"]==300000U;});
+    const auto higher=visibleContinuityTraceEvent(f,"context_pressure_detected",3U);
+    require(higher.at("cached_rendered_prompt_tokens")==300000U && higher.at("pressure_tokens")==300000U &&
+        pauses==0U && f.sends==0U && f.creations==0U,
+        "a cache-only pressure increase was untraced or crossed the active-tool control boundary");
+}
+
+void cachedPromptPressureWaitsForActiveTools()
+{
+    VisibleHandoffFixture f;auto document=renderedPromptConversation(264415U);
+    document["messages"][0]["versions"][0]["steps"].push_back(Json{{"type","toolStatus"},
+        {"statusState",{{"status",{{"type","callingTool"}}}}}});
+    f.fixture.fileFixture.save(document);std::atomic<std::size_t> pauses{};
+    f.controls->pause=[&](const auto&,std::string_view,const auto&) {++pauses;return Domain::Result<bool>::success(true);};
+    const auto status=f.run([](const Json& observed) {return observed.contains("context_telemetry") &&
+        observed["context_telemetry"].value("tools_active",false);});
+    require(pauses==0U && f.sends==0U && f.creations==0U && status.at("state")=="observing",
+        "cached prompt pressure paused or requested a packet while a native tool was active");
+}
+
+void cachedPromptPressureControlsSuccessorBudgetClear()
+{
+    for(const auto cached:{1000U,264415U}) {
+        VisibleHandoffFixture f;f.waiting();f.saveModelPacket();
+        f.run([](const Json& status) {return status.value("state",std::string{})=="resuming";});
+        const auto measurement=renderedPromptConversation(cached);
+        f.append(message(Json::array({version(Json::array({
+            VisibleHandoffFixture::tool("context_get",Json{{"ok",true},{"found",true},{"handoff_id","durable-native-packet"}},2U),
+            VisibleHandoffFixture::tool("agent_list",Json{{"ok",true}},3U),
+            measurement["messages"][0]["versions"][0]["steps"][0]}))})));
+        const auto path=f.fixture.fileFixture.root()/"conversations"/std::filesystem::path{f.selected};
+        std::ifstream input{path,std::ios::binary};auto saved=Json::parse(input);input.close();
+        saved["lastUsedModel"]=measurement["lastUsedModel"];saved["tokenCount"]=cached;
+        ConversationFixture::write(path,saved);
+        f.run([](const Json& status) {return status.value("state",std::string{})=="resumed";});
+        const auto trace=visibleContinuityTraceEvent(f,"following_forge_tool");
+        require(trace.at("provider_used")==130969U && trace.at("context_budget_cleared")==(cached==1000U),
+            "successor budget clearance ignored a larger cached full prompt projection");
+        require(f.sends==2U && f.creations==1U,"successor budget observation replayed a visible handoff effect");
+    }
+}
+
+void completedSuccessorRechecksChangedCacheWithoutNewGeneration()
+{
+    VisibleHandoffFixture f;f.waiting();f.saveModelPacket();
+    f.run([](const Json& status) {return status.value("state",std::string{})=="resuming";});
+    const auto measurement=renderedPromptConversation(1000U);
+    f.append(message(Json::array({version(Json::array({
+        VisibleHandoffFixture::tool("context_get",Json{{"ok",true},{"found",true},{"handoff_id","durable-native-packet"}},2U),
+        VisibleHandoffFixture::tool("agent_list",Json{{"ok",true}},3U),
+        measurement["messages"][0]["versions"][0]["steps"][0]}))})));
+    const auto path=f.fixture.fileFixture.root()/"conversations"/std::filesystem::path{f.selected};
+    std::ifstream input{path,std::ios::binary};auto saved=Json::parse(input);input.close();
+    saved["lastUsedModel"]=measurement["lastUsedModel"];saved["tokenCount"]=1000U;
+    ConversationFixture::write(path,saved);
+    const auto completed=f.run([](const Json& status) {return status.value("state",std::string{})=="resumed";});
+    TestContext operation;const auto before=take(WindowsLMStudioConversationReader::read(f.fixture.fileFixture.path(),operation.active()));
+    require(before.has_value() && f.sends==2U && f.creations==1U,"private successor did not complete once before the cache update");
+    saved["tokenCount"]=264415U;ConversationFixture::write(path,saved);
+    const auto changed=take(WindowsLMStudioConversationReader::read(f.fixture.fileFixture.path(),operation.active()));
+    require(changed && changed->generationEvidence==before->generationEvidence && changed->usedTokens==before->usedTokens,
+        "the cache-only pressure fixture accidentally changed its selected provider generation");
+    const auto waiting=f.run([](const Json& status) {return status.value("state",std::string{})=="waiting_for_model_packet";});
+    require(f.sends==3U && f.creations==1U && waiting["context_telemetry"]["pressure_source"]=="cached_rendered_prompt" &&
+        waiting["context_telemetry"]["generation_reference"]==completed["context_telemetry"]["generation_reference"],
+        "a completed successor ignored cache-only pressure or repeated New chat instead of requesting a fresh model packet");
+}
+
+void cachedPromptTelemetryClearsWhenSelectionDisappears()
+{
+    VisibleHandoffFixture f;f.fixture.fileFixture.save(renderedPromptConversation(180000U));
+    f.run([](const Json& status) {return status.contains("context_telemetry") && status["context_telemetry"].value("available",false);});
+    noSelection(f.fixture,Json{{"selectedConversation",nullptr}});
+    const auto status=f.run([](const Json& observed) {return observed.contains("context_telemetry") &&
+        !observed["context_telemetry"].value("available",true) && observed["context_telemetry"]["conversation_id"].is_null();});
+    const auto& telemetry=status.at("context_telemetry");
+    for(const char* key:{"tokens_used","cached_rendered_prompt_tokens","pressure_tokens","pressure_source","pressure_headroom_tokens"})
+        require(telemetry.at(key).is_null(),"no selected chat retained stale measured or projected pressure telemetry");
+    require(f.sends==0U && f.creations==0U,"clearing selection dispatched a continuity effect");
+}
 
 void durableVisibleHandoffRecoveryCases()
 {
@@ -1714,12 +2191,38 @@ void registerWindowsLMStudioConversationReaderTests(TestRegistry& tests)
 {
     addTest(tests, "LMStudioConversationReader.selected_provider_statistics",
         selectedProviderStatisticsAndTerminalTools);
+    addTest(tests, "LMStudioConversationReader.cached_prompt_separate_provider_statistics",
+        cachedRenderedPromptRemainsSeparateFromProviderStatistics);
+    addTest(tests, "LMStudioConversationReader.cached_prompt_numeric_admission",
+        cachedRenderedPromptNumericAdmission);
+    addTest(tests, "LMStudioConversationReader.cached_prompt_selected_model_binding",
+        cachedRenderedPromptRequiresSelectedModelBinding);
+    addTest(tests, "LMStudioConversationReader.cached_prompt_requires_provider_generation",
+        cachedRenderedPromptRequiresValidProviderGeneration);
     addTest(tests, "LMStudioConversationReader.overflow_and_active_tools",
         overflowAndActiveTools);
     addTest(tests, "LMStudioConversationReader.partial_files_and_path",
         partialFilesAndSelectionBoundary);
     addTest(tests, "LMStudioConversationReader.missing_selection_and_cancel",
         missingSelectionAndCancellation);
+    addTest(tests, "LMStudioChatContinuity.cached_prompt_requests_packet_with_separate_provider_evidence",
+        cachedPromptPressureRequestsPacketWithSeparateProviderEvidence);
+    addTest(tests, "LMStudioChatContinuity.cached_prompt_maximum_and_invalid_cache",
+        cachedPromptPressureUsesMaximumWithoutPromotingInvalidCache);
+    addTest(tests, "LMStudioChatContinuity.cached_prompt_preserves_provider_pressure_and_overflow",
+        cachedPromptPressurePreservesProviderPressureAndOverflow);
+    addTest(tests, "LMStudioChatContinuity.cached_prompt_confirmed_pause_reread",
+        cachedPromptPressureRereadsProjectionAtConfirmedPause);
+    addTest(tests, "LMStudioChatContinuity.cached_prompt_trace_dedupe_and_reentry",
+        cachedPromptPressureTraceDeduplicatesAndReentersAfterNormal);
+    addTest(tests, "LMStudioChatContinuity.cached_prompt_active_tools",
+        cachedPromptPressureWaitsForActiveTools);
+    addTest(tests, "LMStudioChatContinuity.cached_prompt_successor_budget_clear",
+        cachedPromptPressureControlsSuccessorBudgetClear);
+    addTest(tests, "LMStudioChatContinuity.completed_successor_cache_only_pressure_change",
+        completedSuccessorRechecksChangedCacheWithoutNewGeneration);
+    addTest(tests, "LMStudioChatContinuity.cached_prompt_no_selection_clears_telemetry",
+        cachedPromptTelemetryClearsWhenSelectionDisappears);
     addTest(tests, "LMStudioChatContinuity.partial_write_recovery_status",
         continuityObservationRecoversAfterPartialWrite);
     addTest(tests, "LMStudioChatContinuity.preference_pipeline_recovery",

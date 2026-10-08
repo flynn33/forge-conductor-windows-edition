@@ -22,6 +22,26 @@
 namespace ForgeConductor::Infrastructure::Windows {
 namespace {
 using Json = nlohmann::json;
+constexpr const char* CachedPromptNote = "Normally refreshed before and after outer LM Studio predictions; may be stale and is not current KV usage or tied to a provider generation timestamp.";
+bool cachedPromptDrivesPressure(const LMStudioConversationObservation& chat) {
+    return chat.cachedRenderedPromptTokens && *chat.cachedRenderedPromptTokens > chat.usedTokens;
+}
+std::uint64_t contextPressureTokens(const LMStudioConversationObservation& chat) {
+    if(chat.overflow) return chat.contextCapacity;
+    return (std::max)(chat.usedTokens, chat.cachedRenderedPromptTokens.value_or(0U));
+}
+const char* contextPressureSource(const LMStudioConversationObservation& chat) {
+    if(chat.overflow) return "provider_overflow";
+    return cachedPromptDrivesPressure(chat) ? "cached_rendered_prompt" : "latest_provider_generation";
+}
+Domain::Result<Domain::ContextBudget> visibleContextBudget(
+    const LMStudioConversationObservation& chat, const Domain::LocalModelConfig& config) {
+    const bool projected = cachedPromptDrivesPressure(chat);
+    return Domain::resolveContextBudget({chat.contextCapacity,
+        static_cast<std::uint64_t>(config.nextResponseReserve)+config.handoffReserve+config.estimationSafetyMargin,
+        std::nullopt, projected ? std::nullopt : std::optional<std::uint64_t>{chat.usedTokens},
+        projected ? chat.cachedRenderedPromptTokens : std::nullopt, std::nullopt, chat.overflow});
+}
 std::shared_ptr<Detail::LMStudioChatControlActions> defaultChatControls() {
     auto actions=std::make_shared<Detail::LMStudioChatControlActions>();
     actions->activate=WindowsLMStudioChatControl::activate;
@@ -1155,6 +1175,8 @@ private:
                     {"source","selected native LM Studio generation provider statistics"},
                     {"measurement_scope","latest_provider_generation"},{"conversation_id",nullptr},{"generation_reference",nullptr},
                     {"tokens_used",nullptr},{"context_capacity",nullptr},{"reason","No native LM Studio chat is selected."},
+                    {"cached_rendered_prompt_tokens",nullptr},{"cached_prompt_note",CachedPromptNote},
+                    {"pressure_tokens",nullptr},{"pressure_source",nullptr},{"pressure_headroom_tokens",nullptr},
                     {"sampling_note","Tokens added after the latest observed provider generation are not measured."},
                     {"reserved_tokens",reserved},{"headroom_tokens",nullptr},{"overflow",false},{"tools_active",false},
                     {"observed_at_unix_ms",std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()}};
@@ -1178,6 +1200,8 @@ private:
             const bool measured = hasForgeIntegrations(chat) && chat.contextCapacity > 0U && !chat.generationEvidence.empty();
             const auto reserved = static_cast<std::uint64_t>(config_.nextResponseReserve) + config_.handoffReserve + config_.estimationSafetyMargin;
             const auto remaining = chat.usedTokens >= chat.contextCapacity ? 0U : chat.contextCapacity - chat.usedTokens;
+            const auto pressureUsed = contextPressureTokens(chat);
+            const auto pressureRemaining = pressureUsed >= chat.contextCapacity ? 0U : chat.contextCapacity - pressureUsed;
             Json reference = nullptr;
             if (measured) {
                 const auto evidence = Json::parse(chat.generationEvidence, nullptr, false);
@@ -1192,6 +1216,11 @@ private:
                 {"measurement_scope", "latest_provider_generation"}, {"conversation_id", chat.conversationId}, {"generation_reference", std::move(reference)},
                 {"tokens_used", measured ? Json(chat.usedTokens) : Json(nullptr)},
                 {"context_capacity", measured ? Json(chat.contextCapacity) : Json(nullptr)},
+                {"cached_rendered_prompt_tokens", measured && chat.cachedRenderedPromptTokens ? Json(*chat.cachedRenderedPromptTokens) : Json(nullptr)},
+                {"cached_prompt_note", CachedPromptNote},
+                {"pressure_tokens", measured ? Json(pressureUsed) : Json(nullptr)},
+                {"pressure_source", measured ? Json(contextPressureSource(chat)) : Json(nullptr)},
+                {"pressure_headroom_tokens", measured ? Json(pressureRemaining > reserved ? pressureRemaining - reserved : 0U) : Json(nullptr)},
                 {"reason", measured ? Json(nullptr) : Json("No completed provider usage/context observation is available for this selected Forge chat.")},
                 {"sampling_note", "Tokens added after the latest observed provider generation are not measured."},
                 {"reserved_tokens", reserved}, {"headroom_tokens", measured ? Json(remaining > reserved ? remaining - reserved : 0U) : Json(nullptr)},
@@ -1210,21 +1239,29 @@ private:
         if(!reconcileCheckpoint(chat,operation)) return;
         Phase phase;bool delivered; {std::lock_guard lock{mutex_};phase=phase_;delivered=deliveryAcknowledged_;}
         if(phase==Phase::Complete) {
-            if(chat.conversationId!=successor_ || chat.generationEvidence!=completedGeneration_) {
+            const auto budget=visibleContextBudget(chat,config_);
+            const bool projectedPressure=cachedPromptDrivesPressure(chat) && budget &&
+                (budget.value().action==Domain::ContextBudgetAction::Rollover || budget.value().action==Domain::ContextBudgetAction::Emergency);
+            if(chat.conversationId!=successor_ || chat.generationEvidence!=completedGeneration_ || projectedPressure) {
                 std::lock_guard lock{mutex_};phase_=Phase::Observe;phase=Phase::Observe;
             } else return;
         }
         if(phase==Phase::Observe) {
             if(!hasForgeIntegrations(chat) || chat.contextCapacity==0 || chat.generationEvidence.empty()) return;
-            auto budget=Domain::resolveContextBudget({chat.contextCapacity,
-                static_cast<std::uint64_t>(config_.nextResponseReserve)+config_.handoffReserve+config_.estimationSafetyMargin,
-                std::nullopt,chat.usedTokens,std::nullopt,std::nullopt,chat.overflow});
+            auto budget=visibleContextBudget(chat,config_);
             if(!budget) throw std::runtime_error{budget.error().message};
-            if(budget.value().action!=Domain::ContextBudgetAction::Rollover && budget.value().action!=Domain::ContextBudgetAction::Emergency) return;
-            if(lastPressureConversation_!=chat.conversationId || lastPressureGeneration_!=chat.generationEvidence) {
+            if(budget.value().action!=Domain::ContextBudgetAction::Rollover && budget.value().action!=Domain::ContextBudgetAction::Emergency) {
+                lastPressureConversation_.clear();lastPressureGeneration_.clear();lastPressureCachedPrompt_.reset();return;
+            }
+            if(lastPressureConversation_!=chat.conversationId || lastPressureGeneration_!=chat.generationEvidence ||
+                lastPressureCachedPrompt_!=chat.cachedRenderedPromptTokens) {
                 std::lock_guard lock{mutex_};lastPressureConversation_=chat.conversationId;lastPressureGeneration_=chat.generationEvidence;
+                lastPressureCachedPrompt_=chat.cachedRenderedPromptTokens;
                 traceUnlocked({{"event","context_pressure_detected"},{"predecessor_lmstudio_session_id",chat.conversationId},
                     {"provider_used",chat.usedTokens},{"capacity",chat.contextCapacity},{"reserved",budget.value().reserved},
+                    {"cached_rendered_prompt_tokens",chat.cachedRenderedPromptTokens ? Json(*chat.cachedRenderedPromptTokens) : Json(nullptr)},
+                    {"pressure_tokens",contextPressureTokens(chat)},{"pressure_source",contextPressureSource(chat)},
+                    {"pressure_action",budget.value().action==Domain::ContextBudgetAction::Emergency ? "emergency" : "rollover"},
                     {"remaining",budget.value().remaining},{"overflow",chat.overflow},{"stop_reason",chat.stopReason},
                     {"tools_active",chat.toolsActive}});
             }
@@ -1237,11 +1274,10 @@ private:
             auto atPause=WindowsLMStudioConversationReader::read(studio_,operation);
             if(!atPause) throw std::runtime_error{atPause.error().message};
             if(!atPause.value() || atPause.value()->conversationId!=chat.conversationId ||
-                atPause.value()->toolsActive || !hasForgeIntegrations(*atPause.value())) return;
+                atPause.value()->toolsActive || !hasForgeIntegrations(*atPause.value()) ||
+                atPause.value()->contextCapacity==0U || atPause.value()->generationEvidence.empty()) return;
             chat=*atPause.value();
-            budget=Domain::resolveContextBudget({chat.contextCapacity,
-                static_cast<std::uint64_t>(config_.nextResponseReserve)+config_.handoffReserve+config_.estimationSafetyMargin,
-                std::nullopt,chat.usedTokens,std::nullopt,std::nullopt,chat.overflow});
+            budget=visibleContextBudget(chat,config_);
             if(!budget) throw std::runtime_error{budget.error().message};
             if(budget.value().action!=Domain::ContextBudgetAction::Rollover && budget.value().action!=Domain::ContextBudgetAction::Emergency) return;
             auto pointer=memory_.get({"continuity/project/"+project_.value()},operation);
@@ -1258,9 +1294,13 @@ private:
                 if(!previous) throw std::runtime_error{previous.error().message};
                 if(previous.value().record) previousSequence_=previous.value().record->writeSequence;
             }
+            const auto cachedPromptDescription=chat.cachedRenderedPromptTokens
+                ? " LM Studio cached full rendered prompt projects "+std::to_string(*chat.cachedRenderedPromptTokens)+" tokens. "+CachedPromptNote
+                : std::string{};
             const auto prompt="Auto Continuity: context pressure reached at this completed pause. Provider measured "+
                 std::to_string(chat.usedTokens)+" tokens of "+std::to_string(chat.contextCapacity)+
-                ", with "+std::to_string(budget.value().reserved)+" tokens reserved. Stop additional task work at this pause. "
+                ", with "+std::to_string(budget.value().reserved)+" tokens reserved."+cachedPromptDescription+
+                " Stop additional task work at this pause. "
                 "Invoke the actual MCP tool session_handoff through forge-conductor with packet_json: a JSON STRING containing the complete packet object. This callable tool is in your tool list. A shell command or a printed claim does not save a packet. "
                 "Include the current task goal, all constraints, completed changes with exact paths, commands and actual results, "
                 "decisions, blockers, key_files, agent session IDs, and ordered next_actions. In decisions, record EVERY explicit user constraint as separate strings: prohibitions, release/version instructions, protected installed processes, approval boundaries and project/package/policy bindings. Preserve exact values supplied by the user. Do not replace them with a generic claim that constraints were preserved. Distinguish code you read from commands actually executed; do not claim reading a function proves it ran. Put detailed state in resume_seed "
@@ -1274,6 +1314,9 @@ private:
                 retryAfter_=clock_.monotonicNow()+std::chrono::seconds{5};status_["state"]="requesting_model_packet";
                 traceUnlocked({{"event","context_pressure_pause"},{"predecessor_lmstudio_session_id",predecessor_},
                     {"provider_used",chat.usedTokens},{"capacity",chat.contextCapacity},{"reserved",budget.value().reserved},
+                    {"cached_rendered_prompt_tokens",chat.cachedRenderedPromptTokens ? Json(*chat.cachedRenderedPromptTokens) : Json(nullptr)},
+                    {"pressure_tokens",contextPressureTokens(chat)},{"pressure_source",contextPressureSource(chat)},
+                    {"pressure_action",budget.value().action==Domain::ContextBudgetAction::Emergency ? "emergency" : "rollover"},
                     {"remaining",budget.value().remaining},{"overflow",chat.overflow},{"stop_reason",chat.stopReason},
                     {"tools_active",false},{"request_to_model",prompt}}); }
             auto sent=sendControl(prompt,false,operation,chat.conversationId,"request");
@@ -1477,14 +1520,14 @@ private:
                         continue;
                     }
                     if(!recovered) continue;
-                    const auto budget=Domain::resolveContextBudget({chat.contextCapacity,
-                        static_cast<std::uint64_t>(config_.nextResponseReserve)+config_.handoffReserve+config_.estimationSafetyMargin,
-                        std::nullopt,chat.usedTokens,std::nullopt,std::nullopt,chat.overflow});
+                    const auto budget=visibleContextBudget(chat,config_);
                     std::lock_guard lock{mutex_};
                     traceUnlocked({{"event","following_forge_tool"},{"tool",result.name},{"ok",true},
                         {"successor_lmstudio_session_id",successor_},{"packet_id",packetId_},
                         {"native_request_id",result.requestId},{"plugin",result.pluginIdentifier},{"result",value},
                         {"provider_used",chat.usedTokens},{"capacity",chat.contextCapacity},
+                        {"cached_rendered_prompt_tokens",chat.cachedRenderedPromptTokens ? Json(*chat.cachedRenderedPromptTokens) : Json(nullptr)},
+                        {"pressure_tokens",contextPressureTokens(chat)},{"pressure_source",contextPressureSource(chat)},
                         {"context_budget_cleared",!chat.generationEvidence.empty() && budget && budget.value().action!=Domain::ContextBudgetAction::Rollover &&
                             budget.value().action!=Domain::ContextBudgetAction::Emergency}});
                     completedGeneration_=chat.generationEvidence;phase_=Phase::Complete;saveCheckpointUnlocked(operation);status_["state"]="resumed";return;
@@ -1522,6 +1565,7 @@ private:
     std::string predecessor_,successor_,createdSuccessor_,packetId_,previousPacket_,lastError_,continuityError_,packetRequest_,packetRequestGeneration_,handedMessage_,completedGeneration_;Json handed_;
     bool lastErrorFromObservation_{};
     std::string lastPressureConversation_,lastPressureGeneration_;
+    std::optional<std::uint64_t> lastPressureCachedPrompt_;
     std::string lastRejectedPacket_,repairRequest_,repairGeneration_;
     std::uint64_t lastRejectedSequence_{};std::uint32_t packetRepairAttempts_{};
     Domain::MonotonicTimePoint repairRetryAfter_{};bool repairAcknowledged_{};std::size_t previousRepairUserMessages_{};

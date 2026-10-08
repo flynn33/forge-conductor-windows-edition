@@ -1,6 +1,6 @@
-# Windows workflow capabilities in 1.3.24
+# Windows workflow capabilities in 1.3.25
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.24 implementation.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.25 implementation.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,7 +8,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-The current 1.3.24 source contains 112 Primary/Fallback tools, retaining the original 80 plus 32 additions. Six optional image-provider tools extend native CMake/CTest jobs, paged accessibility reads, bounded previews, web, DOCX/XLSX/PPTX, visible desktop/browser, PNG drawing/image analysis, independent workers and schedules. Integrated 1.3.24 source, package, installed Manager/LM Studio and native-model qualification remain pending. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. See [1.3.24 source notes](Release-1.3.24).
+The current 1.3.25 source contains 112 Primary/Fallback tools, retaining the original 80 plus 32 additions. Six optional image-provider tools extend native CMake/CTest jobs, paged accessibility reads, bounded previews, web, DOCX/XLSX/PPTX, visible desktop/browser, PNG drawing/image analysis, independent workers and schedules. Integrated 1.3.25 source, package, installed Manager/LM Studio and native-model qualification remain pending. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. See [1.3.25 source notes](Release-1.3.25).
 
 Rig's corrected display shows the observed native conversation and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for actual rollover state; preference readback does not establish completed rollover. The historical 1.3.19 package included this correction; its installed/readback and current-chat evidence remains bound to that artifact above.
 
@@ -46,4 +46,4 @@ Meaningful changes use the installed Forge Conductor application's local Windows
 
 Desktop input reports submission and requires subsequent observation. Browser launch is not proof of page loading. Screen capture includes overlapping visible windows, and Windows account/integrity restrictions still apply.
 
-See the [complete capability contracts and limits](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/HOST-CAPABILITIES.md), [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md) and [1.3.24 verification scope](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.24.md). The [published 1.3.21 measured verification](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.21.md) and [1.3.19 executed verification](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.19.md) remain historical.
+See the [complete capability contracts and limits](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/HOST-CAPABILITIES.md), [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md) and [1.3.25 verification scope](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.25.md). The [published 1.3.21 measured verification](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.21.md) and [1.3.19 executed verification](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.19.md) remain historical.
