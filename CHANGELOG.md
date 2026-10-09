@@ -18,6 +18,10 @@ The Manager presence projection now selects connectors within the existing 25-se
 
 The new regression first reproduced `limit_exceeded: The presence dashboard projection exceeds its bound.` against the previous implementation. After the correction, both affected native targets passed (2/2 in 3.80 seconds), including retained history, inclusive timestamp boundaries, future heartbeats, current overflow and cancellation. Current complete-source and installed observations have separate source-bound verification records.
 
+### Model capability reference
+
+Added the [complete LM Studio model access guide](docs/LM-STUDIO-MODEL-CAPABILITIES.md) and [JSON companion](docs/LM-STUDIO-MODEL-CAPABILITIES.json): all 112 exact tool descriptors across 27 packs, ten specialist playbooks, Primary/Fallback/CLU role membership, managed-worker restrictions, owner setup, job/result paging, continuity and external-service prerequisites. All 112 schemas and 21 illustrative call arguments were checked against the source catalog; this documentation does not add a new runtime qualification or change the released 1.3.28 / 1.3.28.0 artifact.
+
 ### Repository verification follow-up
 
 The Infrastructure registry retains all 141 groups and every existing assertion. CTest now runs the 139 core groups and the two complete recovery groups in separate processes, each with the existing 180-second bound; the default direct invocation still runs the whole registry. After the hosted aggregate invocation exceeded that bound, this registration gives each suite its own execution budget, with 169 configured repository CTest entries. The exact hosted stall location remains unknown. Product sources, version numbers and the released package are unchanged; its source-bound 167-entry measurements remain intact.

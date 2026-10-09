@@ -14,6 +14,8 @@ The current source implementation is 1.3.28 with 112 Primary/Fallback tools; cur
 - [Architecture](ARCHITECTURE.md)
 - [Capability map](PARITY.md)
 - [Dedicated host capability guide](HOST-CAPABILITIES.md)
+- [Complete LM Studio model capabilities and access guide](LM-STUDIO-MODEL-CAPABILITIES.md)
+- [Machine-readable LM Studio tool catalog, schemas and access rules](LM-STUDIO-MODEL-CAPABILITIES.json)
 - [Native CMake/CTest job contracts and examples](CMAKE-CTEST.md)
 - [Optional ComfyUI image-provider contracts and examples](IMAGE-PROVIDER.md)
 - [Wiki publication sources](wiki/README.md)

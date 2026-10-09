@@ -10,11 +10,13 @@ Forge Conductor speaks newline-delimited JSON-RPC 2.0 over stdio for LM Studio. 
 
 | Role | Server identity | Catalog |
 | --- | --- | --- |
-| Primary | `forge-conductor` | General native catalog; CLU-only controls excluded |
-| Fallback | `forge-conductor-fallback` | Independent general catalog and health |
+| Primary | `forge-conductor` | All 112 tools, including the five governance names |
+| Fallback | `forge-conductor-fallback` | The same 112 tools; independent connector and health |
 | CLU | `forge-conductor-clu` | Governance-only `clu.evaluate`, `clu.export_log`, `clu.findings`, `clu.resolve`, and `project_policy.read` |
 
 All three registrations share an exact deployment revision while retaining distinct role, health, process, and presence evidence. The 1.3.28 implementation retains the exact integer `timeout: 180000` contract for every role.
+
+The CLU catalog is a five-tool subset of the 112, not an additional catalog. The [complete model access guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/LM-STUDIO-MODEL-CAPABILITIES.md) and [JSON companion](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/LM-STUDIO-MODEL-CAPABILITIES.json) retain every tool's full schema, role and managed-worker access rules.
 
 ## Project context contract
 
