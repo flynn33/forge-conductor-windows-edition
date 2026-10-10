@@ -8,6 +8,8 @@ Added durable workflow preparation, preview/final render plans, exact-ID recover
 
 Added the ComfyUI Settings card and Rig readiness, local image/text-to-video/image-to-video starter resources, and existing-tool guidance for larger image previews, browser video delivery and independent sampled review. The existing LM Studio Responses path now accounts separately for bounded image content while preserving its text-only and handoff limit.
 
+Corrected the lifetime of streamed artifact hashing state so Windows destroys the hash handle before Forge frees its backing buffer, including cancellation and error cleanup. The initial unpublished package's completed-video status crash and its replacement verification remain recorded separately.
+
 See [release notes](docs/releases/1.3.29.md), [automation contracts](docs/COMFYUI-AUTOMATION.md), [actual host results](docs/COMFYUI_HOST_QUALIFICATION.md), and [versioned release verification](docs/validation/RELEASE-1.3.29.md). Previous candidate checks, actual inference, versioned package verification and operator quality acceptance retain distinct scopes.
 
 ## 1.3.28 — Compact packets, terminal recovery and current connector presence

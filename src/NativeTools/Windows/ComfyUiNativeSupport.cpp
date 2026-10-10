@@ -214,13 +214,15 @@ Json fileFacts(HANDLE file, const Domain::OperationContext& context) {
     BY_HANDLE_FILE_INFORMATION info{};
     if (!GetFileInformationByHandle(file, &info) || (info.dwFileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)))
         fail(Domain::ErrorCodes::InvalidRequest, "ComfyUI artifact is not a regular file.");
+    // CNG retains this buffer until Cleanup destroys the hash handle.
+    std::vector<UCHAR> object;
     BCRYPT_ALG_HANDLE algorithm{}; BCRYPT_HASH_HANDLE hash{};
     struct Cleanup { BCRYPT_ALG_HANDLE& a; BCRYPT_HASH_HANDLE& h; ~Cleanup() { if(h) BCryptDestroyHash(h); if(a) BCryptCloseAlgorithmProvider(a, 0); } } cleanup{algorithm, hash};
     DWORD length{}, objectBytes{};
     if (BCryptOpenAlgorithmProvider(&algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0) < 0 ||
         BCryptGetProperty(algorithm, BCRYPT_OBJECT_LENGTH, reinterpret_cast<PUCHAR>(&objectBytes), sizeof(objectBytes), &length, 0) < 0)
         fail(Domain::ErrorCodes::InternalFailure, "Cannot initialize ComfyUI artifact hashing.");
-    std::vector<UCHAR> object(objectBytes); std::array<UCHAR, 32> digest{};
+    object.resize(objectBytes); std::array<UCHAR, 32> digest{};
     if (BCryptCreateHash(algorithm, &hash, object.data(), objectBytes, nullptr, 0, 0) < 0)
         fail(Domain::ErrorCodes::InternalFailure, "Cannot create ComfyUI artifact hash.");
     LARGE_INTEGER zero{};

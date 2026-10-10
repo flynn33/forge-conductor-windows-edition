@@ -17,16 +17,64 @@
 #include <array>
 #include <atomic>
 #include <condition_variable>
+#include <cstddef>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <new>
 #include <nlohmann/json.hpp>
 #include <set>
 #include <span>
 #include <thread>
 #include <vector>
+
+namespace {
+struct HashObjectAllocationProbe final {
+    std::size_t expectedBytes{};
+    void* allocation{};
+    void* base{};
+    bool armed{};
+    bool captured{};
+    bool released{};
+};
+thread_local HashObjectAllocationProbe hashObjectAllocationProbe;
+}
+
+// This test-only probe guards one allocation on the calling thread. Releasing
+// the backing pages makes a CNG handle outliving its hash buffer deterministic.
+void* operator new(const std::size_t bytes) {
+    auto& probe=hashObjectAllocationProbe;
+    if(probe.armed && !probe.captured && bytes==probe.expectedBytes) {
+        SYSTEM_INFO system{};GetSystemInfo(&system);
+        const auto alignment=alignof(std::max_align_t);
+        const auto aligned=(bytes+alignment-1U)/alignment*alignment;
+        const auto pageBytes=static_cast<std::size_t>(system.dwPageSize);
+        const auto reserve=(aligned+pageBytes-1U)/pageBytes*pageBytes;
+        auto* base=VirtualAlloc(nullptr,reserve,MEM_RESERVE|MEM_COMMIT,PAGE_READWRITE);
+        if(!base)throw std::bad_alloc{};
+        probe.base=base;probe.allocation=static_cast<unsigned char*>(base)+reserve-aligned;probe.captured=true;
+        return probe.allocation;
+    }
+    for(;;) {
+        if(auto* allocation=std::malloc(bytes?bytes:1U))return allocation;
+        const auto handler=std::get_new_handler();if(!handler)throw std::bad_alloc{};handler();
+    }
+}
+void* operator new[](const std::size_t bytes) { return ::operator new(bytes); }
+void operator delete(void* allocation) noexcept {
+    auto& probe=hashObjectAllocationProbe;
+    if(allocation && allocation==probe.allocation) {
+        if(!VirtualFree(probe.base,0U,MEM_RELEASE))std::terminate();
+        probe.allocation=nullptr;probe.base=nullptr;probe.released=true;return;
+    }
+    std::free(allocation);
+}
+void operator delete[](void* allocation) noexcept { ::operator delete(allocation); }
+void operator delete(void* allocation,std::size_t) noexcept { ::operator delete(allocation); }
+void operator delete[](void* allocation,std::size_t) noexcept { ::operator delete(allocation); }
 
 namespace ForgeConductor::Tests {
 namespace {
@@ -1551,6 +1599,41 @@ void publisherMetadataRetryRetainsNegativeEvidenceAndCumulativeLedger() {
     }
     bool rejected=false;try{static_cast<void>(publisherMetadataDocument(200U,"<html>invalid successful JSON</html>",std::string(64U,'a'),36ULL));}catch(const Failure& error){rejected=error.error.code==Domain::ErrorCodes::MalformedMessage;}require(rejected,"Successful publisher metadata accepted malformed JSON.");
 }
+void nativeFileHashRetainsObjectStorageUntilHandleDestruction() {
+    using NativeTools::Windows::ComfyDetail::Handle;
+    using NativeTools::Windows::ComfyDetail::Failure;
+    using NativeTools::Windows::ComfyDetail::fileFacts;
+    BCRYPT_ALG_HANDLE algorithm{};DWORD objectBytes{},returned{};
+    require(BCryptOpenAlgorithmProvider(&algorithm,BCRYPT_SHA256_ALGORITHM,nullptr,0)>=0,"Hash lifetime fixture could not open SHA256.");
+    const auto property=BCryptGetProperty(algorithm,BCRYPT_OBJECT_LENGTH,reinterpret_cast<PUCHAR>(&objectBytes),sizeof(objectBytes),&returned,0);
+    BCryptCloseAlgorithmProvider(algorithm,0);
+    require(property>=0 && returned==sizeof(objectBytes) && objectBytes>0U && objectBytes<=1024U*1024U,"Hash lifetime fixture could not measure its bounded CNG object allocation.");
+    struct ProbeScope final {
+        explicit ProbeScope(const std::size_t bytes) {hashObjectAllocationProbe={bytes,nullptr,nullptr,true,false,false};}
+        ~ProbeScope() {hashObjectAllocationProbe.armed=false;}
+    };
+    for(const auto* scenario:{"empty","multi_chunk","cancel"}) {
+        Fixture fixture;const auto path=fixture.root/L"hash-lifetime.bin";
+        std::string content(std::string_view{scenario}=="empty"?0U:3U*65536U+17U,'x');
+        for(std::size_t index=0;index<content.size();++index)content[index]=static_cast<char>(index%251U);
+        std::ofstream{path,std::ios::binary}<<content;
+        Infrastructure::Windows::BCryptSha256Hasher hasher;
+        const auto expected=take(hasher.sha256(std::as_bytes(std::span{content.data(),content.size()}))).value();
+        Handle input{CreateFileW(path.c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr)};
+        require(static_cast<bool>(input),"Hash lifetime fixture could not open its artifact.");
+        TestContext test;const auto context=test.active();const auto cancelled=std::string_view{scenario}=="cancel";
+        if(cancelled)test.cancellation.request_stop();
+        Json result;bool caught{};
+        {
+            ProbeScope probe{objectBytes};
+            try {result=fileFacts(input.get(),context);}
+            catch(const Failure& failure) {require(cancelled && failure.error.code==Domain::ErrorCodes::Cancelled,"Hash lifetime unwind changed its cancellation outcome.");caught=true;}
+        }
+        require(hashObjectAllocationProbe.captured && hashObjectAllocationProbe.released && !hashObjectAllocationProbe.base,"Native hash did not release the exact guarded CNG object allocation.");
+        require(caught==cancelled,"Native hashing did not preserve its normal/cancelled disposition.");
+        if(!cancelled)require(result.at("sha256").get<std::string>()==expected && result.at("bytes")==content.size(),"Guarded native hashing changed its multi-chunk/empty digest or byte count.");
+    }
+}
 void nativeDependencyCopyStreamsAndPreservesInactiveFailureEvidence() {
     using NativeTools::Windows::ComfyDetail::Handle;using NativeTools::Windows::ComfyDetail::Failure;using NativeTools::Windows::ComfyDetail::copyFileContents;using NativeTools::Windows::ComfyDetail::fileFacts;
     for(const auto* scenario:{"exact","reserve","cancel","oversized"}){
@@ -1896,6 +1979,7 @@ def get_requires_for_build_wheel(config_settings=None):
 }
 }
 int main(int argc,char** argv){using namespace ForgeConductor::Tests;
+    if(argc==2&&std::string_view{argv[1]}=="--hash-object-lifetime"){SetErrorMode(SEM_FAILCRITICALERRORS|SEM_NOGPFAULTERRORBOX);try{nativeFileHashRetainsObjectStorageUntilHandleDestruction();std::cout<<"PASS native-hash-object-lifetime-normal-and-cancellation\n";return 0;}catch(const std::exception& error){std::cerr<<"FAIL native hash lifetime: "<<error.what()<<'\n';return 1;}}
     if(argc==4&&std::string_view{argv[1]}=="--fixture-process-lifetime"){
         try{return runLifetimeFixtureProcess(argv[2],Fs::path{ForgeConductor::NativeTools::Windows::ComfyDetail::wide(argv[3])});}
         catch(const std::exception& error){std::cerr<<error.what();return 76;}
@@ -1941,6 +2025,7 @@ int main(int argc,char** argv){using namespace ForgeConductor::Tests;
     else if(argc>1){Json arguments=Json::array();for(int index=1;index<argc;++index)arguments.push_back(argv[index]);std::cout<<arguments.dump();return 78;}
     TestRegistry tests{{"streaming-inspection-authority",inspectHashesAndRejectsOutsideScope},{"typed-workflow-export-collision",apiWorkflowPatchesAndExportConflicts},{"invalid-control-disabled-shutdown",invalidOperationsAndShutdownRejectBeforeEffects},
     {"starter-catalog-absolute-preview-final-typed-import",starterCatalogPathsImportExactPreviewAndFinalGraphs},
+    {"native-hash-object-lifetime-normal-and-cancellation",nativeFileHashRetainsObjectStorageUntilHandleDestruction},
     {"independent-fixture-exclusive-unavailable-provider-ports",independentFixturesReserveDistinctUnavailableEndpoints},
     {"embedded-build-interpreter-copy-reuse-partial-reserve-baseline",embeddedBuildInterpreterPreservesProviderAndRetainsSealedCopies},
     {"native-websocket-silent-poll-delayed-fragment-binary-disconnect",nativeWebSocketPollingRetainsSilentAndFragmentedReads},
