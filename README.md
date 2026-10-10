@@ -1,137 +1,100 @@
 # Forge Conductor for Windows
 
-## Current 1.3.29 — local ComfyUI automation
+Local orchestration and tool use for LM Studio on Windows 11 x64.
 
-Forge Conductor **1.3.29 / Windows package 1.3.29.0** adds local ComfyUI automation for images and video. Describe the result in LM Studio; the model discovers nodes and models, constructs the workflow, starts or prepares the selected local installation, renders a preview, and uses a subsequent saved operator approval to execute the sealed final plan. Eleven general ComfyUI tools plus `desktop_scroll` and `desktop_drag` bring Primary and Fallback to **125 tools**. The six existing image tools, five CLU tools, and ten specialist playbooks remain.
+Forge Conductor ships as a WinUI app, a per-user Manager, a CLI, and three LM Studio plugins. Chat stays in LM Studio. Forge provides the tools, project memory, continuity, and local services behind that chat.
 
-ComfyUI automation settings and Rig readiness expose the local installation, automatic setup, model storage, download budget, free-space reserve, generation timeout, and quality preference. Defaults are 500 GB per preparation operation, a 50 GB reserve, and 30 minutes. Image, text-to-video, and image-to-video starter workflows are included. Arbitrary workflows use discovered node contracts; unresolved publisher or package contracts return actual preparation errors. The model presents the verified preview and waits for `approved`, `yes`, or `render final` in the native LM Studio chat.
+**Current release: 1.3.29** (Windows package 1.3.29.0).
 
-Media inference runs on the Windows host while LM Studio keeps its existing model connection. Verified artifacts retain paths, byte counts, SHA-256 and measured media metadata. Video delivery uses the existing browser tools and sampled independent image review; decoding alone does not establish visual quality. Read the [automation guide](docs/COMFYUI-AUTOMATION.md), [actual host qualification](docs/COMFYUI_HOST_QUALIFICATION.md), [release notes](docs/releases/1.3.29.md), and [versioned release verification](docs/validation/RELEASE-1.3.29.md). Host inference, package installation, publication and operator quality acceptance have separate evidence.
+## Download
 
-The final signed source passed Product All, **178/178 Release tests in 226.22 seconds**, all three static gates and package persistence. Independent archive and installed readbacks matched all **331 declared payload files**. The installed cold connector reached its Manager in **2.1128484 seconds**. Forge's **Production** label identifies the normal data store; **Isolated profile** identifies an explicitly selected alternate data folder, such as the retained ComfyUI qualification workspace.
+| | |
+| --- | --- |
+| Release | [v1.3.29](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.29) |
+| Installation bundle | [ForgeConductor-1.3.29.0-x64.zip](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.29/ForgeConductor-1.3.29.0-x64.zip) |
+| Windows package | [ForgeConductor-1.3.29.0-x64.msix](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.29/ForgeConductor-1.3.29.0-x64.msix) |
 
-[Release 1.3.29](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.29) is published as `flynn33` with seven verified assets. Download the [installation bundle](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.29/ForgeConductor-1.3.29.0-x64.zip) or [Windows package](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.29/ForgeConductor-1.3.29.0-x64.msix). The installed host has returned to **System online / Production**, with its three integrations repaired to the existing repository project and ComfyUI ready on the RTX 4090. Exact-source tag CI also passed **178/178 in 209.94 seconds**; the separate main-run timeouts and popup-automation limitation remain in the verification record.
+The release contains seven verified assets. The bundle includes the signed package, the public certificate, the installer, and checksums.
 
-## Previous 1.3.28 release
+## 1.3.29 — local ComfyUI automation
 
-Forge Conductor **1.3.28 / Windows package 1.3.28.0** corrects packet-request instructions, explicit terminal recovery and current connector presence. Handoff and repair prompts ask for only the outer `packet_json` argument, with every packet field inside its encoded JSON object; direct-field calls and refusal of conflicting outer fields remain supported. The advisory output target never takes priority over actual facts, exact values, constraints or paths. The Manager filters the current presence projection through the existing 25-second heartbeat window before enforcing its bound, while full-history reads and refusal of an oversized current collection remain intact. All 112 Primary/Fallback tool names, five CLU tools and ten specialist playbooks remain; the only catalog amendment is the `session_handoff` packet_json description.
+Describe an image or video in LM Studio. The model discovers nodes and models, builds the workflow, prepares the selected local ComfyUI installation, and returns a verified preview. Reply `approved`, `yes`, or `render final` in that chat. Forge then runs the sealed final plan.
 
-The installed explicit terminal-recovery observation used an owner-opened Qwen conversation and an owner-sent task. Primary saved a new model-authored packet, returned its full context and completed a later successful tool call. Manager archived the previous encrypted checkpoint exactly and completed `terminal_model_packet_native_resume` with `automatic_replay:false`. This branch did not issue New chat or Send; automatic delivery has its own measured scope below.
+- Primary and Fallback expose **125 tools**: the previous catalog, eleven ComfyUI tools, and `desktop_scroll` / `desktop_drag`.
+- Five CLU tools, ten specialist playbooks, and the six existing image tools remain.
+- Preparation defaults are 500 GB per operation, a 50 GB free-space reserve, and 30 minutes.
+- Starter workflows cover image, text-to-video, and image-to-video.
+- ComfyUI automation is off until you enable it in Settings.
 
-At source `0aa0c2cd256fdbc73b29d055313ba0c8d5f13069`, tree `2858607cbefb7b3a00ac9eebc77dbd271c8c2bce`, Product All, all three static gates and package persistence passed; the complete configured Release graph passed **167/167 in 191.39 seconds**. The development-signed **1.3.28.0** installation matched all four executable images and **323 payload files**, preserving **8686 profile files / 437213128 bytes** plus all four protected snapshots before launch. Installed canonical catalogs returned **112/112/5**, preserving 105 complete historical descriptors and declaring one exact session_handoff packet_json description amendment; every other field of all 112 descriptors matched the retained catalog. Original authority passed **7 cases / 63 requests** and fresh CLI passed **8 cases / 38 requests**, with zero model-inference requests in those isolated scopes. Public MCP/Manager checks covered all six image tools and **3 accepted generation jobs**; selected Qwen image-provider evidence verified **12 actual pairs** across all six tools. These are separate measured scopes; catalog counts do not establish execution of every advertised tool. Exact-source CI and the seven release assets are checked separately.
+Media inference runs on the Windows host. LM Studio keeps its existing model connection. Image-provider jobs (`image_generate`, `image_edit`, and the `image_job_*` tools) and ComfyUI jobs are separate paths with separate job IDs.
 
-The selected Qwen 3.8 27B conversation passed strict native acceptance of **8 actual calls across five groups**: independent pixel receipts, completed CMake/CTest results, paged desktop accessibility, a fresh blind image analysis and a real native error response. The complete before-message prefix and owner MCP/plugin inventories remained exact. The review and decoder evidence belong to this artifact; earlier reviewer IDs, output sizes and connector exits retain their separate historical identities.
+| Guide | What it covers |
+| --- | --- |
+| [Automation](docs/COMFYUI-AUTOMATION.md) | Tools, setup, approval, limits |
+| [Host qualification](docs/COMFYUI_HOST_QUALIFICATION.md) | Inference timings and visual limits |
+| [Release notes](docs/releases/1.3.29.md) | What shipped in 1.3.29 |
+| [Release verification](docs/validation/RELEASE-1.3.29.md) | Build, package, install, publication |
 
-Installed automatic continuity passed its strict native scope under provider reserve pressure. At initial pressure, the selected provider generation measured **230525 tokens** of loaded capacity **262144**, with configured reserves **10240** and remaining headroom **21379**. Its actual trace recorded a smaller cached full rendered prompt projection of **145141**. The fresh confirmed-pause reread measured provider usage **230525**, reserves **10240** and remaining headroom **21379**, with traced cached projection **145141**; both traces recorded latest-provider rollover. These cached values are contemporaneous trace values, separate from the later saved tokenCount. This qualification used reserve pressure, not physical context exhaustion. The automatic request was confirmed through actual uncertain-to-confirmed checkpoint reconciliation and the exact saved native user message; no request trace event is inferred. Primary saved packet `aaec76fc-548f-48dc-9cd2-495aa6a81b8a` at write sequence **14**. Manager remained alive across all three predecessor connector CLI exits, preserving the exact **10-message** predecessor prefix and ordered checkpoint/effect evidence. Actual native New and delivery-Send, the selected successor user message, full Primary `context_get` result and a later successful Primary status result established continuation. Manual packet delivery was not used. The native context_get and status requests were recorded together in the same tool step; the complete context_get result preceded the successful status result. The cached count may be stale and is separate from current KV usage and physical provider overflow.
+## Install
 
-The focused working-source build and three-target check passed: 3/3 targets in 147.40 seconds, 141 Infrastructure groups in 147.11 seconds, all 40 terminal-recovery cases, 1,042 catalog assertions and 2,090 adapter assertions. The terminal cases cover unchanged and changed routes, refusal of incomplete or mismatched native evidence, and sequence/pointer changes before publication. These focused source regressions remain distinct from the current artifact measurements and publication readback.
+You need Windows 11 x64. Chat features also need LM Studio and a loaded tool-capable model. The app, Manager, CLI, and local tools install together.
 
-The Manager presence projection now selects connectors within the existing 25-second heartbeat window before applying the collection bound. Expired connector records remain stored and the repository's default full-history read is retained. A current collection exceeding its bound still fails explicitly. This corrects the observed installed 1.3.27 runtime-inspection failure after 271 expired presence records accumulated.
+Extract the bundle, open PowerShell in that folder, and run:
 
-The new regression first reproduced `limit_exceeded: The presence dashboard projection exceeds its bound.` against the previous implementation. After the correction, both affected native targets passed (2/2 in 3.80 seconds), including retained history, inclusive timestamp boundaries, future heartbeats, current overflow and cancellation. Current complete-source and installed observations have separate source-bound verification records.
+```powershell
+./Install.ps1 -PreflightOnly
+./Install.ps1
+```
 
-## Superseded 1.3.27 installed investigation
+Preflight checks the package, certificate, signer, and version, and it rejects a downgrade. Launch **Forge Conductor** from Start.
 
-The superseded, unpublished **1.3.27 / package 1.3.27.0** artifact used source `a78987745f6926b16f9bfdbfe10c263f8791c10e`, tree `57539f81f820eabc4661fe9bcb662b89b302c9c3`. Product All, three static gates and package persistence passed; its complete Release graph passed **167/167 in 173.57 seconds**. The signed installation matched all four executable images and **323 payload files**, preserving **8,623 profile files / 426,385,142 bytes** plus four protected snapshots before launch. Installed catalogs returned **112/112/5** with the then-current descriptors. Exact-source CI separately passed **167/167 in 173.22 seconds**. Original authority, fresh CLI and public image-provider checks retained their separately sealed local scopes. One automatic rollover recorded native New, packet delivery-Send, full Primary packet recovery and a later successful status result; the context/status requests were recorded together, with their results ordered. Later in a different chat, a handoff call duplicated outer and encoded packet fields and received `InvalidRequest`; that native generation reached the context limit. The prior calls and failed attempts remain under their original source, package and binary identities. No 1.3.27 release was published.
+After an upgrade:
 
-## Historical 1.3.26 installed investigation
+1. Select the project in Workspace.
+2. Open **Settings → LM Studio plugins → Install or repair all three plugins**.
+3. Start a new model bootstrap, or reconnect the integrations.
+4. In LM Studio, open the plugin connection and select the integration for the chat.
 
-The installed, unpublished **1.3.26 / Windows package 1.3.26.0** artifact at source `d0da197db770f26122c82e38435610caf130b10c`, tree `698e1af6e5d6881c2a97f75df81f5bd6e1a280c3`, passed Product All, all three static gates, package persistence and **167/167 local Release tests in 148.63 seconds**. Exact-source Windows CI run **37774964651** passed **167/167 in 143.93 seconds**, including the static gates and staged-product upload. Its development-signed installation matched all four executable images and **323 payload files**, preserving **8,589 profile files / 424,655,103 bytes** and all four protected snapshots before launch. Installed catalogs returned **112/112/5**, retaining every prior 106 descriptor. These checks do not establish automatic continuity or qualify 1.3.27. Original authority passed **7 cases / 63 requests**, fresh isolated CLI acceptance passed **8 cases / 38 requests**, and a separate fresh blind-fixture decoder passed **1 case / 4 requests**. Those isolated scopes made zero model-inference requests and their owned CLI/private Manager processes exited normally with code `0` while retaining protected project, configuration and routing evidence. Public MCP/Manager image-provider acceptance passed **7 cases / 46 requests** with four owned CLI sessions and two graceful private Manager exits, preserving owner routing/configuration evidence. It exercised retained status, explicit masking, running-job local cancellation and exact-job resume after Manager reconstruction without another generation POST. It did not qualify actual Qwen delivery, image-model quality or a real crash/network outage.
+Repair updates Primary (`forge-conductor`), Fallback (`forge-conductor-fallback`), and CLU (`forge-conductor-clu`) to the current binary, the selected project, and the 180-second request deadline. Other MCP registrations stay as they are.
 
-The selected Qwen recovery capture contained **24 messages**. Two actual Primary calls returned saved context and status reporting **1.3.26 / 112 tools**; the response reached `eosFound`. Manager remained `recovery_pending` at inherited checkpoint revision **14**: `WaitingPacket`, no packet or successor, no effect, and false packet-request acknowledgement, while delivery acknowledgement and context recovery remained true from the older cycle. The current source begins a new packet-request cycle without clearing those two flags. Fresh native readback did not satisfy the existing successor-and-packet recovery eligibility. Automatic New chat/Send and successor continuation were not established, and no 1.3.26 release was published. The subsequent 1.3.27 changes and their checks have separate inputs. The independently retained native process handles recorded all three predecessor connector CLIs and bridge processes exiting with code `1` while Manager PID `35288` remained alive. This is separate from the normal code `0` isolated processes and does not prove automatic handoff. Selected native five-group and native image-provider scopes were not qualified by these captures.
+Day-to-day data is stored in `%LOCALAPPDATA%\Forge Conductor`. **Production** is that store. **Isolated profile** is a data folder you select on purpose. Uninstalling the package leaves the profile on disk.
 
-See [release notes](docs/releases/1.3.28.md), [1.3.28 verification](docs/validation/HOST-CAPABILITIES-1.3.28.md) and [retained 1.3.24 scopes](docs/validation/HOST-CAPABILITIES-1.3.24.md).
+Development-signed builds, certificate trust, and upgrade rules are in [Install](docs/INSTALL.md).
 
-## 1.3.28 bounded dispatch-context
-The 1.3.28 implementation gives each continuity control dispatch a fresh **25-second** operation context, separate from the **20-second** observation tick, and uses that same dispatch context for receipt callbacks, fresh authority/configuration checks and checkpoint persistence. It preserves the cancellation token, revalidates the current authority before effects, and retains the existing controller's 25-second cap and queries. No deadline extension revives cancelled work, no permission or route check is relaxed, and uncertain New chat/Send remains unreplayed. Actual installed automatic delivery and source checks have separate current-artifact measurements in the verification record.
+## Using the app
 
-Guarded timing used the same C570 controller and protected native inputs. With the original **20-second** caller budget, Send preparation returned `deadline_exceeded` after **20,375.0247 ms**, before the receipt callback. With a fresh **25-second** caller budget, it reached `BeforeDispatch` after **20,363.4627 ms** and the private callback deliberately refused dispatch with `conflict` at **20,367.1673 ms**, leaving **4,632.8327 ms**. Both captures preserved the protected native inputs; neither invoked Send or New chat. This demonstrates the caller-budget boundary on this measured path, not completed native submission or a general latency guarantee.
+| Surface | Use it for |
+| --- | --- |
+| Workspace | Project and provider, instruction packages, CLU policy, Auto Continuity, readiness |
+| Rig | System, chat context, model, storage, processes, and ComfyUI readiness. Runtime: Ensure manager, Restart service, Stop service |
+| Continuity | Saved packets: open, delete a selection, or clear |
+| Activity | Outcomes, governance findings, corrections, notifications, exported evidence |
+| Settings | Configuration, ComfyUI limits, context reserves, and saved records |
 
-## Superseded 1.3.25 installed investigation
+`get_forge_status` reports the bound project, instruction packages in execution order, the policy source, and the tool catalog. `host_capabilities` reports what this host can run.
 
-The installed, unpublished **1.3.25 / 1.3.25.0** artifact at source `5708cb9c52ed2f2dd10b3a500b57c7ffff6c6f7b`, tree `fcd027b9bf82bc88673a3ee43069973c1600a831`, passed Product All, all three static gates, package persistence and **167/167 local Release tests in 146.24 seconds**. Its signed installation verified all four executable images and **323 payload files**, preserving **8,553 profile files / 422,592,105 bytes** and the four protected snapshots before launch. Exact-source Windows CI run 37763301666 failed **165/167 in 147.41 seconds** at DesktopArtifact accessibility connection and Infrastructure diagnostic rotation checks; the later CI static-gate/upload steps were skipped. Local success does not replace that failed CI result. Actual native assisted readback reported 1.3.25 and 112 tools; it did not establish all-tool runtime qualification or automatic New chat/Send. Full controller diagnosis remained open, and no 1.3.25 release was published. These observations do not qualify 1.3.26.
+Auto Continuity watches the selected LM Studio conversation. At reserve pressure it requests a model-written packet, opens a native successor chat, sends the packet, and checks a following Forge tool result. Leave the Manager running. Primary owns that rollover. Fallback is the second general catalog. CLU evaluates development policy.
 
-The captured installed automatic attempt preserved every field of the original **86 messages** in the **59,661,455-byte** native conversation. An **18,697-character** unsent draft exactly matched the traced automatic packet request. Checkpoint revision **14** retained `WaitingPacket`, `effect:null` and a false packet-request acknowledgement. The capture reported no confirmed request Send, no New chat dispatch and no new native tool dispatch for this attempt. It does not establish EOS, a saved new model packet, a successor or automatic delivery. The preserved failure receipt has SHA-256 `8075fd1adeb47c96709d644ac08927dba8074e904e2147537b185ac8c038f6fb`; the native file has SHA-256 `ced8d7316db1ea04bde709cb53cf8424afbb7140dccbac120fd95fa329463547`. This capture does not determine the deadline failure by itself; the later guarded timing comparison below diagnoses that boundary. No query optimization is integrated.
+Workflows, jobs, desktop and image tools, schedules, and filesystem authority are in the [user guide](docs/USER-GUIDE.md). Schemas are in the [model capability guide](docs/LM-STUDIO-MODEL-CAPABILITIES.md) and the [JSON catalog](docs/LM-STUDIO-MODEL-CAPABILITIES.json).
 
-## Superseded 1.3.24 installed investigation
+## Verification
 
-The installed, unpublished **1.3.24 / 1.3.24.0** artifact at source `83d133df8aeb3801c6813be57d0dd81dfe56b6ea`, tree `3c38cb4390605c6f581debe7da9f27609daad3da`, passed Product All, all three static gates, package persistence and **167/167 Release tests in 96.38 seconds**. Exact-source Windows CI run 37745306780 passed **167/167 in 135.32 seconds**. Its development-signed installation matched all four executable images and all **323 payload files**, preserving **8,505 profile files / 414,180,807 bytes** and four protected snapshots before launch. Installed catalogs returned **112/112/5**, retaining every prior 106 descriptor. Original authority and fresh CLI checks passed **7 cases / 63 requests** and **8 cases / 38 requests**. Public image-provider acceptance passed **7 cases / 47 requests**; selected Qwen image-provider acceptance verified **16 actual pairs across all six image tools**, and native acceptance verified **8 calls across five groups**. These eleven completed scopes did not establish automatic continuity, and no 1.3.24 release was published. They do not qualify the 1.3.25 candidate.
+Figures below are for the signed 1.3.29 package. Host inference and operator quality acceptance are separate records.
 
-The frozen active 86-message conversation stored a cached full rendered prompt count of **264,415**, with loaded capacity **262,144**, while its latest selected provider generation reported **130,969** total tokens (130,895 prompt plus 74 predicted) under `rollingWindow`. LM Studio's shipped writer counts the complete rendered selected history, system prompt and tool definitions into `tokenCount`; its overflow-retry path can retain a smaller history suffix. Forge 1.3.24 based pressure on latest provider usage and ignored that cached full-prompt projection. This source gap prevented the cached projection from triggering rollover. The individual backend overflow-error invocation and exact discarded prefix were not captured. The cached count has no generation freshness timestamp and is distinct from current KV-cache usage. Automatic native New/Send remained without qualification.
+| Check | Result |
+| --- | --- |
+| Product All, static gates, package persistence | Passed |
+| Release tests | 178/178 in 226.22 seconds |
+| Tag CI on the same source | 178/178 in 209.94 seconds |
+| Payload readback | All 331 declared files, archive and installed copy |
+| Cold connector to its Manager | 2.1128484 seconds |
+| Installed host after publication | System online / Production. Three integrations on the repository project. ComfyUI ready on the RTX 4090 |
 
-## Superseded 1.3.23 installed investigation
+The same-source main CI run recorded timeouts and popup-automation failures. Both are written up in the [verification record](docs/validation/RELEASE-1.3.29.md).
 
-The installed, unpublished 1.3.23 candidate at source `b42a80df7db637337ea60737ef8e1049159cf448`, tree `a475d6d04e5a70b32bb72390afc7347d2d97ff65`, passed Product All, three static gates, persistence and **167/167 Release tests in 95.75 seconds**. Its signed 1.3.23.0 package matched all four executable images and all **323 payload files**; prelaunch comparison preserved **8,471 files / 412,433,227 bytes** and four protected snapshots. Two actual Primary calls in the selected Qwen response returned the saved packet and 1.3.23 status, and generation reached `eosFound`. Manager still reported `recovery_pending`: the delivered `context_get` result had only the later `context_budget_cleared:false` annotation absent from its callback. No new 1.3.23 route-recovery archive or completed route reconciliation was captured. Automatic New chat/Send, full installed catalogs, integrated public/native image acceptance, CI and release qualification remained incomplete. No 1.3.23 release was published.
+## Build
 
-See [retained 1.3.23 evidence](docs/validation/HOST-CAPABILITIES-1.3.23.md).
-
-## Superseded 1.3.22 installed investigation
-
-The superseded installed 1.3.22 candidate at source `9178abdf12998af56df4860a56b25dccfcc30e10`, tree `b5e9fdedc9cb6b7ea0f97f9d93ef2e2d2f313d64`, passed Product All, all three static gates, package persistence and **166/166 Release tests in 97.71 seconds**. The signed 1.3.22.0 installation matched all four executable payloads and preserved **8,431 files / 410,168,202 bytes** and the four protected snapshots before any launch. Actual selected Qwen Primary results reported version 1.3.22 with 112 tools and saved a successful model-written handoff at sequence 8. The original encrypted revision-2 checkpoint was preserved exactly before revision 3 entered Creating. The later revision 4 retained an uncertain New chat effect; the selected new chat had zero messages and no handed packet. All three CLI handles and their three native bridge parents subsequently reported exit code 1. Automatic packet delivery and rollover did not complete. A later manually seeded Primary context_get/get_forge_status attempt advanced the checkpoint to revision 6/resumed with the same packet, confirmed New chat, delivery/context-recovery flags true and the old request acknowledgement still false. That assisted readback does not establish automatic packet Send, and the watch did not capture revision 5. Complete installed 112/112/5 catalog qualification and integrated public/native image-provider acceptance were not established. These results do not qualify 1.3.24.
-
-See [retained 1.3.22 measurements](docs/validation/HOST-CAPABILITIES-1.3.22.md).
-
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.29 release.
-
-<!-- measured-qualification-1.3.19 -->
-
-Both native WinHTTP timeout diagnostics consistently report the selected receive budget, with unchanged timeout, deadline and cancellation behavior. The managed-context legacy-lease fix is retained. The exact 1.3.19 source passed 162/162 Release tests in 74.37 seconds, Product All, all three static gates and package persistence. Windows CI separately passed 162/162 in 126.04 seconds. Installed/staging/MSIX hashes matched all four executables, and actual catalogs returned 104/104/5. The existing selected Qwen conversation passed 9 bounded cases, including the formerly denied Host read and fresh sealed blind image analysis. The dedicated real-model managed recovery returned the exact seeded packet and unseen file in 2 captured native calls with verified sealed output. [Published release](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.19) contains seven assets verified by size and SHA-256. [Windows package](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.19/ForgeConductor-1.3.19.0-x64.msix) and [installation bundle](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.19/ForgeConductor-1.3.19.0-x64.zip).
-
-<!-- /measured-qualification-1.3.19 -->
-
-## Historical published 1.3.21 qualification
-
-Clean source `39adf553df320120d214bd90cc49223359054ede`, tree `c1b295cae2c0a01ce334526d99af6bc3e7b3a243`, passed **163/163 Release CTest entries in 67.14 seconds**, Product All, all three static gates and package persistence. The signed 1.3.21.0 package matched all four installed/staged/MSIX executable hashes; the offline owner-profile comparison preserved **8,375 files / 407,592,939 bytes** and the four protected snapshots. Installed Primary/Fallback/CLU catalogs returned **106/106/5** tools. The existing selected Qwen conversation supplied **13 verified native cases** across pixel receipts, CMake/CTest, desktop paging, independent image analysis and expected native errors. The separate original authority probe verified **7 cases / 63 actual requests** without model inference.
-
-The complete source suite also exercised the native CMake fixture's Windows PowerShell 5.1 known-folder check, repeated build on the initialized tree and exact marker before the intentional failed target. These source-fixture checks are separate from the selected installed/native-model cases.
-
-Continuity source fixtures passed **118 Infrastructure groups**, including the observer reconstruction regression and **20 durability cases**. Observer reconstruction was exercised within one PID using private native conversation files and injected control receipts. These results do not qualify installed observer/UI interruption, an installed connector rollover, physical context exhaustion or already-running agent reattachment. The historical 1.3.20 cross-process checkpoint primitive evidence is not asserted as a current 1.3.21 check.
-
-Stock LM Studio MCP image metadata remains distinct from model image input and independent analysis. Higher-resolution previews and native RGBA samples do not establish exact OCR or change that stock bridge. Generative image providers and cloud accounts require separately configured services. Windows CI passed for the recorded 1.3.21 source, as linked in the verification record. Publication readback is a separate check.
-
-
-
-Forge Conductor is a native Windows 11 workspace and MCP tool server for project work with local models in LM Studio.
-
-The installed, unpublished 1.3.20.0 candidate was superseded after repeated native CMake builds exposed an MSBuild `FileTracker.InitializeCommonApplicationDataPaths` failure before the requested target. The 1.3.21 source adds the bounded `SystemDrive` default and strengthens the native known-folder, repeated-build and intended-failure regressions. Measured 1.3.21 source, package, installed-catalog and native-model checks passed; retained 1.3.20 attempts keep their original source and package identities.
-
-The current source version is **1.3.29**, with **125 tools** in Primary and Fallback, ten specialist playbooks and CLU's five governance tools. The catalog includes general ComfyUI automation alongside the existing web, native Office, desktop/browser, image, CMake/CTest, worker, scheduling and continuity workflows. See the [capability guide](docs/HOST-CAPABILITIES.md), [release notes](docs/releases/1.3.29.md), and [versioned verification](docs/validation/RELEASE-1.3.29.md). Earlier installed measurements retain their named source and package identities.
-
-The [complete LM Studio model capability reference](docs/LM-STUDIO-MODEL-CAPABILITIES.md) and [matching JSON catalog](docs/LM-STUDIO-MODEL-CAPABILITIES.json) document all 125 tools, exact schemas, role and worker access, ten specialist playbooks, setup, asynchronous workflows, paging and external prerequisites. Reference examples do not establish that every tool was executed on the host.
-
-Native Office files and PNG drawings require neither Office nor Python. Scheduled model tasks require Manager to stay running; future schedules restore after restart, while interrupted runs with uncertain effects require explicit authorization before another attempt. Optional generative artwork uses an explicitly configured ComfyUI provider; cloud email, calendar and chat accounts retain separately configured connections or authorized APIs. `host_capabilities` reports the implemented tools, current filesystem policy, and these connection requirements.
-
-`image_analyze` starts an authorized independent read-only vision run from a local image. Poll `reviewer_status` for its actual output, errors and token usage. `image_read`, `image_write`, `desktop_capture` and `image_analyze` accept optional `preview_max_dimension` 128–2,048, default 256; adaptive resizing retains the 512 KiB base64-encoded preview bound and reports final dimensions and reduction metadata. Invalid preview parameters are rejected before write/capture effects. LM Studio 0.4.25's stock MCP result stores image metadata rather than a model image file part. The independent analysis route uses Forge's Responses image path and retains the three existing integrations; larger previews do not change that stock bridge boundary or guarantee exact OCR.
-
-`desktop_read` supports zero-based `offset` and `next_offset`/`has_more` paging, with observed row indices from each fresh accessibility tree and a 64 KiB encoded native response bound. `cmake_test_run` and `cmake_test_status` use an explicit initialized build tree and the existing durable job/log/wait/kill lifecycle. Inspect separate phase outcomes and nullable validated JUnit counts; a successful status read is not test success. See the [CMake/CTest guide](docs/CMAKE-CTEST.md) for request examples, shared deadlines, report integrity and crash recovery.
-
-Schedule lists and mutation receipts provide bounded summaries. Retrieve complete task text, frozen scope, history, logs and notification receipts with `schedule_list` using `schedule_id`; concatenate its UTF-8 JSON pages and carry the returned `revision` on continuation requests. A changed revision requires starting the read again.
-
-## Product surfaces
-
-- **Workspace:** project/provider selection, ordered instruction packages, CLU development-policy governance, Auto Continuity, and readiness.
-- **Rig:** live system, selected LM Studio chat context, model, storage, process, ComfyUI readiness, and workflow observations; **Ensure manager**, **Restart service** and **Stop service** controls in Runtime configuration.
-- **Continuity:** saved packet list, selected packet details, delete-selection, and clear actions.
-- **Activity:** operational outcomes, governance findings, corrections, notifications, and exported evidence.
-- **Settings:** effective configuration, ComfyUI automation and preparation limits, context capacity and reserves, and saved-record actions. Load, save/readback, revert, Test LM Studio, and Restart Manager remain available.
-
-Sessions are LM Studio chats. There is no replacement run manager. Removed controls and callable actions include Managed Run/readback, Export selected project, Import verify first, the Actions frame and Invoke Tool, Advanced Canonical Catalog, Scope Test, Reset Scope, Apply and Verify, and the previous Data Maintenance scheme. Saved project records remain selectable and deletable through buttons.
-
-`get_forge_status` reports the authoritative project ID/folder and binding source, instruction-package paths in execution order, development-policy source, tool names/count, and agent count. `instruction_package.read` retrieves a selected queue row with paged content. Packages remain project-scoped; Forge's application-data home is not a substitute for the bound project.
-
-Choose **Choose policy folder...** under CLU to bind the selected repository immediately. The remaining controls name their actions: reload policies, inspect status/findings, read a document/next part, and export the CLU log. The model is instructed to read and follow the bound policy. Findings are returned as model tool-result notifications and shown through the CLU findings UI and Activity.
-
-Auto Continuity observes the selected LM Studio conversation's actual generation usage. At reserve pressure it waits for a completed tool boundary, requests a detailed model-written packet, creates a native successor through Windows UI Automation, sends the packet and verifies packet retrieval plus a following Forge tool result. The 1.3.28 implementation places the observer under Manager lifetime; Primary remains the authorized native observation source, Fallback retains the general catalog and CLU retains governance tools. Install or repair remains one action for the existing three integrations. Keep Manager running for observation. Inspect the current recovery and effect receipts before retrying; current installed measurements appear in the verification record.
-
-Historical native rollover verification used a reserve-triggered pause while the Primary MCP worker stayed alive. It did not exercise physical context exhaustion or handoff after idle-process eviction. The 1.3.28 Manager-lifetime observations are recorded separately in the current verification record.
-
-Ordinary launches use `%LOCALAPPDATA%\Forge Conductor`; disposable verification uses a separate home. The historical `--alpha-root <absolute-path>` option remains available for isolated profiles.
-
-## Build and verify
-
-The configured Release graph contains 177 CTest entries, including ComfyUI service, backend, dependency-package, starter-workflow and compatibility coverage. Prior release results retain their original test registrations and artifact identities. See [Testing](docs/TESTING.md) for the complete suite and focused ComfyUI command.
-
-Requirements and commands are in [Build](docs/BUILD.md) and [Testing](docs/TESTING.md):
+Windows 11 x64, Visual Studio 2022 (MSVC v143, Desktop C++, UWP/XAML C++ tools, Windows SDK 10.0.26100.0), CMake 3.28 or later, PowerShell 7, and vcpkg with `VCPKG_ROOT` set.
 
 ```powershell
 ./scripts/build.ps1 -Configuration Release -Architecture x64 -Product All
@@ -140,12 +103,29 @@ Requirements and commands are in [Build](docs/BUILD.md) and [Testing](docs/TESTI
 ./scripts/Run-Static-Gates.ps1
 ```
 
-Current source contracts are described in [the 1.3.29 notes](docs/releases/1.3.29.md) and [automation guide](docs/COMFYUI-AUTOMATION.md). The [release verification record](docs/validation/RELEASE-1.3.29.md) records versioned build, packaging, installation and publication checks; the [host report](docs/COMFYUI_HOST_QUALIFICATION.md) retains productive inference and visual limitations separately.
+A local engineering package:
 
-Historical 1.3.19 checks are recorded separately in the measured qualification above. The installed, unpublished [1.3.18 investigation](docs/validation/HOST-CAPABILITIES-1.3.18.md) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact.
+```powershell
+./scripts/package.ps1 -DevelopmentSigning
+```
 
-The installed, unpublished [1.3.17 investigation](docs/validation/HOST-CAPABILITIES-1.3.17.md) passed its exact source suite and CI, signed upgrade and automatic three-route repair. Current-chat testing then exposed the managed-run context-recovery lease defect; its attempts remain retained without final release qualification, a tag or publication. The unpublished [1.3.16 candidate](docs/validation/HOST-CAPABILITIES-1.3.16.md) passed its 162-entry source suite and Windows CI, installed with exact four-payload and owner-profile preservation, and completed explicit three-route repair. It was superseded for a CLI Manager-startup reporting fix before original/current-chat workflow qualification, tagging or publication. Those measurements retain their exact 1.3.16 source and package identity. The unpublished [1.3.15 investigation](docs/validation/HOST-CAPABILITIES-1.3.15.md) records its actual source tests, signed installation and a preservation refusal: an isolated test Manager changed production LM Studio routing before installation. The earlier [1.3.14 investigation](docs/validation/HOST-CAPABILITIES-1.3.14.md) retains its own source, package and current-chat results. None of the earlier candidates establishes 1.3.19 current-chat qualification.
+[Build](docs/BUILD.md) · [Testing](docs/TESTING.md) · [Windows toolchain](docs/WINDOWS_TOOLCHAIN.md) · [Packaging](packaging/README.md)
 
-Create the engineering distribution from committed release inputs with `./scripts/package.ps1 -DevelopmentSigning`. See [Install](docs/INSTALL.md), [Product status](docs/STATUS.md), [User guide](docs/USER-GUIDE.md), [Architecture](docs/ARCHITECTURE.md), and [Roadmap](docs/ROADMAP.md).
+## Documentation
 
-Historical Alpha plans and evidence remain under `.forge-alpha/` and `docs/implementation/alpha-recovery/`; they describe their own artifacts rather than the current release.
+| Document | |
+| --- | --- |
+| [Documentation index](docs/DOCUMENTATION-INDEX.md) | Current docs and the historical record |
+| [Product status](docs/STATUS.md) | Current source and retained measurements |
+| [Changelog](CHANGELOG.md) | Release history |
+| [User guide](docs/USER-GUIDE.md) | Operator workflows |
+| [Architecture](docs/ARCHITECTURE.md) | Ownership, continuity, and service boundaries |
+| [Host capabilities](docs/HOST-CAPABILITIES.md) | Tool packs and limits |
+| [Roadmap](ROADMAP.md) | Planned work |
+| [Third-party notices](THIRD-PARTY-NOTICES.md) | Bundled components |
+
+## Earlier releases
+
+1.3.28 and the unpublished candidates through 1.3.27 keep their original commits, trees, package identities, and test counts. Read them in the [changelog](CHANGELOG.md), [product status](docs/STATUS.md), [release notes](docs/releases/), and [validation records](docs/validation/). The [documentation index](docs/DOCUMENTATION-INDEX.md) lists each record.
+
+Alpha plans under `.forge-alpha/` and `docs/implementation/alpha-recovery/` describe the 0.9.x validation program.
