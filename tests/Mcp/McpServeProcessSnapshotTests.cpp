@@ -49,6 +49,8 @@ constexpr auto ForcedCleanupTimeout = 5s;
 constexpr auto DrainCancelRetryInterval = 25ms;
 constexpr std::size_t MaximumCapturedBytes = 2U * 1024U * 1024U;
 constexpr std::size_t ExpectedToolCount = 125U;
+constexpr std::string_view UnavailableLmStudioSelectionReason{
+    "LM Studio deployment is unavailable because no complete native application and configuration selection was resolved."};
 
 enum class ProcessSnapshotSuite { All, Core, Manager };
 
@@ -1702,7 +1704,8 @@ void runExitedManagerStartupRegression(
 void runDetachedManagerCommandRegression(
     const std::filesystem::path& executable,
     const std::filesystem::path& root,
-    const std::filesystem::path& externalProfile)
+    const std::filesystem::path& externalProfile,
+    const bool requireAbsentLmStudio = false)
 {
     const auto home = root / L"home";
     prepareIsolatedProfile(home);
@@ -1774,10 +1777,32 @@ void runDetachedManagerCommandRegression(
     REQUIRE(::QueryFullProcessImageNameW(independent.get(), 0U, image.data(), &length));
     REQUIRE((std::filesystem::path{std::wstring{image.data(), length}} ==
         executable.parent_path() / L"ForgeConductor.Manager.exe"));
+    if (requireAbsentLmStudio) {
+        const auto health = manager->client->lmStudioStatus(managerContext());
+        REQUIRE(!health);
+        REQUIRE(health.error().code == Domain::ErrorCodes::HostCapabilityUnavailable);
+        REQUIRE(health.error().message == UnavailableLmStudioSelectionReason);
+        REQUIRE(health.error().retryable);
+        REQUIRE(!std::filesystem::exists(externalProfile / L".lmstudio"));
+    }
     manager->client->shutdown();
     REQUIRE(stopIsolatedManager(home));
     REQUIRE(::WaitForSingleObject(independent.get(), 0U) == WAIT_OBJECT_0);
     REQUIRE(snapshotLmStudioProfile(externalProfile) == before);
+}
+
+void runEmptyProfileManagerRegression(
+    const std::filesystem::path& executable,
+    const std::filesystem::path& root)
+{
+    const auto emptyProfile = root / L"empty-user-profile";
+    const auto emptyLocalData = emptyProfile / L"AppData" / L"Local";
+    std::filesystem::create_directories(emptyLocalData);
+    const auto before = snapshotLmStudioProfile(emptyProfile);
+    const ScopedEnvironmentVariable userProfile{L"USERPROFILE", emptyProfile.native()};
+    const ScopedEnvironmentVariable localData{L"LOCALAPPDATA", emptyLocalData.native()};
+    runDetachedManagerCommandRegression(executable, root / L"manager", emptyProfile, true);
+    REQUIRE(snapshotLmStudioProfile(emptyProfile) == before);
 }
 
 void runManagerSurvivesConnectorJobCloseRegression(
@@ -1821,22 +1846,32 @@ void runManagerSurvivesConnectorJobCloseRegression(
     // Explorer launches the independent CLI which starts Manager with its environment. The temporary
     // connector USERPROFILE must not become the independent Manager's profile.
     const auto desktopConfiguration=desktopProfile/L".lmstudio"/L"mcp.json";
+    const bool desktopConfigurationPresent = std::filesystem::is_regular_file(desktopConfiguration);
     std::optional<ForgeConductor::Manager::ManagerLmStudioSnapshot> inspected;
+    std::optional<Domain::Error> absentConfiguration;
     const auto inspectionDeadline=std::chrono::steady_clock::now()+5s;
     while(std::chrono::steady_clock::now()<inspectionDeadline) {
         auto health=manager->client->lmStudioStatus(managerContext());
         if(health){inspected.emplace(std::move(health).value());break;}
-        REQUIRE(health.error().code==Domain::ErrorCodes::LimitExceeded);std::this_thread::sleep_for(25ms);
+        if (!desktopConfigurationPresent && health.error().code == Domain::ErrorCodes::HostCapabilityUnavailable) {
+            REQUIRE(health.error().message == UnavailableLmStudioSelectionReason);
+            REQUIRE(health.error().retryable);
+            absentConfiguration.emplace(std::move(health).error());
+            break;
+        }
+        require(health.error().code == Domain::ErrorCodes::LimitExceeded,
+            "Unexpected private Manager LM Studio status: " + health.error().code + ": " + health.error().message);
+        std::this_thread::sleep_for(25ms);
     }
-    REQUIRE(inspected);
-    if(std::filesystem::is_regular_file(desktopConfiguration))
+    if (desktopConfigurationPresent) {
+        REQUIRE(inspected);
         REQUIRE(normalizedPathKey(inspected->mcpConfigurationPath)==normalizedPathKey(utf8Path(desktopConfiguration)));
-    else {
-        REQUIRE(!inspected->mcpConfigurationRegistered);
-        REQUIRE(inspected->mcpConfigurationPath.empty() ||
-            normalizedPathKey(inspected->mcpConfigurationPath)==normalizedPathKey(utf8Path(desktopConfiguration)));
+        REQUIRE(normalizedPathKey(inspected->mcpConfigurationPath)!=normalizedPathKey(utf8Path(externalProfile/L".lmstudio"/L"mcp.json")));
+    } else {
+        REQUIRE(!inspected);
+        REQUIRE(absentConfiguration);
+        REQUIRE(std::filesystem::is_regular_file(externalProfile / L".lmstudio" / L"mcp.json"));
     }
-    REQUIRE(normalizedPathKey(inspected->mcpConfigurationPath)!=normalizedPathKey(utf8Path(externalProfile/L".lmstudio"/L"mcp.json")));
     manager->client->shutdown();
     connector.finish(3U);
     job.reset();
@@ -3033,6 +3068,8 @@ void runWithIsolatedExternalProfile(
             sharedRoot / L"manager-exited-startup", externalProfile, golden);
         runDetachedManagerCommandRegression(executable,
             sharedRoot / L"manager-detached-command", externalProfile);
+        runEmptyProfileManagerRegression(executable,
+            sharedRoot / L"manager-empty-profile");
         runManagerSurvivesConnectorJobCloseRegression(executable,
             sharedRoot / L"manager-connector-job-close", externalProfile,desktopProfile);
     }
