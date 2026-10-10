@@ -1,5 +1,8 @@
 # Architecture
 
+<p align="center"><img src="images/diagram-architecture.png" alt="WinUI commands reach the per-user Manager. Three LM Studio plugins share stdio MCP. ComfyUI stays external." width="100%"></p>
+
+
 The native dependency direction remains Domain → Contracts → Application → Infrastructure/Persistence/MCP/Manager/Presentation/Hosts. WinUI issues typed commands to the Manager; existing services own project access, memory, settings, policy, deployment, and telemetry.
 
 ## Native chat continuity ownership

@@ -2,7 +2,7 @@
 
 This guide inventories **all 125 distinct model-facing tools in Forge Conductor for Windows 1.3.29** (package **1.3.29.0**), plus its ten specialist playbooks and supporting orchestration services. It explains what the model calls, what the operator configures, and how to read the result.
 
-The matching [LM-STUDIO-MODEL-CAPABILITIES.json](LM-STUDIO-MODEL-CAPABILITIES.json) contains every exact advertised `name`, `description` and complete `inputSchema`, alongside role, source and access metadata. This inventory identifies packaged 1.3.29 source `ed101d77cd5adbbf809e7f36c7174d060613e6c4`; the earlier reference was based on source `eb071505f00d0b890ca12240cbfdbcc7594516e4`, inspected 2026-10-09. These are reference documents; loading them does not register tools or enable an integration.
+The matching [LM-STUDIO-MODEL-CAPABILITIES.json](LM-STUDIO-MODEL-CAPABILITIES.json) contains every exact advertised `name`, `description` and complete `inputSchema`, alongside role, source and access metadata. This inventory identifies packaged 1.3.29 source `2e77c5fda1bad7309dd1e7f5a4048f230cc17579`; the earlier reference was based on source `eb071505f00d0b890ca12240cbfdbcc7594516e4`, inspected 2026-10-09. These are reference documents; loading them does not register tools or enable an integration.
 
 Version 1.3.29 adds 11 general ComfyUI tools plus `desktop_scroll` and `desktop_drag`. See [ComfyUI automation](COMFYUI-AUTOMATION.md) for setup, workflows, preview approval and recovery. [Versioned release verification](validation/RELEASE-1.3.29.md) and [host qualification](COMFYUI_HOST_QUALIFICATION.md) retain separate source/package and productive-inference evidence.
 

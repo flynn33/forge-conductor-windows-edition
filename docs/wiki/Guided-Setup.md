@@ -1,5 +1,8 @@
 # Workspace guide
 
+<p align="center"><img src="images/diagram-workflow.png" alt="How a Windows workspace starts." width="100%"></p>
+
+
 Forge Conductor opens to Workspace. There is no required guided wizard or Managed Run form.
 
 1. Register/select the project folder and choose its provider profile.

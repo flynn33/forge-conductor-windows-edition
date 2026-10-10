@@ -4,6 +4,9 @@
 
 # MCP Protocol
 
+<p align="center"><img src="images/diagram-architecture.png" alt="Three LM Studio plugins over stdio MCP. Primary owns rollover." width="100%"></p>
+
+
 Forge Conductor speaks newline-delimited JSON-RPC 2.0 over stdio for LM Studio. The 1.3.29 catalog contains **125 tool descriptors**, filtered by deployment role. All previous 112 remain, with eleven general ComfyUI tools and desktop scroll/drag added. See [Tool Catalog](Tool-Catalog), [Windows Workflow Capabilities](Windows-workflow-capabilities), [ComfyUI Automation](ComfyUI-Automation) and [1.3.29 release notes](Release-1.3.29). Current versioned build/package/install checks remain separate from the earlier host qualification.
 
 ## Roles

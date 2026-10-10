@@ -1,5 +1,8 @@
 # Local ComfyUI automation
 
+<p align="center"><img src="images/diagram-comfy.png" alt="Preview, saved approval, then one sealed final render." width="100%"></p>
+
+
 Forge Conductor 1.3.29 lets an operator describe an image or video in LM Studio while the model handles the installed ComfyUI workflow, dependencies, runtime and output files. Primary and Fallback expose the same eleven ComfyUI tools. Forge remains native C++; ComfyUI, its interpreter, Microsoft Edge and FFmpeg/FFprobe remain external applications.
 
 Use the **ComfyUI automation** card in Settings to enable the service, select the installation and optional model storage, and save the loopback endpoint and limits. Rig provides a readiness probe. Automation is disabled in a new configuration; automatic setup defaults to enabled, downloads to **500 GB per preparation operation**, the free-space reserve to **50 GB**, generation timeout to **30 minutes**, and quality preference to **balanced**. The configured qualification host enabled automation for its existing portable installation. No additional login or authentication setup is introduced.

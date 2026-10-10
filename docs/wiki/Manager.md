@@ -1,5 +1,8 @@
 # Manager
 
+<p align="center"><img src="images/diagram-architecture.png" alt="The per-user Manager owns projects, continuity, ComfyUI jobs, and telemetry." width="100%"></p>
+
+
 The Manager owns the existing per-user project, tool, memory, policy, settings, deployment, telemetry, and persistence services. WinUI sends typed commands through ManagerConnection and ManagerRequestDispatcher rather than editing databases or LM Studio configuration itself.
 
 Sessions are LM Studio chats. Version 1.3.29 adds general ComfyUI jobs under Manager ownership alongside the retained legacy image service, native Auto Continuity, independent workers, schedules and CMake/CTest jobs. The Manager handles preparation, installed runtime lifecycle, workflow plans, actual preview approval, exact generation reconciliation and verified artifacts. Primary/Fallback use the existing project binding; all three integrations remain. See [ComfyUI Automation](ComfyUI-Automation), [1.3.29 release notes](Release-1.3.29) and [versioned verification](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/RELEASE-1.3.29.md).

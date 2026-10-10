@@ -1,5 +1,8 @@
 # Tool catalog
 
+<p align="center"><img src="images/diagram-tools.png" alt="Families inside the 125-tool Primary and Fallback catalog." width="100%"></p>
+
+
 For model access instructions and exact arguments, use the [complete LM Studio capability guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/LM-STUDIO-MODEL-CAPABILITIES.md) and [matching JSON catalog](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/LM-STUDIO-MODEL-CAPABILITIES.json). They cover all 125 schemas, setup, role/worker restrictions, the ten specialist playbooks and supporting orchestration services. Primary and Fallback each expose all 125 names; CLU exposes five of those same names.
 
 The current 1.3.29 catalog provides **125 descriptors** in Primary and Fallback: all previous 112, eleven ComfyUI tools and desktop scroll/drag. Ten specialist playbooks and five CLU governance tools remain. `host_capabilities` reports dedicated capabilities, tool names and filesystem mode; `get_forge_status` adds the selected project/default directory and active configuration. General media readiness and limits come from `comfy_status`; `image_provider_status` retains the separate legacy SD1 provider contract. See [ComfyUI Automation](ComfyUI-Automation) and [1.3.29 release notes](Release-1.3.29).

@@ -1,5 +1,9 @@
 # Roadmap
 
+<p align="center"><img src="images/diagram-qualification.png" alt="Historical ed101/e6 candidate qualification checkpoint before the final package and publication." width="100%"></p>
+
+This retained diagram shows the earlier withheld `ed101d77` / source-only `e6e97d3` checkpoint. Final source `2e77c5f` has since passed all 178 local and tagged Windows CI entries, installed 331-file verification and fresh public seven-asset verification. Version 1.3.29 is published; separate CI, installed-probe, GUI and operator-quality limits are recorded in [Release 1.3.29](Release-1.3.29).
+
 The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.29 implementation.
 
 <!-- measured-qualification-1.3.19 -->
@@ -27,7 +31,7 @@ The [superseded 1.3.22 investigation](Release-1.3.22) passed final source and si
 
 ## Follow-up
 
-- Complete and record versioned 1.3.29 package/install/publication checks separately from the already measured feature-candidate host runs.
+- Versioned 1.3.29 package, installation and publication checks are recorded separately from the measured feature-candidate host runs. Remaining installed GUI selection and inherited-job probe qualification retain their explicit limits.
 - Qualify separate approved image and image-to-video finals, a real lost-acknowledgement event, and final operator media quality acceptance.
 - Qualify semantic editing and generation quality against explicit owner-selected checkpoints without treating byte hashes or provider inventory as instruction-following proof.
 - Qualify the implemented durable native handoff after an interrupted installed Primary connector is evicted/restarted, including uncertain-effect reconciliation without duplicate New chat or Send.

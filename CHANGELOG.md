@@ -12,6 +12,10 @@ Corrected the lifetime of streamed artifact hashing state so Windows destroys th
 
 Route cold MCP startup through the registered CLI before it creates its matching Manager. Windows Shell stalled when asked to launch the installed Manager directly; the CLI launch keeps the existing profile selection and Manager readiness checks while allowing durable jobs to outlive the connector process.
 
+Partition the native process regressions into core and Manager lifecycle CTest entries, retaining each 90-second bound and the complete default invocation. Correct the test's missing-LM-Studio expectation against an actual empty-profile native Manager result. Final clean source passed all **178 Release entries in 226.22 seconds**; the complete process invocation passed **40,610 assertions in 83.60 seconds**. Independent archive and installed readbacks matched all **331 declared payload files**.
+
+Published [v1.3.29](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.29) as `flynn33`, with seven verified assets and packaged source `2e77c5f`. Installed that package and returned Forge and its three integrations to the normal Production profile. Exact-source tag CI passed **178/178 in 209.94 seconds**; the separate main-run timeouts and unqualified GUI popup-selection path remain recorded.
+
 See [release notes](docs/releases/1.3.29.md), [automation contracts](docs/COMFYUI-AUTOMATION.md), [actual host results](docs/COMFYUI_HOST_QUALIFICATION.md), and [versioned release verification](docs/validation/RELEASE-1.3.29.md). Previous candidate checks, actual inference, versioned package verification and operator quality acceptance retain distinct scopes.
 
 ## 1.3.28 — Compact packets, terminal recovery and current connector presence

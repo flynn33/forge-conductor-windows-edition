@@ -1,5 +1,8 @@
 # Product surfaces
 
+<p align="center"><img src="images/diagram-surfaces.png" alt="Workspace, Rig, Continuity, Activity, and Settings." width="100%"></p>
+
+
 The 1.3.29 implementation retains the native app design and the 1.3.5 run/action/maintenance removals. Settings adds local ComfyUI automation configuration and Rig adds its readiness probe. The shared Manager diagnostic remains collapsed during 500 ms telemetry observations. Dedicated model workflows retain explicit native receipts through the existing MCP integrations.
 
 | Destination | Actions |

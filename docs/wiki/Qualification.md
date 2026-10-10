@@ -1,90 +1,20 @@
+# Qualification record
+
+This page retains the historical evidence that previously opened the wiki home. Its `ed101d77` package was withheld and superseded; the measurements below keep that identity and the older releases' original scope. Current final source `2e77c5f` passed all 178 local Release entries and all 178 tagged Windows CI entries, with separate failed main/signing CI results retained. The installed 1.3.29.0 package matched all 331 payload files, returned native cold availability in 2.1128484 seconds, and returned to System online / Production. All seven public release assets passed independent fresh download and size/SHA-256 verification. The installed probe's inherited-job assertion and GUI project selection remain unqualified. See [Release 1.3.29](Release-1.3.29) and the [versioned verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/RELEASE-1.3.29.md) for current results; the historical section below does not replace them.
+
+<p align="center"><img src="images/mark-conductor.jpg" width="132" alt="Forge Conductor mark"></p>
+
 # Forge Conductor for Windows
 
-<p align="center"><img src="images/hero.png" alt="Historical 1.3.29 preparation artwork for Forge Conductor, including the earlier Publication still open badge." width="100%"></p>
+A native Windows 11 workspace and MCP server for project work with local models in LM Studio.
 
-*Historical artwork: its publication badge records the earlier preparation checkpoint. [v1.3.29 is now published](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.29) with seven independently verified public assets.*
+The current source version **1.3.29** provides **125 tools** in Primary/Fallback, with ten specialist playbooks and five CLU tools retained. Eleven general ComfyUI tools and desktop scroll/drag join the previous 112 tools. Describe an image or video in LM Studio; the model discovers the installed nodes and models, builds a workflow, prepares dependencies, renders a preview, and uses the operator's saved chat approval for the proposed final. Settings adds a ComfyUI automation card and Rig shows readiness. Native CMake/CTest, web, Office documents, desktop/browser operations, PNG drawing/image analysis, independent workers, schedules and the three existing LM Studio integrations remain. See [ComfyUI automation](ComfyUI-Automation), [1.3.29 release notes](Release-1.3.29) and the [versioned verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/RELEASE-1.3.29.md). Prior [1.3.28 measurements](Release-1.3.28) retain their original artifact identity.
 
-Forge Conductor is the native Windows 11 workspace and MCP server for project work in LM Studio. You stay in the chat. Forge holds the project, the tools, the policy, and the local media run.
+The measured predecessor at source `ed101d77cd5adbbf809e7f36c7174d060613e6c4`, tree `0fd417128a05fd5bbe5e4c8aa47d4840a24726f7`, passed Product All Release in **38.77025 seconds**, all **177/177 normal Release tests in 222.94 seconds**, the three static gates, package persistence and development packaging in **13.6768192 seconds**. Its validly signed **1.3.29.0** package contains **331 payload files**, including the eight ComfyUI resources and excluding the qualification harness; an independent audit matched every declared file in staging and the MSIX. The [versioned verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/RELEASE-1.3.29.md) separates these checks, the installed recovery below and earlier host inference from the [rejected initial candidate](Release-1.3.29#rejected-initial-signed-candidate).
 
-| | |
-| --- | --- |
-| **Source** | **1.3.29** |
-| **Package identity** | **ForgeConductor.Windows 1.3.29.0** |
-| **Platform** | Windows 11 x64 |
-| **Surfaces** | Workspace, Rig, Continuity, Activity, Settings |
-| **Catalog** | 125 Primary and Fallback tools, 5 CLU tools, 10 specialist playbooks |
-| **Data home** | `%LOCALAPPDATA%\Forge Conductor` |
-| **Model host** | LM Studio, default `127.0.0.1:1234` |
+The measured `ed101d77` predecessor installation matched all **331 installed payload files** and passed CLI version/self-test. Actual Primary/Fallback/CLU catalogs returned **125/125/5**. The installed Manager remained running through two completed-final status requests, each returning two verified artifacts; the provider log stayed byte-identical and its prompt-handler count stayed **10 → 10**, with no new generation submission. All **18 saved jobs** recovered across three pages of **6, 9 and 3**, with no unreadable jobs or partial pages.
 
-[Published v1.3.29](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.29) is the latest non-draft, non-prerelease release, published by **flynn33** on **2026-10-10 at 14:20:02 UTC**. Final source `2e77c5fda1bad7309dd1e7f5a4048f230cc17579` passed **178/178 normal Release tests in 226.22 seconds**, Product All in **37.7901043 seconds**, all three static gates and package persistence. Development packaging took **13.6598198 seconds** with signature **Valid** under the existing publisher. All seven assets passed independent fresh public download and size/SHA-256 verification against GitHub metadata, local files and retained draft downloads; the published body, source, tag, author and latest-release identity also matched. [Windows package](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.29/ForgeConductor-1.3.29.0-x64.msix) · [Installation bundle](https://github.com/flynn33/forge-conductor-windows-edition/releases/download/v1.3.29/ForgeConductor-1.3.29.0-x64.zip).
-
-The final installation matched all **331 payload files**, including eight ComfyUI resources, and passed the native self-test. Installed catalogs returned **125/125/5**; all **18 saved jobs** recovered and two completed-final status reads returned two verified artifacts each without another generation POST. Cold installed MCP returned `durable_manager.available=true` and `startup_error=null` in **2.1128484 seconds**, with its matching Manager surviving connector closure. The probe did not exercise inherited connector job containment; that limitation and the separate native regression are recorded on [Release 1.3.29](Release-1.3.29) and [Qualification](Qualification).
-
-## Start here
-
-| You want to | Open |
-| --- | --- |
-| Prepare a project and the three plugins | [Workspace guide](Guided-Setup) |
-| Describe an image or video in chat | [ComfyUI automation](ComfyUI-Automation) |
-| Follow rollover, media, and startup | [Workflows](Workflows) |
-| See who owns each process | [Architecture](Architecture) |
-| Look up a tool family | [Tool catalog](Tool-Catalog) |
-| Read the evidence | [Release 1.3.29](Release-1.3.29) |
-
-## What it does
-
-<p align="center"><img src="images/diagram-product-map.png" alt="Six responsibilities: LM Studio chat, five WinUI surfaces, three plugins, the Manager, a sealed ComfyUI plan, and nonblocking CLU policy." width="100%"></p>
-
-Forge does not run the model. Manager owns the rollover observer; Primary supplies chat observations. Fallback is an independent catalog, and CLU reports policy findings. ComfyUI stays an external application.
-
-## How a workspace starts
-
-<p align="center"><img src="images/diagram-workflow.png" alt="Seven operator steps from Workspace through project selection, instruction order, CLU, Auto Continuity, the three plugins, and get_forge_status." width="100%"></p>
-
-The [workspace guide](Guided-Setup) is the short path. [Product surfaces](Product-Surfaces) says what each destination is for.
-
-## Local image and video
-
-<p align="center"><img src="images/diagram-comfy.png" alt="ComfyUI path: enable in Settings, discover, validate both graphs, prepare, preview once, wait for approved or yes or render final, then render the sealed plan. Legacy sd1 tools stay separate." width="100%"></p>
-
-Reply `approved`, `yes`, or `render final` after the preview is in the saved chat. `verified` acknowledges delivery and does not approve the final. The older six-tool sd1 provider is a different job, off by default.
-
-Settings provides the ComfyUI automation card and Rig shows observed readiness. The final normal Production runtime is available with the RTX 4090 and an empty queue; private installed Settings Probe and Rig reported **18.3 GiB available VRAM**. Production preparation downloaded one **203,036,552-byte FFmpeg/FFprobe component**, passed manifest/version checks and fully decoded the unchanged earlier approved final. No new Production image/video generation or operator approval occurred.
-
-<p align="center"><img src="images/promo-media.jpg" alt="A local preview on a dark monitor, film frames of the same scene, and a steel anvil. Media renders on the Windows host. The model stays in LM Studio." width="100%"></p>
-
-## How a session continues
-
-<p align="center"><img src="images/diagram-continuity.png" alt="Manager-owned rollover: reserve pressure, pause at a finished tool, DPAPI packet, New chat and Send, then context_get and a following Forge call. Uncertain effects stay recovery_pending." width="100%"></p>
-
-The installed 1.3.28 delivery used reserve pressure, not a full context window. Physical exhaustion, a Manager rebuild during delivery, UI interruption, and reattaching an already-running agent remain unverified. See [Continuity](Continuity).
-
-<p align="center"><img src="images/promo-handoff.jpg" alt="Two dark panels on a steel bench, joined by a glowing rod, with an anvil and coals behind them. One chat hands the packet to one successor." width="100%"></p>
-
-## How it is built
-
-<p align="center"><img src="images/diagram-architecture.png" alt="Ownership from the LM Studio chat through three stdio plugins into the per-user Manager, the WinUI app, and external ComfyUI." width="100%"></p>
-
-<p align="center"><img src="images/diagram-surfaces.png" alt="Workspace, Rig, Continuity, Activity, and Settings. Rig readiness is not proof that rollover or a picture succeeded." width="100%"></p>
-
-The canonical build uses CMake for the native services and WinUI C++/WinRT for the app and package. The Mac Swift source is behavioral evidence only. Ordinary data stays in `%LOCALAPPDATA%\Forge Conductor`, and the MSIX manifest leaves that directory unvirtualized so uninstall does not remove it.
-
-## Qualification and remaining limits
-
-<p align="center"><img src="images/diagram-qualification.png" alt="Historical ed101d77/e6e97d3 checkpoint: the earlier package was withheld and replacement verification and publication were still open." width="100%"></p>
-
-*Historical checkpoint diagram, retained unchanged. Final source `2e77c5f` has since passed its 178-entry local suite, installed checks and exact-tag Windows CI. [Published v1.3.29](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.29) and all seven fresh public asset downloads have been independently verified; the earlier `ed101d77` package remains withheld.*
-
-<p align="center"><img src="images/diagram-tools.png" alt="Tool families inside the 125: eleven ComfyUI tools, six legacy sd1 tools, desktop and browser, native Office and PNG, shell and CMake jobs, workers and schedules. A catalog name is not proof the tool ran." width="100%"></p>
-
-A green test proves its selected behavior. Earlier feature-candidate image/text-to-video/image-to-video previews and the approved text-to-video final retain their original identities; sampled frames do not establish continuous motion quality or operator final quality acceptance. Separate approved image/image-to-video finals and a real lost-acknowledgement event remain unqualified. Every retained receipt is on [Qualification](Qualification) and the release pages. [Release history](Release-history) keeps the older investigations.
-
-The normal installed App was responsive and displayed **System online / Production** through UI Automation. The existing typed three-route Repair passed and preserved foreign MCP semantics and all **730 foreign plugin files**. GUI project selection remains unqualified and the normal screenshot was occluded. Original **18 receipts, 79 native conversations and 14 published artifacts** were preserved; an owned private-provider stop added one control receipt, making **19 private receipts**. Private pending plans remain in their original profile.
-
-Exact-tag Windows CI passed **178/178 in 209.94 seconds**, static gates and staged upload. A separate same-source main run passed 176/178 with two test deadlines whose hosted causes remain unknown; the hosted signed workflow failed its existing missing-secret prerequisite before build/test/package. The valid local signature, installed observations and public readback are separate results. See the [versioned verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/RELEASE-1.3.29.md).
-
-<details>
-<summary>Retained historical qualification and contracts</summary>
+The predecessor's installed Settings Probe and Rig displayed the managed ComfyUI runtime as ready, with an empty queue and the RTX 4090 reporting **18.3 GiB VRAM available** at that observation. All **18 receipts, 79 native conversations, five Forge plugin files**, MCP/configuration and the production profile inventory were preserved. Those checks used the existing private qualification profile; production preservation was verified separately. The `ed101d77` package was withheld because cold installed connector startup failed its 10-second broker deadline. At that historical boundary its replacement, exact-source CI, seventh verification asset and public publication were pending; six predecessor draft assets passed size/SHA-256 download readback. The final replacement's completed results are recorded above and in the [versioned verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/RELEASE-1.3.29.md).
 
 The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.29 implementation.
 
@@ -153,15 +83,3 @@ The installed, unpublished **1.3.24 / 1.3.24.0** artifact at source `83d133df8ae
 The frozen active 86-message conversation stored a cached full rendered prompt count of **264,415**, with loaded capacity **262,144**, while its latest selected provider generation reported **130,969** total tokens (130,895 prompt plus 74 predicted) under `rollingWindow`. LM Studio's shipped writer counts the complete rendered selected history, system prompt and tool definitions into `tokenCount`; its overflow-retry path can retain a smaller history suffix. Forge 1.3.24 based pressure on latest provider usage and ignored that cached full-prompt projection. This source gap prevented the cached projection from triggering rollover. The individual backend overflow-error invocation and exact discarded prefix were not captured. The cached count has no generation freshness timestamp and is distinct from current KV-cache usage. Automatic native New/Send remained without qualification.
 
 See [retained 1.3.24 evidence](Release-1.3.24).
-
-</details>
-
-## Where to go next
-
-| Area | Pages |
-| --- | --- |
-| Operate | [Product surfaces](Product-Surfaces) · [Projects and instructions](Project-Instructions) · [LM Studio](MCP-Protocol) · [Windows workflows](Windows-workflow-capabilities) · [Native tools](Native-Tools) · [Project memory](Project-Memory) · [Continuity](Continuity) · [CLU](Setup-and-Governance) · [Packaging](Packaging) |
-| Understand | [Overview](Overview) · [Architecture](Architecture) · [Process model](Process-Model) · [Manager](Manager) · [Session host](Session-Host) · [Persistence](Persistence) · [Security](Security) · [Telemetry](Telemetry) |
-| Reference | [Release 1.3.29](Release-1.3.29) · [Qualification](Qualification) · [Published 1.3.28](Release-1.3.28) · [Published 1.3.21](Release-1.3.21) · [Release history](Release-history) · [Validation gates](Validation-Gates) · [Troubleshooting](Troubleshooting) · [Glossary](Glossary) |
-
-Repository: [flynn33/forge-conductor-windows-edition](https://github.com/flynn33/forge-conductor-windows-edition). In-tree guide: [USER-GUIDE.md](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/USER-GUIDE.md).

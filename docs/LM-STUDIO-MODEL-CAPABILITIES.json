@@ -3,7 +3,7 @@
   "title": "Forge Conductor capabilities for models in LM Studio",
   "product_version": "1.3.29",
   "package_version": "1.3.29.0",
-  "inspected_source_commit": "ed101d77cd5adbbf809e7f36c7174d060613e6c4",
+  "inspected_source_commit": "2e77c5fda1bad7309dd1e7f5a4048f230cc17579",
   "historical_inventory_source_commit": "eb071505f00d0b890ca12240cbfdbcc7594516e4",
   "inventory_date": "2026-10-10",
   "scope": "Complete model-facing native catalog and access guide for the inspected Windows implementation. Runtime configuration and qualification are stated separately.",

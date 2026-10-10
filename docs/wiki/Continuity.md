@@ -1,5 +1,8 @@
 # Auto Continuity
 
+<p align="center"><img src="images/diagram-continuity.png" alt="Manager-owned rollover from reserve pressure to one proved successor chat." width="100%"></p>
+
+
 Version 1.3.29 retains the native continuity contracts described below and adds durable ComfyUI plans that survive reconnect and restart. List/status expose project-owned jobs; explicit resume reattaches to the exact sealed provider prompt without submitting another render. Pending preview approval can recover through an exact delivered preview in a later chat or verified continuity evidence. Actual message positions, selected versions and unchanged input/dependency/artifact seals determine whether the final can run. See [ComfyUI Automation](ComfyUI-Automation) and [1.3.29 release notes](Release-1.3.29). The 1.3.28 observer and measurements below retain their original scope.
 
 The 1.3.28 implementation places the native visible-chat observer under Manager lifetime. Primary remains the authorized native-call observation source; Fallback keeps the general catalog and CLU keeps governance. Workspace saves Auto Continuity for the exact project/provider pair. Keep Manager running; installed observer survival and automatic delivery are measured separately in the current verification record. No fourth plugin or Forge credential is introduced.
