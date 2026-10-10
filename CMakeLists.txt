@@ -2302,9 +2302,17 @@ if(BUILD_TESTING)
         NAME ForgeConductor.Mcp.ServeProcessSnapshotTests
         COMMAND $<TARGET_FILE:ForgeConductor.Mcp.ServeProcessSnapshotTests>
             "$<TARGET_FILE:ForgeConductor.Cli>"
-            "${PROJECT_SOURCE_DIR}/tests/fixtures/Mcp/mcp-tools-semantic-golden.json")
+            "${PROJECT_SOURCE_DIR}/tests/fixtures/Mcp/mcp-tools-semantic-golden.json"
+            --suite core)
+    add_test(
+        NAME ForgeConductor.Mcp.ManagerLifecycleProcessTests
+        COMMAND $<TARGET_FILE:ForgeConductor.Mcp.ServeProcessSnapshotTests>
+            "$<TARGET_FILE:ForgeConductor.Cli>"
+            "${PROJECT_SOURCE_DIR}/tests/fixtures/Mcp/mcp-tools-semantic-golden.json"
+            --suite manager)
     set_tests_properties(
-        ForgeConductor.Mcp.ServeProcessSnapshotTests PROPERTIES
+        ForgeConductor.Mcp.ServeProcessSnapshotTests
+        ForgeConductor.Mcp.ManagerLifecycleProcessTests PROPERTIES
         LABELS "G14;T-MCP;T-PROC;T-INTEGRATION;T-PARITY"
         TIMEOUT 90)
 

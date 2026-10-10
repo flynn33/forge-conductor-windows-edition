@@ -50,6 +50,8 @@ constexpr auto DrainCancelRetryInterval = 25ms;
 constexpr std::size_t MaximumCapturedBytes = 2U * 1024U * 1024U;
 constexpr std::size_t ExpectedToolCount = 125U;
 
+enum class ProcessSnapshotSuite { All, Core, Manager };
+
 std::size_t assertions{};
 std::vector<std::filesystem::path> isolatedManagerHomes;
 
@@ -2795,7 +2797,8 @@ void runAgentLifecycleRegression(
 void runWithIsolatedExternalProfile(
     const std::filesystem::path& executable,
     const std::filesystem::path& goldenPath,
-    const std::filesystem::path& desktopProfile)
+    const std::filesystem::path& desktopProfile,
+    const ProcessSnapshotSuite suite)
 {
     REQUIRE(std::filesystem::is_regular_file(executable));
     const auto golden = loadGolden(goldenPath);
@@ -3017,18 +3020,22 @@ void runWithIsolatedExternalProfile(
     REQUIRE(std::filesystem::is_regular_file(isolatedHome / L"store.sqlite"));
 
     validateRegistry(home, {workspace, workspaceB});
-    runPopulatedWorkspaceRegression(executable, sharedRoot / L"populated-state");
-    runAgentLifecycleRegression(executable, sharedRoot / L"agent-lifecycle");
-    runPolicyPagingRegression(executable, sharedRoot / L"policy-paging");
-    runFragmentedToolResultRegression(executable, sharedRoot / L"fragmented-result");
-    runIsolatedManagerReviewerRegression(executable, sharedRoot / L"isolated-manager-reviewer", externalProfile);
-    runComfyManagerRecoveryRegression(executable, sharedRoot / L"comfy-manager-recovery", externalProfile);
-    runExitedManagerStartupRegression(executable,
-        sharedRoot / L"manager-exited-startup", externalProfile, golden);
-    runDetachedManagerCommandRegression(executable,
-        sharedRoot / L"manager-detached-command", externalProfile);
-    runManagerSurvivesConnectorJobCloseRegression(executable,
-        sharedRoot / L"manager-connector-job-close", externalProfile,desktopProfile);
+    if (suite != ProcessSnapshotSuite::Manager) {
+        runPopulatedWorkspaceRegression(executable, sharedRoot / L"populated-state");
+        runAgentLifecycleRegression(executable, sharedRoot / L"agent-lifecycle");
+        runPolicyPagingRegression(executable, sharedRoot / L"policy-paging");
+        runFragmentedToolResultRegression(executable, sharedRoot / L"fragmented-result");
+    }
+    if (suite != ProcessSnapshotSuite::Core) {
+        runIsolatedManagerReviewerRegression(executable, sharedRoot / L"isolated-manager-reviewer", externalProfile);
+        runComfyManagerRecoveryRegression(executable, sharedRoot / L"comfy-manager-recovery", externalProfile);
+        runExitedManagerStartupRegression(executable,
+            sharedRoot / L"manager-exited-startup", externalProfile, golden);
+        runDetachedManagerCommandRegression(executable,
+            sharedRoot / L"manager-detached-command", externalProfile);
+        runManagerSurvivesConnectorJobCloseRegression(executable,
+            sharedRoot / L"manager-connector-job-close", externalProfile,desktopProfile);
+    }
     for (const auto& ownedHome : isolatedManagerHomes) REQUIRE(stopIsolatedManager(ownedHome));
     isolatedManagerHomes.clear();
     REQUIRE(snapshotLmStudioProfile(externalProfile) == fixtureBefore);
@@ -3036,13 +3043,14 @@ void runWithIsolatedExternalProfile(
 
 void run(
     const std::filesystem::path& executable,
-    const std::filesystem::path& goldenPath)
+    const std::filesystem::path& goldenPath,
+    const ProcessSnapshotSuite suite)
 {
     const auto profile = environmentValue(L"USERPROFILE");
     REQUIRE(profile && !profile->empty());
     const auto ownerBefore = snapshotLmStudioProfile(std::filesystem::path{*profile});
     try {
-        runWithIsolatedExternalProfile(executable, goldenPath,std::filesystem::path{*profile});
+        runWithIsolatedExternalProfile(executable, goldenPath,std::filesystem::path{*profile}, suite);
     } catch (...) {
         REQUIRE(snapshotLmStudioProfile(std::filesystem::path{*profile}) == ownerBefore);
         throw;
@@ -3055,13 +3063,24 @@ void run(
 int wmain(const int argumentCount, wchar_t* const arguments[])
 {
     try {
-        if (argumentCount != 3) {
+        if (argumentCount != 3 && argumentCount != 5) {
             throw std::runtime_error{
-                "Expected the CLI executable and MCP semantic golden paths."};
+                "Expected the CLI executable and MCP semantic golden paths, optionally followed by --suite core|manager."};
+        }
+        auto suite = ProcessSnapshotSuite::All;
+        if (argumentCount == 5) {
+            const std::wstring_view option{arguments[3]};
+            const std::wstring_view selection{arguments[4]};
+            if (option != L"--suite" ||
+                (selection != L"core" && selection != L"manager")) {
+                throw std::runtime_error{"Expected --suite core|manager."};
+            }
+            suite = selection == L"core" ? ProcessSnapshotSuite::Core :
+                ProcessSnapshotSuite::Manager;
         }
         run(
             std::filesystem::path{arguments[1]},
-            std::filesystem::path{arguments[2]});
+            std::filesystem::path{arguments[2]}, suite);
         std::cout << "MCP serve process snapshot tests passed: "
                   << assertions << " assertions\n";
         return 0;
