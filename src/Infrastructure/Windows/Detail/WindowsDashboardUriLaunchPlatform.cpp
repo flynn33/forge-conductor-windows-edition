@@ -21,6 +21,7 @@
 #include <limits>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace ForgeConductor::Infrastructure::Windows::Detail {
 namespace {
@@ -295,7 +296,8 @@ public:
 class WindowsManagerBootstrapPlatform final : public IWindowsManagerBootstrapPlatform {
 public:
     [[nodiscard]] Domain::Result<void> start(
-        const Domain::PathText& home, const bool isolatedProfile) noexcept override
+        const Domain::PathText& home, const bool isolatedProfile,
+        const ManagerBootstrapLaunchMode mode) noexcept override
     {
         try {
             auto wideHome = strictUtf8ToUtf16(home.value());
@@ -322,7 +324,8 @@ public:
             const auto length = ::GetModuleFileNameW(nullptr, module.data(), static_cast<DWORD>(module.size()));
             if (length == 0U || length >= module.size()) return Domain::Result<void>::failure(
                 Domain::makeError(Domain::ErrorCodes::InternalFailure, "The Manager bootstrap could not resolve its executable."));
-            const auto executable = std::filesystem::path{std::wstring{module.data(), length}}.parent_path() /
+            const auto cliExecutable = std::filesystem::path{std::wstring{module.data(), length}};
+            const auto executable = cliExecutable.parent_path() /
                 L"ForgeConductor.Manager.exe";
             const HANDLE file = ::CreateFileW(executable.c_str(), FILE_READ_ATTRIBUTES,
                 FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
@@ -338,8 +341,23 @@ public:
                 standard.DeletePending || standard.NumberOfLinks != 1U)
                 return Domain::Result<void>::failure(Domain::makeError(
                     Domain::ErrorCodes::IntegrityFailure, "The Manager sibling is not a regular single-link executable."));
+            const std::vector<std::string> managerArguments{
+                isolatedProfile ? "--alpha-root" : "--home", profile.value().dataRoot().value()};
+            if (mode == ManagerBootstrapLaunchMode::DetachedManager) {
+                auto command = CommandLineBuilder::buildCommandLine(executable.native(), managerArguments);
+                if (!command) return Domain::Result<void>::failure(std::move(command).error());
+                STARTUPINFOW startup{}; startup.cb = sizeof(startup);
+                PROCESS_INFORMATION process{};
+                if (!::CreateProcessW(executable.c_str(), command.value().data(), nullptr, nullptr,
+                    FALSE, CREATE_NO_WINDOW, nullptr, executable.parent_path().c_str(), &startup, &process))
+                    return Domain::Result<void>::failure(Domain::makeError(
+                        Domain::ErrorCodes::ProcessLaunchFailed, "The detached CLI could not create its matching Manager.", true));
+                static_cast<void>(::CloseHandle(process.hThread));
+                static_cast<void>(::CloseHandle(process.hProcess));
+                return Domain::Result<void>::success();
+            }
             auto arguments = CommandLineBuilder::buildArgumentString(
-                {isolatedProfile ? "--alpha-root" : "--home", profile.value().dataRoot().value()});
+                {"--internal-launch-manager", managerArguments[0], managerArguments[1]});
             if (!arguments) return Domain::Result<void>::failure(std::move(arguments).error());
             ComApartment apartment;
             auto initialized = apartment.initialize();
@@ -347,7 +365,7 @@ public:
             ComReference<IShellDispatch2> shell;
             auto resolved = resolveDesktopShell(shell);
             if (!resolved) return resolved;
-            const UniqueBstr image{executable.native()};
+            const UniqueBstr image{cliExecutable.native()};
             const UniqueBstr params{arguments.value()};
             const UniqueBstr directory{executable.parent_path().native()};
             const UniqueBstr verb{L"open"};
@@ -357,8 +375,10 @@ public:
             args.vt = cwd.vt = operation.vt = VT_BSTR;
             args.bstrVal = params.get(); cwd.bstrVal = directory.get(); operation.bstrVal = verb.get();
             show.vt = VT_I4; show.lVal = SW_HIDE;
+            // The registered CLI target dispatches through Explorer outside
+            // the supervised helper's job, then creates its Manager sibling.
             const auto started = shell->ShellExecute(image.get(), args, cwd, operation, show);
-            if (FAILED(started)) return Domain::Result<void>::failure(shellFailure("start its matching Manager sibling", started));
+            if (FAILED(started)) return Domain::Result<void>::failure(shellFailure("start its matching Manager launcher", started));
             return Domain::Result<void>::success();
         } catch (...) {
             return Domain::Result<void>::failure(Domain::makeError(

@@ -2,17 +2,53 @@
 
 The release version is **1.3.29**, with Windows package version **1.3.29.0**. This record separates the versioned release build and installation from the earlier feature qualification candidate.
 
+## Registered-CLI cold-start correction
+
+The replacement desktop bootstrap launches the current registered CLI with the fixed internal `--internal-launch-manager` command, selected profile mode and canonical home. That independent CLI creates only its matching Manager sibling with no inherited standard handles and closes its process handles. The connector retains its existing exact-home/version readiness checks. No operator settings, authentication method, tool schemas or generation paths change.
+
+The focused Manager Windows infrastructure and real MCP process snapshot entries passed, in 5.55 and 83.61 seconds respectively (89.20 seconds total). New cases reject missing, extra and invalid launch arguments and wrong/nonexistent profiles, retain the previous stdin command's rejection contract, and verify the actual matching private-profile Manager survives its detached launcher. The existing connector kill-on-close job regression now exercises Shell → independent CLI → Manager and passed. This source correction still requires the complete source suite, replacement package and actual installed cold-start acceptance before publication.
+
+## Hash-fix candidate and packaged cold-start finding
+
+The hash-fix signed candidate identifies clean committed source `ed101d77cd5adbbf809e7f36c7174d060613e6c4`, tree `0fd417128a05fd5bbe5e4c8aa47d4840a24726f7`. Its build, installed App path and completed-artifact recovery passed the checks below. Publication was withheld when a separate cold connector startup check failed. These measurements describe that retained candidate, not a subsequently published replacement. Author, committer and tagger are Jim Daley; publication uses `flynn33`.
+
+| Corrected check | Observed result |
+| --- | --- |
+| Product All, Release x64, parallel 4, with excluded host-qualification target | Passed in 38.77025 seconds; all four product executables staged |
+| Normal Release, parallel 4 | 177/177 passed in 222.94 seconds; all 177 individual result lines passed |
+| Static gates | No-Python, native-stack and no-attribution passed |
+| Package persistence | Stable production profile exclusion and package capability contract passed |
+| Development-signed package | Passed in 13.6768192 seconds; signature `Valid` with the existing publisher |
+| Independent offline payload audit | All 331 declared files matched size and SHA-256 on disk and inside streamed MSIX entries |
+| Resource and executable coverage | Four AMD64 product executables matched staging/provenance; eight ComfyUI resources matched source, stages and committed content; qualification executables excluded |
+| Distribution ZIP | Exactly five entries matched the distribution copies, including the corrected signed MSIX |
+
+The corrected audit has SHA-256 `90a0f4b29998fb57d0e02e214fe1d31a42f28c9e4ad53f714c0a3421687942ae`. It also verifies 332 physical payload files including the manifest, 336 MSIX entries including four package metadata entries, Appx identity/version/architecture, publisher certificate and installer digests. The corrected Manager SHA-256 is `5d80bb4daa9700ae42f8486e888ea97fbb7478c86e01768fe9f09d70a75897a4`. Six subsequent wiki documentation edits were observed separately from the clean packaged source.
+
+| Corrected artifact | SHA-256 |
+| --- | --- |
+| `ForgeConductor-1.3.29.0-x64.msix` | `0f62340d47a38aa89c959e4a81157a33e3aba30c5655f2d1dd82ba18811e8d00` |
+| `ForgeConductor-1.3.29.0-x64.zip` | `edaf7b46740bd660c6ee6ffc3ca897c88b4fa3044fd9dbb931d6061d3cdedb43` |
+| `payload-manifest.json` | `c45a8eb21311a420548bb10cd6ec000f18db94a15e5e4b96b4b8b758d3ad2180` |
+| `release-provenance.json` | `9eb330935660396734b79bc877234faf50b08a5cec6506d508494a80cbd490f7` |
+
+The existing publisher is `CN=Forge Conductor Development`, certificate thumbprint `4B290FFFF895EAAC959DC343255F0DA043DC12A2`. Signature trust is observed on this Windows host. The public certificate is bundled; the private key is not distributed.
+
+The installed App-started acceptance verified all 331 payload files and eight ComfyUI resources, actual Primary/Fallback/CLU tool counts 125/125/5, and all 18 existing jobs through pages of 6, 9 and 3 records. Two completed-final status requests returned `completed` and two artifacts each without another generation POST. Manager remained alive and the provider log was byte-for-byte unchanged with handler count 10. Live Settings and Rig showed the managed runtime ready on the RTX 4090, with 18.3 GiB available at that observation. The compact installed acceptance evidence has SHA-256 `e0f3499a47b06ed2903826b506d9d03e2a3a5bdcd4449c9327ea672e22b071a1`. These checks submitted no generation and did not change saved approvals.
+
+The separate cold installed MCP connection reported `durable_manager.available=false` after its desktop bootstrap helper exceeded the 10-second deadline. Actual helper dumps map the blocked call to `IShellDispatch2::ShellExecute` targeting the installed Manager executable. An unpackaged native caller reproduced the same target failure, while the byte-identical unpackaged CLI helper returned successfully in 0.131 seconds. Desktop Shell dispatch to the registered installed CLI succeeded in 63 ms, and its verified current-user execution alias succeeded in 47 ms. The internal Windows Shell reason remains unknown; caller package identity is not required to reproduce the failure. The bootstrap report has SHA-256 `c449d7a8c1c9bf8bd5d903095ca3e5b8bf591288fd0908eb6a602b2d02b5cc89`; its 34-file evidence manifest has SHA-256 `2877b978d7d565a59a8e6c285a6cb0c50a7e4cd434c237415556db3e8a4cf07d`. Existing Manager, ComfyUI, configuration and receipt seals were preserved. The release remains a draft while the registered-CLI bootstrap replacement is implemented and qualified.
+
 ## Rejected initial signed package
 
-The initial signed 1.3.29.0 package from source `57c8c2a5e7496b66ee1cec420ae4fa396addec0e` was rejected before release publication. Its installed Manager crashed in bcrypt.dll during a completed-video status request. Investigation found that ComfyUI artifact hashing freed its caller-owned hash buffer before destroying the hash handle. The corrected source keeps the buffer alive through cleanup. The measurements below retain that initial candidate identity; corrected build, package, installation and publication results are pending.
+The initial signed 1.3.29.0 package from source `57c8c2a5e7496b66ee1cec420ae4fa396addec0e` was rejected before release publication. Its installed Manager crashed in bcrypt.dll during a completed-video status request. Investigation found that ComfyUI artifact hashing freed its caller-owned hash buffer before destroying the hash handle. The corrected source keeps the buffer alive through cleanup. The measurements below retain the rejected candidate identity and do not describe the corrected release artifacts.
 
 The retained actual minidump records `bcrypt!BCryptDestroyHash+0x82`, exception `0xc0000005`, matching Application Error 1000's bcrypt offset `0x4f82`. A private relink using the original inputs has an identical complete `.text` section, allowing the first Manager return RVA `0x1b16f4` to be mapped to `ComfyDetail::fileFacts(HANDLE, OperationContext)+0xac4`. Its original cleanup calls sized `operator delete` before `BCryptDestroyHash`; subsequent stack frames pass through backend inspection and service snapshot/execute. The original caller-owned buffer lifetime violated [Microsoft's BCryptCreateHash contract](https://learn.microsoft.com/en-us/windows/win32/api/bcrypt/nf-bcrypt-bcryptcreatehash). The private dump-analysis evidence manifest has SHA-256 `d6f5bbb6e9312993fb7e564545e849ac6e65833c13379e36c91c9b0161811e24`.
 
 The native regression guards only the calling thread's first exact CNG object-buffer allocation. Its isolated original-helper invocation reproduced access violation exit `-1073741819` (`0xc0000005`). The same test with the corrected helper passed empty-file and multi-chunk digests/byte counts plus cancellation cleanup with the unchanged `cancelled` result. This guard exists only in the backend test executable. The first compile attempt used a nonexistent cancellation constant in the new fixture; correcting it to the existing `ErrorCodes::Cancelled` contract enabled the before/after comparison. Neither the guarded regression nor dump analysis submits provider generation or changes a saved approval.
 
-The versioned source is commit `57c8c2a5e7496b66ee1cec420ae4fa396addec0e`, tree `4b6a7e6be963ae722e6ffe8eec2727f8b81867b5`. Product and packaging inputs were clean and committed before building. The source, annotated `v1.3.29` tag, author, committer and tagger identify Jim Daley. This source was fast-forwarded into the primary local checkout and published to `main` through `flynn33`.
+The rejected candidate's source was commit `57c8c2a5e7496b66ee1cec420ae4fa396addec0e`, tree `4b6a7e6be963ae722e6ffe8eec2727f8b81867b5`. Its product and packaging inputs were clean and committed before building. The annotated tag was updated to corrected source before publication while the GitHub release remained a draft; the prior tag object and all initial package/crash evidence were retained privately.
 
-| Versioned check | Observed result |
+| Rejected candidate check | Observed result |
 | --- | --- |
 | Product All, Release x64, parallel 4, with the excluded host-qualification target | Passed in 117.8555904 seconds; all four product executables staged |
 | Normal Release, parallel 4 | 177/177 passed in 216.55 seconds; all 177 individual result lines passed |
@@ -28,7 +64,7 @@ The commands were `scripts/build.ps1 -Configuration Release -Architecture x64 -P
 
 The independent distribution audit is a separate read-only check, rather than a restatement of the packaging script. It verified all declared file sizes/digests, streamed MSIX and ZIP contents, clean source/tree identity, embedded provenance, Appx identity/version/architecture, the actual signature, public certificate, installer and README digests, committed resource content and starter output-node references. Its evidence SHA-256 is `12320d13891c049e927aef56d60456225600605a70b35238f09d2f712f71636c`.
 
-| Release artifact | SHA-256 |
+| Rejected candidate artifact | SHA-256 |
 | --- | --- |
 | `ForgeConductor-1.3.29.0-x64.msix` | `47d7120cfcb4e204d08d9eb7fbcc83706f8ebc63433498685f67d5c84460077e` |
 | `ForgeConductor-1.3.29.0-x64.zip` | `ce6de99c5c468e579aead8e1914b8bd557312565eba466d4b5f7084e86bd2e61` |
@@ -38,9 +74,9 @@ The independent audit observed 332 physical payload files including the manifest
 
 ## Installed upgrade and publication
 
-The signed distribution's existing Windows PowerShell installation preflight passed with `ready_for_install:true`, prior package `1.3.28.0` and existing publisher trust. The actual installed upgrade, current live Settings/Rig readback and final seven-asset release readback are pending at this documentation snapshot.
+The signed distribution's existing Windows PowerShell installation preflight passed with `ready_for_install:true`, prior package `1.3.28.0` and existing publisher trust. The hash-fix candidate's actual installed upgrade and live Settings/Rig readback passed as recorded above. Its cold connector failure prevents publication; final replacement installation and seven-asset public release readback remain pending at this documentation snapshot.
 
-The exact packaged source has a separate [Windows CI run 38049643594](https://github.com/flynn33/forge-conductor-windows-edition/actions/runs/38049643594), dispatched against `v1.3.29`; its final result is pending. The initial `main` push has [run 38049620393](https://github.com/flynn33/forge-conductor-windows-edition/actions/runs/38049620393). Documentation-only descendants do not change the packaged source identity.
+Corrected packaged source has a separate [Windows CI run 38051004918](https://github.com/flynn33/forge-conductor-windows-edition/actions/runs/38051004918), dispatched against `v1.3.29`; its final result is pending. The corrected `main` push has [run 38051001350](https://github.com/flynn33/forge-conductor-windows-edition/actions/runs/38051001350). Initial-source [tag CI 38049643594](https://github.com/flynn33/forge-conductor-windows-edition/actions/runs/38049643594) and [main CI 38049620393](https://github.com/flynn33/forge-conductor-windows-edition/actions/runs/38049620393) were cancelled when replacement runs entered their concurrency groups; neither is recorded as a completed test pass.
 
 ## Feature qualification boundary
 
@@ -48,4 +84,4 @@ The earlier feature candidate passed Product All, all 177 configured Release tes
 
 See the [release notes](../releases/1.3.29.md), [ComfyUI automation guide](../COMFYUI-AUTOMATION.md) and [complete host qualification chronology](../COMFYUI_HOST_QUALIFICATION.md) for the contracts, measured cases, failed attempts and limits.
 
-The existing hosted signing workflow requires repository secrets `FORGE_SIGNING_PFX_BASE64` and `FORGE_SIGNING_PASSWORD`. Inspection found neither configured. The tag-triggered [Signed Windows Release run 38049643395](https://github.com/flynn33/forge-conductor-windows-edition/actions/runs/38049643395) failed at **Require signing secrets**, before build, tests, packaging or upload. The distributed package was built and signed locally with the already installed development publisher certificate, whose public certificate is trusted on this host. No private key is distributed. This follows the preceding release's local signing path without adding an operator authentication method.
+The existing hosted signing workflow requires repository secrets `FORGE_SIGNING_PFX_BASE64` and `FORGE_SIGNING_PASSWORD`. Inspection found neither configured. Corrected-source [Signed Windows Release run 38051004136](https://github.com/flynn33/forge-conductor-windows-edition/actions/runs/38051004136) failed at **Require signing secrets**, before build, tests, packaging or upload, as did the initial-source run. The distributed package was built and signed locally with the already installed development publisher certificate, whose public certificate is trusted on this host. No private key is distributed. This follows the preceding release's local signing path without adding an operator authentication method.

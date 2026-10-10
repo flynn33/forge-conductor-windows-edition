@@ -64,4 +64,28 @@ Domain::Result<void> WindowsManagerBootstrapCommand::run(std::istream& input) no
             Domain::ErrorCodes::InternalFailure, "The Manager bootstrap failed safely."));
     }
 }
+
+Domain::Result<void> WindowsManagerBootstrapCommand::launch(
+    const std::span<const std::string_view> arguments) noexcept
+{
+    try {
+        if (arguments.size() != 3U || arguments[0] != "--internal-launch-manager" ||
+            (arguments[1] != "--home" && arguments[1] != "--alpha-root"))
+            return invalid("The detached Manager launch requires its fixed command, profile mode, and home.");
+        auto home = Domain::PathText::create(arguments[2]);
+        if (!home || !Domain::isValidUtf8(arguments[2]))
+            return invalid("The Manager bootstrap home is not bounded UTF-8 path text.");
+        if (!platform_) return Domain::Result<void>::failure(Domain::makeError(
+            Domain::ErrorCodes::IntegrityFailure, "The Manager bootstrap has no Windows launch boundary."));
+        auto started = platform_->start(home.value(), arguments[1] == "--alpha-root",
+            Detail::ManagerBootstrapLaunchMode::DetachedManager);
+        if (!started) return Domain::Result<void>::failure(Domain::makeError(
+            Domain::ErrorCodes::HostCapabilityUnavailable,
+            "The detached CLI could not start the matching Manager.", started.error().retryable));
+        return Domain::Result<void>::success();
+    } catch (...) {
+        return Domain::Result<void>::failure(Domain::makeError(
+            Domain::ErrorCodes::InternalFailure, "The detached Manager launch failed safely."));
+    }
+}
 }

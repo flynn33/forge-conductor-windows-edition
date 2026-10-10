@@ -1697,6 +1697,87 @@ void runExitedManagerStartupRegression(
     REQUIRE(snapshotLmStudioProfile(externalProfile) == before);
 }
 
+void runDetachedManagerCommandRegression(
+    const std::filesystem::path& executable,
+    const std::filesystem::path& root,
+    const std::filesystem::path& externalProfile)
+{
+    const auto home = root / L"home";
+    prepareIsolatedProfile(home);
+    const auto before = snapshotLmStudioProfile(externalProfile);
+    REQUIRE(!probeIsolatedManager(home));
+    unsigned invocation{};
+    const auto invoke = [&](const std::vector<std::wstring>& arguments) {
+        const auto outputPath = root / (L"internal-launch-output-" + std::to_wstring(++invocation) + L".json");
+        SECURITY_ATTRIBUTES attributes{sizeof(attributes), nullptr, TRUE};
+        UniqueHandle input{::CreateFileW(L"NUL", GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
+            &attributes, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr)};
+        UniqueHandle output{::CreateFileW(outputPath.c_str(), GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+            &attributes, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr)};
+        REQUIRE(input && output);
+        auto command = quoteWindowsArgument(executable.native());
+        for (const auto& argument : arguments) command += L" " + quoteWindowsArgument(argument);
+        STARTUPINFOW startup{}; startup.cb = sizeof(startup); startup.dwFlags = STARTF_USESTDHANDLES;
+        startup.hStdInput = input.get(); startup.hStdOutput = startup.hStdError = output.get();
+        PROCESS_INFORMATION process{};
+        REQUIRE(::CreateProcessW(executable.c_str(), command.data(), nullptr, nullptr, TRUE,
+            CREATE_NO_WINDOW, nullptr, root.c_str(), &startup, &process));
+        UniqueHandle child{process.hProcess}, thread{process.hThread};
+        struct ChildCleanup final {
+            HANDLE process;
+            ~ChildCleanup() { static_cast<void>(terminateAndWait(process, ForcedCleanupTimeout)); }
+        } cleanup{child.get()};
+        REQUIRE(::WaitForSingleObject(child.get(), waitMilliseconds(ChildTimeout)) == WAIT_OBJECT_0);
+        DWORD exit{}; REQUIRE(::GetExitCodeProcess(child.get(), &exit));
+        output.reset(); input.reset();
+        std::ifstream response{outputPath}; REQUIRE(response.is_open());
+        auto result = Json::parse(response);
+        REQUIRE(result.is_object());
+        return std::pair{exit, std::move(result)};
+    };
+    struct RejectedArguments final {
+        std::vector<std::wstring> arguments;
+        DWORD exit;
+        std::string_view code;
+    };
+    for (const auto& rejected : std::vector<RejectedArguments>{
+        {{L"--internal-launch-manager"}, 2U, Domain::ErrorCodes::InvalidRequest},
+        {{L"--internal-launch-manager", L"--alpha-root"}, 2U, Domain::ErrorCodes::InvalidRequest},
+        {{L"--internal-launch-manager", L"--arbitrary", home.native()}, 1U, Domain::ErrorCodes::InvalidRequest},
+        {{L"--internal-launch-manager", L"--alpha-root", home.native(), L"extra"}, 2U, Domain::ErrorCodes::InvalidRequest},
+        {{L"--internal-launch-manager", L"--home", home.native()}, 1U, Domain::ErrorCodes::HostCapabilityUnavailable},
+        {{L"--internal-launch-manager", L"--alpha-root", (root / L"absent-home").native()}, 1U, Domain::ErrorCodes::HostCapabilityUnavailable},
+        {{L"--internal-start-manager", L"extra"}, 2U, Domain::ErrorCodes::InvalidRequest},
+        {{L"--internal-start-manager", L"--alpha-root", home.native()}, 2U, Domain::ErrorCodes::InvalidRequest}}) {
+        const auto [exit, result] = invoke(rejected.arguments);
+        REQUIRE(exit == rejected.exit && result.at("ok") == false);
+        REQUIRE(result.at("code").get<std::string>() == rejected.code);
+        REQUIRE(!probeIsolatedManager(home));
+    }
+    const auto [exit, result] = invoke({L"--internal-launch-manager", L"--alpha-root", home.native()});
+    REQUIRE((exit == 0U && result == Json{{"ok", true}}));
+    std::optional<ManagerProbe> manager;
+    const auto deadline = std::chrono::steady_clock::now() + 10s;
+    while (std::chrono::steady_clock::now() < deadline) {
+        manager = probeIsolatedManager(home);
+        if (manager) break;
+        std::this_thread::sleep_for(25ms);
+    }
+    REQUIRE(manager && manager->status.version == ForgeConductor::Domain::ProductVersion);
+    REQUIRE(normalizedPathKey(manager->status.home.value()) == normalizedPathKey(utf8Path(home)));
+    UniqueHandle independent{::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE,
+        FALSE, manager->status.processId)};
+    REQUIRE(independent && ::WaitForSingleObject(independent.get(), 0U) == WAIT_TIMEOUT);
+    std::array<wchar_t, 32'768U> image{}; DWORD length = static_cast<DWORD>(image.size());
+    REQUIRE(::QueryFullProcessImageNameW(independent.get(), 0U, image.data(), &length));
+    REQUIRE((std::filesystem::path{std::wstring{image.data(), length}} ==
+        executable.parent_path() / L"ForgeConductor.Manager.exe"));
+    manager->client->shutdown();
+    REQUIRE(stopIsolatedManager(home));
+    REQUIRE(::WaitForSingleObject(independent.get(), 0U) == WAIT_OBJECT_0);
+    REQUIRE(snapshotLmStudioProfile(externalProfile) == before);
+}
+
 void runManagerSurvivesConnectorJobCloseRegression(
     const std::filesystem::path& executable,
     const std::filesystem::path& root,
@@ -1735,7 +1816,7 @@ void runManagerSurvivesConnectorJobCloseRegression(
     REQUIRE(::QueryFullProcessImageNameW(managerProcess.get(), 0U, servingImage.data(), &imageLength));
     REQUIRE((std::filesystem::path{std::wstring{servingImage.data(), imageLength}} ==
         executable.parent_path() / L"ForgeConductor.Manager.exe"));
-    // Explorer owns the bootstrap and supplies its environment. The temporary
+    // Explorer launches the independent CLI which starts Manager with its environment. The temporary
     // connector USERPROFILE must not become the independent Manager's profile.
     const auto desktopConfiguration=desktopProfile/L".lmstudio"/L"mcp.json";
     std::optional<ForgeConductor::Manager::ManagerLmStudioSnapshot> inspected;
@@ -2944,6 +3025,8 @@ void runWithIsolatedExternalProfile(
     runComfyManagerRecoveryRegression(executable, sharedRoot / L"comfy-manager-recovery", externalProfile);
     runExitedManagerStartupRegression(executable,
         sharedRoot / L"manager-exited-startup", externalProfile, golden);
+    runDetachedManagerCommandRegression(executable,
+        sharedRoot / L"manager-detached-command", externalProfile);
     runManagerSurvivesConnectorJobCloseRegression(executable,
         sharedRoot / L"manager-connector-job-close", externalProfile,desktopProfile);
     for (const auto& ownedHome : isolatedManagerHomes) REQUIRE(stopIsolatedManager(ownedHome));

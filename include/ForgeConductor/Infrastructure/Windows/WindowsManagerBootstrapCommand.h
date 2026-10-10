@@ -5,6 +5,8 @@
 #include <cstddef>
 #include <istream>
 #include <memory>
+#include <span>
+#include <string_view>
 
 namespace ForgeConductor::Infrastructure::Windows {
 namespace Detail {
@@ -22,6 +24,8 @@ public:
     WindowsManagerBootstrapCommand(const WindowsManagerBootstrapCommand&) = delete;
     WindowsManagerBootstrapCommand& operator=(const WindowsManagerBootstrapCommand&) = delete;
     [[nodiscard]] Domain::Result<void> run(std::istream& input) noexcept;
+    [[nodiscard]] Domain::Result<void> launch(
+        std::span<const std::string_view> arguments) noexcept;
 
 private:
     friend struct Detail::WindowsManagerBootstrapCommandTestAccess;

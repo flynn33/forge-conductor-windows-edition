@@ -10,6 +10,8 @@ Added the ComfyUI Settings card and Rig readiness, local image/text-to-video/ima
 
 Corrected the lifetime of streamed artifact hashing state so Windows destroys the hash handle before Forge frees its backing buffer, including cancellation and error cleanup. The initial unpublished package's completed-video status crash and its replacement verification remain recorded separately.
 
+Route cold MCP startup through the registered CLI before it creates its matching Manager. Windows Shell stalled when asked to launch the installed Manager directly; the CLI launch keeps the existing profile selection and Manager readiness checks while allowing durable jobs to outlive the connector process.
+
 See [release notes](docs/releases/1.3.29.md), [automation contracts](docs/COMFYUI-AUTOMATION.md), [actual host results](docs/COMFYUI_HOST_QUALIFICATION.md), and [versioned release verification](docs/validation/RELEASE-1.3.29.md). Previous candidate checks, actual inference, versioned package verification and operator quality acceptance retain distinct scopes.
 
 ## 1.3.28 — Compact packets, terminal recovery and current connector presence

@@ -1,5 +1,7 @@
 # Build on Windows
 
+Current product version is **1.3.29**, with Windows package version **1.3.29.0**. `VERSION`, `BUILD`, CMake, native product identity, vcpkg metadata and packaging identities use those corresponding values. See [release verification](validation/RELEASE-1.3.29.md) for the committed source and measured build/package results.
+
 ## Requirements
 
 - Windows 11 x64
@@ -23,6 +25,8 @@ $env:VCPKG_ROOT = '<vcpkg-root>'
 ```
 
 `-Product All` builds and stages the WinUI application and required sibling services under `out/app/x64/Release`. `-Product Backend` builds the complete CMake graph, including all tests. The staging manifest binds executable hashes to the exact source commit and tree.
+
+The checked-in VS Code Release build task uses `-Product All`; the full Release test task and focused `T-COMFY` task depend on that build. Debug launch configurations retain the native output paths. VS Code's `2.0.0` task and `0.2.0` launch values are configuration schema versions, separate from the product version.
 
 For a clean reconfiguration, add `-Fresh` to the first build only. Build outputs, restored inputs, certificates, packages, logs, tokens, and machine-specific paths remain outside tracked source.
 
