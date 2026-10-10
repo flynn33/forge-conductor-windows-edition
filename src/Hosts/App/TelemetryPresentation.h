@@ -1,12 +1,14 @@
 #pragma once
 
 #include "ForgeConductor/Domain/ManagerTelemetryModels.h"
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <cstdint>
 #include <cwchar>
+#include <filesystem>
 #include <iomanip>
 #include <optional>
 #include <sstream>
@@ -15,6 +17,96 @@
 #include <vector>
 
 namespace ForgeConductor::Hosts::App {
+
+[[nodiscard]] inline Domain::Result<std::string> comfyStatusProbeArguments(
+    const Domain::ProjectId& selectedProject,
+    const nlohmann::json& status) noexcept
+{
+    using Result = Domain::Result<std::string>;
+    try {
+        if (!status.is_object() || status.dump().size() > 1024U*1024U || !status.contains("ok") ||
+            !status.at("ok").is_boolean() || !status.at("ok").get<bool>() || !status.contains("workspace") ||
+            !status.at("workspace").is_object() || !status.contains("workspace_authority") || !status.at("workspace_authority").is_object())
+            return Result::failure(Domain::makeError(Domain::ErrorCodes::MalformedMessage,
+                "ComfyUI readiness requires bounded successful Manager workspace evidence."));
+        const auto& workspace=status.at("workspace");
+        if (!workspace.contains("project_id") || !workspace.at("project_id").is_string() ||
+            !workspace.contains("binding_source") || workspace.at("binding_source")!="registered_project")
+            return Result::failure(Domain::makeError(Domain::ErrorCodes::MalformedMessage,
+                "ComfyUI readiness requires a registered Manager project binding."));
+        if (workspace.at("project_id") != selectedProject.value())
+            return Result::failure(Domain::makeError(Domain::ErrorCodes::ProjectScopeMismatch,
+                "ComfyUI readiness returned a different registered project."));
+        const auto& authority=status.at("workspace_authority");
+        if (!authority.contains("active_roots") || !authority.at("active_roots").is_array() ||
+            authority.at("active_roots").empty() || authority.at("active_roots").size()>32U)
+            return Result::failure(Domain::makeError(Domain::ErrorCodes::MalformedMessage,
+                "ComfyUI readiness requires current Manager-issued active roots."));
+        std::vector<std::string> roots;
+        for (const auto& value : authority.at("active_roots")) {
+            if (!value.is_string()) return Result::failure(Domain::makeError(Domain::ErrorCodes::MalformedMessage,
+                "ComfyUI readiness received a non-text active root."));
+            const auto& root=value.get_ref<const std::string&>();
+            const auto checked=Domain::PathText::create(root);
+            if (!checked || !std::filesystem::path{std::u8string_view{
+                    reinterpret_cast<const char8_t*>(root.data()),root.size()}}.is_absolute() ||
+                std::find(roots.begin(),roots.end(),root)!=roots.end())
+                return Result::failure(Domain::makeError(Domain::ErrorCodes::MalformedMessage,
+                    "ComfyUI readiness active roots are invalid, relative, or duplicated."));
+            roots.push_back(root);
+        }
+        // This envelope requests narrowing. Only the Manager's fresh issuer
+        // determines whether these roots and the read grant remain authorized.
+        const nlohmann::json scope{{"project_id",selectedProject.value()},{"caller_id","forge-conductor-app"},
+            {"generation",std::uint64_t{1U}},{"trusted_roots",roots},{"grants",nlohmann::json::array({"read"})},
+            {"denials",nlohmann::json::array({"write","create","delete","execute"})},{"shell_enabled",false}};
+        return Result::success(nlohmann::json{{"_forge_comfy_scope",scope}}.dump());
+    } catch (...) {
+        return Result::failure(Domain::makeError(Domain::ErrorCodes::InternalFailure,
+            "ComfyUI readiness scope could not be constructed."));
+    }
+}
+
+[[nodiscard]] inline std::string comfyReadinessText(const nlohmann::json& status)
+{
+    if (!status.value("configured", false)) return "ComfyUI automation disabled";
+    std::ostringstream text;
+    if (!status.value("available", false)) text << "ComfyUI is offline. Forge starts it when a render needs it.";
+    else if (status.value("managed", false)) text << "ComfyUI is ready. Forge verified its managed runtime.";
+    else text << "ComfyUI is reachable, but Forge has not verified runtime ownership. Managed rendering is unavailable.";
+    const auto line = [&](const char* label, const char* field) {
+        if (status.contains(field) && status.at(field).is_string()) text << '\n' << label << status.at(field).get<std::string>().substr(0, 1'024U);
+    };
+    line("Endpoint: ", "endpoint");
+    line("Installation: ", "installation_path");
+    line("Models: ", "model_storage_path");
+    if (status.contains("queue") && status.at("queue").is_object()) {
+        const auto& queue = status.at("queue");
+        const auto count = [&](const char* field) -> std::uint64_t {
+            const auto total = std::string{field} + "_count";
+            if (queue.contains(total) && queue.at(total).is_number_unsigned()) return queue.at(total).get<std::uint64_t>();
+            return queue.contains(field) && queue.at(field).is_array() ? queue.at(field).size() : 0U;
+        };
+        text << "\nQueue: " << count("queue_running") << " running, " << count("queue_pending") << " waiting.";
+    }
+    if (status.contains("system_stats") && status.at("system_stats").is_object()) {
+        const auto& stats = status.at("system_stats");
+        if (stats.contains("devices") && stats.at("devices").is_array()) {
+            for (const auto& device : stats.at("devices")) {
+                if (!device.is_object() || !device.contains("name") || !device.at("name").is_string()) continue;
+                text << "\nGPU: " << device.at("name").get<std::string>().substr(0, 256U);
+                if (device.contains("vram_free") && device.at("vram_free").is_number_unsigned())
+                    text << " · " << std::fixed << std::setprecision(1) << static_cast<double>(device.at("vram_free").get<std::uint64_t>()) / 1'073'741'824.0 << " GiB VRAM available";
+                break;
+            }
+        }
+    }
+    for (const auto* field : {"installation_error", "error", "ownership_error"}) {
+        if (status.contains(field) && status.at(field).is_object() && status.at(field).contains("message") && status.at(field).at("message").is_string())
+            text << '\n' << status.at(field).at("message").get<std::string>().substr(0, 1'024U);
+    }
+    return text.str();
+}
 
 struct MetricPresentation final {
     std::string value;

@@ -305,7 +305,17 @@ public:
             return false;
         }
     }
-    std::string status() const { std::lock_guard lock{mutex_}; return status_.dump(); }
+    std::string status() const {
+        std::lock_guard lock{mutex_};
+        auto result = status_;
+        if (contextRecovered_ && deliveryAcknowledged_ &&
+            result.value("available", false) && result.value("state", std::string{}) == "resumed" &&
+            !predecessor_.empty() && !successor_.empty() && predecessor_ != successor_ &&
+            successor_ == createdSuccessor_ &&
+            result.value("successor_lmstudio_session_id", std::string{}) == successor_)
+            result["predecessor_lmstudio_session_id"] = predecessor_;
+        return result.dump();
+    }
     void recordTool(std::string_view name,bool succeeded,std::string_view payload) noexcept {
         try {
             if (!bound()) return;

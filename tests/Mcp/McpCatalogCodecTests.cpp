@@ -63,7 +63,7 @@ void testCanonicalCatalog()
     static_assert(!std::is_copy_constructible_v<Mcp::McpToolCatalog>);
     static_assert(!std::is_move_constructible_v<Mcp::McpToolCatalog>);
 
-    constexpr std::array<std::string_view, 112U> ExpectedNames{
+    constexpr std::array<std::string_view, 125U> ExpectedNames{
         "agent_cancel",
         "agent_context",
         "agent_get",
@@ -81,6 +81,17 @@ void testCanonicalCatalog()
         "clu.resolve",
         "cmake_test_run",
         "cmake_test_status",
+        "comfy_catalog",
+        "comfy_control",
+        "comfy_job_cancel",
+        "comfy_job_list",
+        "comfy_job_resume",
+        "comfy_job_status",
+        "comfy_prepare",
+        "comfy_run",
+        "comfy_status",
+        "comfy_validate",
+        "comfy_workflow",
         "context_get",
         "context_list",
         "continuity.acknowledge_handoff",
@@ -92,9 +103,11 @@ void testCanonicalCatalog()
         "continuity.status",
         "desktop_capture",
         "desktop_click",
+        "desktop_drag",
         "desktop_key",
         "desktop_list",
         "desktop_read",
+        "desktop_scroll",
         "desktop_type",
         "document_write",
         "evidence_digest",
@@ -205,8 +218,8 @@ void testCanonicalCatalog()
             ++writeEffects;
         }
     }
-    REQUIRE(readEffects == 51U);
-    REQUIRE(writeEffects == 61U);
+    REQUIRE(readEffects == 56U);
+    REQUIRE(writeEffects == 69U);
     REQUIRE(descriptor(tools, "agent_run_status").tool.effect == Domain::ToolEffect::Write);
     REQUIRE(descriptor(tools, "agent_run_start").tool.requiresProject);
     REQUIRE(descriptor(tools, "agent_run_status").tool.requiresProject);
@@ -280,6 +293,63 @@ void testCanonicalCatalog()
     REQUIRE(desktopReadSchema.at("properties").at("offset").at("maximum") == 2147483647);
     REQUIRE(desktopReadSchema.at("properties").at("limit").at("maximum") == 300);
     REQUIRE(descriptor(tools, "desktop_read").tool.description.find("next_offset") != std::string::npos);
+    const auto run = schema(tools, "comfy_run");
+    // LM Studio's installed bridge forwards tools/list descriptions to its
+    // model tool definitions; routing must not rely only on initialize text.
+    for (const auto* name : {"comfy_status", "image_generate", "image_provider_status"}) {
+        REQUIRE(descriptor(tools, name).tool.description.find("comfy_run") != std::string::npos);
+        REQUIRE(descriptor(tools, name).tool.description.find("enabled") != std::string::npos);
+    }
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("including ordinary images") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("approval_reply_choices") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("[source_node_id, output_index]") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("checkpoint/model names") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("output node IDs") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("Read comfy_status for effective limits and configuration.quality_preference; honor that default when quality is omitted") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("When video duration is omitted, propose a motion draft of about five seconds") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("Choose playable MP4 with H.264 for final video using discovered output node contracts unless the operator requests a supported alternative format or codec") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("save the format in the final graph before preview approval; a later format change requires a new preview and approval") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("Do not apply a universal output-format rewrite to unknown graphs") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("For an image preview, call image_read with the verified preview image artifact.path to display its larger bounded image before requesting approval; the job-status thumbnail alone is insufficient") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("Successful decoding verifies readable media, not the requested subject or motion quality") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("call image_analyze with the path of the published artifact whose role is sampled_video_contact_sheet, then poll reviewer_status for actual findings") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("For a verified video preview or final artifact with provider_view_url, call browser_open with that exact URL while ComfyUI is running") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("then use desktop_read on the observed browser window to check its actual address") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("Launch acceptance alone does not verify page loading or playback") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("Report actual browser-launch or observation failures") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("Present the URL as a copyable reference and the complete artifacts[].path in a copyable fenced block") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("ordinary Markdown link path rejects loopback URLs") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("Retain the sampled-frame preview") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("Report unavailable contact sheets and review failures with their actual errors") != std::string::npos);
+    REQUIRE(descriptor(tools, "comfy_run").tool.description.find("limit visual claims to reviewed sampled frames and do not claim unverified motion quality or repeat the prompt as observed content") != std::string::npos);
+    for (const auto* key : {"expected_outputs", "preview_expected_outputs", "final_expected_outputs"}) {
+        const auto& outputs = run.at("properties").at(key);
+        REQUIRE(outputs.at("description").get<std::string>().find("output node IDs") != std::string::npos);
+        REQUIRE(outputs.at("examples") == Json::array({Json::array({"25"})}));
+    }
+    const auto validateOutputs = schema(tools, "comfy_validate").at("properties").at("expected_outputs");
+    REQUIRE(validateOutputs.at("description").get<std::string>().find("output node IDs") != std::string::npos);
+    REQUIRE(validateOutputs.at("examples") == Json::array({Json::array({"25"})}));
+    REQUIRE(descriptor(tools, "comfy_workflow").tool.description.find("returned workflow is executable API JSON") != std::string::npos);
+    REQUIRE(run.at("additionalProperties") == false && run.at("required") == Json::array({"stage"}));
+    REQUIRE(run.at("properties").at("stage").at("enum") == Json::array({"preview", "final"}));
+    REQUIRE(run.at("properties").at("media_kind").at("enum") == Json::array({"image", "video", "mixed"}));
+    REQUIRE(run.at("oneOf").at(0).at("required") == Json::array({"stage", "media_kind", "preview_workflow", "final_workflow", "output_directory"}));
+    REQUIRE(run.at("oneOf").at(1).at("additionalProperties") == false);
+    REQUIRE(!run.at("properties").contains("approved") && !run.at("properties").contains("approval"));
+    const auto input = run.at("properties").at("inputs").at("items");
+    REQUIRE(input.at("additionalProperties") == false && input.at("required") == Json::array({"node_id", "path"}));
+    REQUIRE(schema(tools, "comfy_job_status").at("properties").at("wait_sec").at("maximum") == 60);
+    REQUIRE(schema(tools, "comfy_catalog").at("properties").at("kind").at("enum") ==
+        Json::array({"nodes", "models", "workflows", "templates"}));
+    REQUIRE(schema(tools, "comfy_catalog").at("properties").at("offset").at("maximum") == 100000);
+    for (const auto toolName : {"comfy_control", "comfy_prepare", "comfy_run"})
+        REQUIRE(schema(tools, toolName).at("properties").at("timeout_sec").at("maximum") == 7200);
+    REQUIRE(descriptor(tools, "comfy_job_status").tool.effect == Domain::ToolEffect::Read);
+    REQUIRE(descriptor(tools, "comfy_run").tool.effect == Domain::ToolEffect::Write);
+    REQUIRE(schema(tools, "desktop_scroll").at("properties").at("delta").at("minimum") == -12000);
+    REQUIRE(schema(tools, "desktop_drag").at("properties").at("duration_ms").at("default") == 500);
+
     for (const auto toolName : {"image_read", "image_write", "desktop_capture", "image_analyze", "image_generate", "image_edit"}) {
         const auto imageSchema = schema(tools, toolName);
         const auto& dimension = imageSchema.at("properties").at("preview_max_dimension");

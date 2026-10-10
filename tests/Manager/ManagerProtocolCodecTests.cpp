@@ -129,6 +129,8 @@ void replaceOne(
     settings.estimationSafetyMargin = 3'072U;
     settings.shellEnabled = false;
     settings.fileSystemAccess = Domain::FileSystemAccessMode::Host;
+    settings.comfyUi = Domain::ComfyUiConfig{true, true, R"(C:\ComfyUI)", R"(D:\Models)",
+        "http://127.0.0.1:8188", 750'000'000'123ULL, 50'000'000'001ULL, 2400U, "quality"};
     return settings;
 }
 
@@ -154,6 +156,7 @@ void replaceOne(
     patch.estimationSafetyMargin = 3'072U;
     patch.shellEnabled = false;
     patch.fileSystemAccess = Domain::FileSystemAccessMode::Host;
+    patch.comfyUi = sampleSettings().comfyUi;
     return patch;
 }
 
@@ -564,6 +567,7 @@ void testEveryRequestMethodRoundTripsDeterministically()
     REQUIRE(updatePayload.patch.effectiveContextCapacity == 65'536U);
     REQUIRE(updatePayload.patch.shellEnabled == false);
     REQUIRE(updatePayload.patch.fileSystemAccess == Domain::FileSystemAccessMode::Host);
+    REQUIRE(updatePayload.patch.comfyUi == samplePatch().comfyUi);
 
     const auto managedStart = take(Manager::ManagerProtocolCodec::decodeRequest(
         take(Manager::ManagerProtocolCodec::encodeRequest(request(
@@ -1295,6 +1299,7 @@ void testResponseResultAndErrorRoundTrips()
     REQUIRE(settings.handoffReserve == 6'144U);
     REQUIRE(settings.estimationSafetyMargin == 3'072U);
     REQUIRE(settings.fileSystemAccess == Domain::FileSystemAccessMode::Host);
+    REQUIRE(settings.comfyUi == sampleSettings().comfyUi);
     REQUIRE(take(Manager::ManagerProtocolCodec::encodeResponse(decodedSettings)) ==
             settingsFrame);
 
@@ -1388,7 +1393,7 @@ void testNullOptionalFieldsAreLossless()
         request(Manager::ManagerSettingsUpdateRequest{emptyPatch, false})));
     const auto patchRoot = Json::parse(payloadText(patchFrame));
     const auto& patch = patchRoot.at("params").at("patch");
-    REQUIRE(patch.size() == 19U);
+    REQUIRE(patch.size() == 20U);
     for (const auto& field : patch) REQUIRE(field.is_null());
     const auto decodedPatch = take(
         Manager::ManagerProtocolCodec::decodeRequest(patchFrame));
@@ -1397,6 +1402,7 @@ void testNullOptionalFieldsAreLossless()
     REQUIRE(!actualPatch.dashboardHost && !actualPatch.dashboardPort);
     REQUIRE(!actualPatch.autoRestart && !actualPatch.logLevel);
     REQUIRE(!actualPatch.fileSystemAccess);
+    REQUIRE(!actualPatch.comfyUi);
 }
 
 void testFileSystemAccessCompatibilityAndDenials()
@@ -1424,6 +1430,31 @@ void testFileSystemAccessCompatibilityAndDenials()
     patchRoot["params"]["patch"]["filesystem_access"] = nullptr;
     const auto emptyModePatch = take(Manager::ManagerProtocolCodec::decodeRequest(frameFromJson(patchRoot)));
     REQUIRE(!std::get<Manager::ManagerSettingsUpdateRequest>(emptyModePatch.payload).patch.fileSystemAccess);
+}
+
+void testComfyUiCompatibilityAndDenials()
+{
+    auto settingsRoot = responseJson(Manager::ManagerResult{sampleSettings()});
+    settingsRoot["result"]["value"].erase("comfy_ui");
+    const auto legacy = take(Manager::ManagerProtocolCodec::decodeResponse(frameFromJson(settingsRoot)));
+    const auto& settings = std::get<Domain::ManagerSettings>(std::get<Manager::ManagerResult>(legacy.body));
+    REQUIRE(settings.comfyUi == Domain::ComfyUiConfig{});
+    auto patchRoot = requestJson(Manager::ManagerSettingsUpdateRequest{samplePatch(), true});
+    patchRoot["params"]["patch"].erase("comfy_ui");
+    const auto legacyPatch = take(Manager::ManagerProtocolCodec::decodeRequest(frameFromJson(patchRoot)));
+    REQUIRE(!std::get<Manager::ManagerSettingsUpdateRequest>(legacyPatch.payload).patch.comfyUi);
+    for (const auto& invalid : std::vector<Json>{nullptr, "enabled", true, 1, Json::object()}) {
+        settingsRoot["result"]["value"]["comfy_ui"] = invalid;
+        requireError(Manager::ManagerProtocolCodec::decodeResponse(frameFromJson(settingsRoot)), Domain::ErrorCodes::InvalidRequest);
+    }
+    auto encoded = requestJson(Manager::ManagerSettingsUpdateRequest{samplePatch(), true});
+    for (const auto& invalid : std::vector<Json>{-1, 0, 10'000'000'000'001ULL, 500.5, "500000000000"}) {
+        encoded["params"]["patch"]["comfy_ui"]["download_budget_bytes"] = invalid;
+        requireError(Manager::ManagerProtocolCodec::decodeRequest(frameFromJson(encoded)), Domain::ErrorCodes::InvalidRequest);
+    }
+    encoded = requestJson(Manager::ManagerSettingsUpdateRequest{samplePatch(), true});
+    encoded["params"]["patch"]["comfy_ui"]["future"] = true;
+    requireError(Manager::ManagerProtocolCodec::decodeRequest(frameFromJson(encoded)), Domain::ErrorCodes::InvalidRequest);
 }
 
 void testTimestampPrecisionAndRepresentableBounds()
@@ -1978,6 +2009,7 @@ int main()
          testSettingsUpdateOutcomeRoundTrips},
         {"optional-fields", testNullOptionalFieldsAreLossless},
         {"filesystem-access", testFileSystemAccessCompatibilityAndDenials},
+        {"comfy-ui-settings", testComfyUiCompatibilityAndDenials},
         {"timestamp-precision-bounds", testTimestampPrecisionAndRepresentableBounds},
         {"hostile-framing-json", testHostileFramingAndJsonAreRejected},
         {"hostile-request", testHostileRequestSchemaAndIdentityAreRejected},

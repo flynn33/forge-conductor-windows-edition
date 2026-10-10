@@ -30,6 +30,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <utility>
 #include <unordered_set>
 #include <vector>
@@ -534,6 +535,84 @@ Json clickWindow(HWND selected, const Json& arguments, const Domain::OperationCo
     send(inputs);
     return Json{{"ok", true}, {"input_submitted", true}, {"requires_observation", true}};
 }
+INPUT pointerMove(const POINT point) {
+    const auto width = ::GetSystemMetrics(SM_CXVIRTUALSCREEN);
+    const auto height = ::GetSystemMetrics(SM_CYVIRTUALSCREEN);
+    if (width <= 1 || height <= 1) reject(Domain::ErrorCodes::HostCapabilityUnavailable, "Desktop coordinate space unavailable.");
+    INPUT input{};
+    input.type = INPUT_MOUSE;
+    input.mi.dx = static_cast<LONG>((static_cast<std::int64_t>(point.x - ::GetSystemMetrics(SM_XVIRTUALSCREEN)) * 65535) / (width - 1));
+    input.mi.dy = static_cast<LONG>((static_cast<std::int64_t>(point.y - ::GetSystemMetrics(SM_YVIRTUALSCREEN)) * 65535) / (height - 1));
+    input.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_VIRTUALDESK;
+    return input;
+}
+POINT pointerPoint(HWND selected, const Json& arguments, const std::string_view xName, const std::string_view yName) {
+    const auto geometry = bounds(selected);
+    const auto x = integer(arguments, xName, -1, 0, geometry.right - geometry.left - 1);
+    const auto y = integer(arguments, yName, -1, 0, geometry.bottom - geometry.top - 1);
+    if (x < 0 || y < 0) reject(Domain::ErrorCodes::InvalidRequest, "Pointer operations require window-relative coordinates.");
+    return POINT{geometry.left + static_cast<LONG>(x), geometry.top + static_cast<LONG>(y)};
+}
+void verifyPointerPoint(HWND selected, const POINT point) {
+    const auto covering = ::WindowFromPoint(point);
+    if (covering != selected && !::IsChild(selected, covering))
+        reject(Domain::ErrorCodes::HostCapabilityUnavailable, "Another window covers the selected pointer point; input may be partial. Observe before retrying.");
+}
+Json scrollWindow(HWND selected, const Json& arguments, const Domain::OperationContext& context) {
+    const auto point = pointerPoint(selected, arguments, "x", "y");
+    const auto delta = integer(arguments, "delta", 0, -12'000, 12'000);
+    if (delta == 0) reject(Domain::ErrorCodes::InvalidRequest, "Scroll requires a nonzero delta within -12000 through 12000 wheel units.");
+    foreground(selected, arguments, context);
+    verifyPointerPoint(selected, point);
+    std::array<INPUT, 2> inputs{};
+    inputs[0] = pointerMove(point);
+    inputs[1].type = INPUT_MOUSE;
+    inputs[1].mi.dwFlags = MOUSEEVENTF_WHEEL;
+    inputs[1].mi.mouseData = static_cast<DWORD>(static_cast<LONG>(delta));
+    verifyInputTarget(selected, arguments, context);
+    send(inputs);
+    return Json{{"ok", true}, {"input_submitted", true}, {"delta", delta}, {"requires_observation", true}};
+}
+Json dragWindow(HWND selected, const Json& arguments, const Domain::OperationContext& context) {
+    const auto start = pointerPoint(selected, arguments, "start_x", "start_y");
+    const auto end = pointerPoint(selected, arguments, "end_x", "end_y");
+    const auto duration = integer(arguments, "duration_ms", 500, 50, 5'000);
+    foreground(selected, arguments, context);
+    verifyPointerPoint(selected, start);
+    verifyPointerPoint(selected, end);
+    struct ButtonRelease final {
+        bool active{};
+        ~ButtonRelease() {
+            if (active) {
+                INPUT release{}; release.type = INPUT_MOUSE; release.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+                static_cast<void>(::SendInput(1U, &release, sizeof(INPUT)));
+            }
+        }
+    } release;
+    std::array<INPUT, 2> down{};
+    down[0] = pointerMove(start);
+    down[1].type = INPUT_MOUSE;
+    down[1].mi.dwFlags = MOUSEEVENTF_LEFTDOWN;
+    verifyInputTarget(selected, arguments, context);
+    release.active = true;
+    send(down);
+    const auto started = std::chrono::steady_clock::now();
+    const auto steps = (std::max)(1LL, static_cast<long long>(duration / 16));
+    for (long long step = 1; step <= steps; ++step) {
+        std::this_thread::sleep_until(started + std::chrono::milliseconds{duration * step / steps});
+        verifyInputTarget(selected, arguments, context);
+        const POINT point{start.x + static_cast<LONG>((static_cast<std::int64_t>(end.x) - start.x) * step / steps),
+            start.y + static_cast<LONG>((static_cast<std::int64_t>(end.y) - start.y) * step / steps)};
+        verifyPointerPoint(selected, point);
+        auto move = pointerMove(point);
+        send(std::span<INPUT>{&move, 1U});
+    }
+    verifyInputTarget(selected, arguments, context);
+    INPUT up{}; up.type = INPUT_MOUSE; up.mi.dwFlags = MOUSEEVENTF_LEFTUP;
+    send(std::span<INPUT>{&up, 1U});
+    release.active = false;
+    return Json{{"ok", true}, {"input_submitted", true}, {"duration_ms", duration}, {"requires_observation", true}};
+}
 Json typeWindow(HWND selected, const Json& arguments, const Domain::OperationContext& context) {
     const auto value = wide(text(arguments, "text"));
     foreground(selected, arguments, context);
@@ -713,12 +792,14 @@ Domain::Result<std::string> WindowsDesktopArtifactService::execute(
                 "Windows could not open the URL with its registered browser.");
             result = Json{{"ok", true}, {"url", url}, {"launch_accepted", true}, {"navigation_verified", false}};
         } else if (toolName == "desktop_read" || toolName == "desktop_click" ||
-            toolName == "desktop_type" || toolName == "desktop_key") {
+            toolName == "desktop_type" || toolName == "desktop_key" || toolName == "desktop_scroll" || toolName == "desktop_drag") {
             const HWND selected = window(arguments);
             authorizeDesktop(workspaceAuthority_, authority, toolName != "desktop_read", context);
             if (toolName == "desktop_read") result = readWindow(selected, arguments, context);
             else if (toolName == "desktop_click") result = clickWindow(selected, arguments, context);
             else if (toolName == "desktop_type") result = typeWindow(selected, arguments, context);
+            else if (toolName == "desktop_scroll") result = scrollWindow(selected, arguments, context);
+            else if (toolName == "desktop_drag") result = dragWindow(selected, arguments, context);
             else result = pressWindow(selected, arguments, context);
         } else if (toolName == "desktop_capture" || toolName == "image_write" || toolName == "image_read") {
             const auto previewDimension = static_cast<int>(integer(arguments, "preview_max_dimension", 256, 128, 2048));

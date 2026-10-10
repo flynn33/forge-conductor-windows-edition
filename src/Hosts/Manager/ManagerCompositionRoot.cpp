@@ -87,6 +87,8 @@
 #include "ForgeConductor/NativeTools/Windows/WindowsArtifactDocumentService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsDesktopArtifactService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsImageProviderService.h"
+#include "ForgeConductor/NativeTools/Windows/WindowsComfyUiService.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsLMStudioConversationReader.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsWebAccessService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsShellService.h"
 #include "ForgeConductor/NativeTools/Windows/WindowsEvidenceService.h"
@@ -672,6 +674,7 @@ private:
     std::unique_ptr<NativeToolsWindows::WindowsArtifactDocumentService> artifactDocuments_;
     std::unique_ptr<NativeToolsWindows::WindowsDesktopArtifactService> desktopArtifacts_;
     std::unique_ptr<NativeToolsWindows::WindowsImageProviderService> imageProvider_;
+    std::unique_ptr<NativeToolsWindows::WindowsComfyUiService> comfyUi_;
     std::unique_ptr<NativeToolsWindows::WindowsWebAccessService> webAccess_;
     std::unique_ptr<NativeToolsWindows::WindowsGitService> git_;
     std::unique_ptr<NativeToolsWindows::WindowsShellService> shell_;
@@ -1070,6 +1073,10 @@ void ManagerCompositionRoot::Impl::initializePersistence(
         *projectWorkspaceAuthority_, *atomicFileStore_, *configurationStore_,
         *dataAuthority_, *dataScope_, childPath(process.dataRoot(), "image-jobs"),
         *uuidGenerator_, *clock_, *hasher_);
+    comfyUi_ = std::make_unique<NativeToolsWindows::WindowsComfyUiService>(
+        *projectWorkspaceAuthority_, *atomicFileStore_, *configurationStore_,
+        *dataAuthority_, *dataScope_, childPath(process.dataRoot(), "comfy-jobs"),
+        *uuidGenerator_, *clock_, *hasher_);
     webAccess_ = std::make_unique<NativeToolsWindows::WindowsWebAccessService>();
     git_ = std::make_unique<NativeToolsWindows::WindowsGitService>(
         discoverGitExecutable(), processSupervisor_);
@@ -1313,6 +1320,7 @@ void ManagerCompositionRoot::Impl::initializePersistence(
     toolDependencies.artifactDocuments = artifactDocuments_.get();
     toolDependencies.desktopArtifacts = desktopArtifacts_.get();
     toolDependencies.imageProvider = imageProvider_.get();
+    toolDependencies.comfyUi = comfyUi_.get();
     toolDependencies.reviewerRuns = [this]() -> Contracts::IManagedRunService* { return reviewerRuns_.get(); };
     toolDependencies.workerRuns = [this]() -> Contracts::IManagedRunService* { return workerRuns_.get(); };
     toolDependencies.scheduledTasks = [this]() -> Contracts::IScheduledTaskService* { return scheduledTasks_.get(); };
@@ -1545,6 +1553,72 @@ void ManagerCompositionRoot::Impl::initializeLmStudio(
         auto selection = take(selector.select(
             std::move(candidates), *lmStudioSelectionAuthority_, context));
         if (selection.status().configurationPath && selection.status().applicationExecutable) {
+            const auto conversationRoot = parentPath(*selection.status().configurationPath);
+            comfyUi_->setConversationObserver([this, conversationRoot](const Domain::ProjectId& project,
+                std::string_view boundConversation, const Domain::OperationContext& operation) {
+                auto observed = InfrastructureWindows::WindowsLMStudioConversationReader::read(conversationRoot, operation);
+                if (!observed) return Domain::Result<std::string>::failure(observed.error());
+                if (!observed.value()) return Domain::Result<std::string>::failure(Domain::makeError(
+                    Domain::ErrorCodes::HostCapabilityUnavailable,
+                    "LM Studio has no selected saved conversation for ComfyUI preview approval."));
+                const auto& current = *observed.value();
+                const auto projectConversation = [](const InfrastructureWindows::LMStudioConversationObservation& conversation) {
+                    nlohmann::json users = nlohmann::json::array(), results = nlohmann::json::array();
+                    for (const auto& user : conversation.userMessageEvidence) users.push_back({{"text", user.text},
+                        {"message_index", user.messageIndex}, {"selected_version", user.selectedVersion},
+                        {"forge_generated", user.forgeGenerated}});
+                    for (const auto& result : conversation.nativeToolResults) results.push_back({{"name", result.name},
+                        {"plugin_identifier", result.pluginIdentifier}, {"message_index", result.messageIndex},
+                        {"selected_version", result.selectedVersion}, {"text_bodies", result.textBodies}});
+                    return nlohmann::json{{"conversation_id", conversation.conversationId},
+                        {"user_messages", std::move(users)}, {"native_tool_results", std::move(results)}};
+                };
+                const auto projectError = [](const Domain::Error& error) {
+                    auto length = std::min(error.message.size(), std::size_t{1024U});
+                    while (length < error.message.size() && length > 0U &&
+                        (static_cast<unsigned char>(error.message[length]) & 0xc0U) == 0x80U) --length;
+                    return nlohmann::json{{"code", error.code}, {"message", error.message.substr(0, length)}};
+                };
+                auto projection = projectConversation(current);
+                bool readRelatedConversation = false;
+                if (visibleChatContinuity_) {
+                    const auto continuation = visibleChatContinuity_->status(project, operation);
+                    if (continuation) {
+                        const auto saved = nlohmann::json::parse(continuation.value().canonicalStatus, nullptr, false);
+                        if (saved.is_object() && saved.value("state", std::string{}) == "resumed" &&
+                            saved.value("available", false) &&
+                            saved.value("successor_lmstudio_session_id", std::string{}) == current.conversationId &&
+                            saved.contains("predecessor_lmstudio_session_id") && saved.at("predecessor_lmstudio_session_id").is_string()) {
+                            projection["verified_predecessor"] = saved.at("predecessor_lmstudio_session_id");
+                            if (saved.contains("packet_id") && saved.at("packet_id").is_string())
+                                projection["verified_handoff_id"] = saved.at("packet_id");
+                            const auto predecessor = InfrastructureWindows::WindowsLMStudioConversationReader::readConversation(
+                                conversationRoot, saved.at("predecessor_lmstudio_session_id").get_ref<const std::string&>(), operation);
+                            readRelatedConversation = true;
+                            if (predecessor && predecessor.value())
+                                projection["predecessor_conversation"] = projectConversation(*predecessor.value());
+                            else if (!predecessor) projection["predecessor_error"] = projectError(predecessor.error());
+                        }
+                    }
+                }
+                if (!boundConversation.empty() && boundConversation != current.conversationId) {
+                    const auto bound = InfrastructureWindows::WindowsLMStudioConversationReader::readConversation(
+                        conversationRoot, boundConversation, operation);
+                    readRelatedConversation = true;
+                    if (bound && bound.value()) projection["bound_conversation"] = projectConversation(*bound.value());
+                    else if (!bound) projection["bound_conversation_error"] = projectError(bound.error());
+                    else projection["bound_conversation_error"] = {{"code", Domain::ErrorCodes::HostCapabilityUnavailable},
+                        {"message", "The ComfyUI plan's bound saved LM Studio conversation is unavailable."}};
+                }
+                if (readRelatedConversation) {
+                    const auto refreshed = InfrastructureWindows::WindowsLMStudioConversationReader::read(conversationRoot, operation);
+                    if (!refreshed) return Domain::Result<std::string>::failure(refreshed.error());
+                    if (!refreshed.value() || projectConversation(*refreshed.value()) != projectConversation(current))
+                        return Domain::Result<std::string>::failure(Domain::makeError(Domain::ErrorCodes::Conflict,
+                            "LM Studio selected conversation evidence changed while checking its saved conversations.", true));
+                }
+                return Domain::Result<std::string>::success(projection.dump());
+            });
             visibleChatContinuity_ = std::make_shared<ManagerVisibleChatContinuity>(
                 process.dataRoot(), parentPath(*selection.status().configurationPath),
                 *selection.status().applicationExecutable, process.cliExecutable(),
@@ -1994,6 +2068,7 @@ void ManagerCompositionRoot::Impl::shutdownServices(
         }
         if (scheduledTasks_) scheduledTasks_->shutdown();
         if (workerRuns_) workerRuns_->shutdown();
+        if (comfyUi_) comfyUi_->shutdown();
         if (imageProvider_) imageProvider_->shutdown();
         if (managedRuns_) {
             managedRuns_->shutdown();

@@ -1,6 +1,6 @@
 # Windows package inputs
 
-Current source and packaging inputs identify Forge Conductor 1.3.28 / Windows package 1.3.28.0 x64. `scripts/package.ps1` constructs a distribution from a clean, source-bound Release staging manifest. Current build, signed-install, catalog and native measurements are recorded in the 1.3.28 verification record; isolated provider checks retain their own scope. Publication readback remains a separate check; see [implementation notes](../docs/releases/1.3.28.md) and [measured verification](../docs/validation/HOST-CAPABILITIES-1.3.28.md). Published [1.3.19 evidence](../docs/releases/1.3.19.md) retains its own artifact identity.
+Current source and packaging inputs identify Forge Conductor 1.3.29 / Windows package 1.3.29.0 x64. `scripts/package.ps1` constructs the distribution from a clean, source-bound Release staging manifest. Current versioned build, signing, payload, installation and publication results belong to [release verification](../docs/validation/RELEASE-1.3.29.md); see [release notes](../docs/releases/1.3.29.md). Earlier package measurements retain their artifact identities.
 
 The stable package identity is `ForgeConductor.Windows`. The package contains the self-contained WinUI application, CLI, Manager, SessionHost, Windows App SDK runtime, release Visual C++ runtime, resources, Forsetti manifest, third-party notices, embedded provenance, and a complete payload hash manifest.
 
@@ -14,4 +14,4 @@ The historical public 1.3.11 package is rebuilt from its tagged clean source com
 
 The original signed 1.3.6 package was constructed successfully and installed App/Manager/CLI hashes matched its payload. Publication preserves that exact immutable artifact from source commit `9912541debc92c1117cceab0f6322c4e62728ee4`, tree `be9e31450ac2792bb76cbaf409d90e7779f3046e`, with `v1.3.6` pointing to that commit. Later documentation commits remain on main without changing product source. The differently hashed later same-version rebuild is not the published package. These checks establish package identity, not installed-window visual acceptance. See [release notes](../docs/releases/1.3.6.md).
 
-The published 1.3.21 seven-asset readback passed separately. The current 1.3.28 distribution is bound to its exact clean source and staging manifest; the isolated native provider smoke retains its separate artifact identity.
+The published 1.3.21 seven-asset readback and recorded 1.3.28 package results retain their named artifacts. The current 1.3.29 distribution must match its exact clean source and staging manifest; productive ComfyUI inference has a separate [host report](../docs/COMFYUI_HOST_QUALIFICATION.md).

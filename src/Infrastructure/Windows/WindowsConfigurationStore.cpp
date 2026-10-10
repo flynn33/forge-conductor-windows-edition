@@ -92,6 +92,16 @@ struct ParsedConfiguration final {
     return value->get<bool>();
 }
 
+[[nodiscard]] std::optional<std::uint64_t> optionalUnsigned(const Json& object, const std::string_view name)
+{
+    const auto* value = optionalMember(object, name);
+    if (value == nullptr) return std::nullopt;
+    if (!value->is_number_integer() ||
+        (!value->is_number_unsigned() && value->get<std::int64_t>() < 0))
+        reject(Domain::ErrorCodes::InvalidRequest, "A ComfyUI byte limit must be a non-negative integer.");
+    return value->get<std::uint64_t>();
+}
+
 [[nodiscard]] std::optional<std::string> optionalString(const Json& object,
                                                         const std::string_view name)
 {
@@ -343,6 +353,21 @@ void rejectSecretFields(const Json& value)
         if (const auto profile = optionalString(*image, "profile")) configuration.imageProvider.profile = *profile;
         if (const auto checkpoint = optionalString(*image, "checkpoint")) configuration.imageProvider.checkpoint = *checkpoint;
     }
+    if (const auto* comfy = optionalObject(document, "comfy_ui")) {
+        auto& value = configuration.comfyUi;
+        if (const auto field = optionalBoolean(*comfy, "enabled")) value.enabled = *field;
+        if (const auto field = optionalBoolean(*comfy, "automatic_setup")) value.automaticSetup = *field;
+        if (const auto field = optionalString(*comfy, "installation_path")) value.installationPath = *field;
+        if (const auto field = optionalString(*comfy, "model_storage_path")) value.modelStoragePath = *field;
+        if (const auto field = optionalString(*comfy, "endpoint")) value.endpoint = *field;
+        if (const auto field = optionalUnsigned(*comfy, "download_budget_bytes")) value.downloadBudgetBytes = *field;
+        if (const auto field = optionalUnsigned(*comfy, "free_space_reserve_bytes")) value.freeSpaceReserveBytes = *field;
+        if (const auto field = optionalUnsigned(*comfy, "generation_timeout_seconds")) {
+            if (*field > 7'200U) reject(Domain::ErrorCodes::InvalidRequest, "ComfyUI generation timeout exceeds 7200 seconds.");
+            value.generationTimeoutSeconds = static_cast<std::uint32_t>(*field);
+        }
+        if (const auto field = optionalString(*comfy, "quality_preference")) value.qualityPreference = *field;
+    }
     auto valid = Domain::validateAppConfig(configuration);
     if (!valid) {
         reject(valid.error().code, valid.error().message);
@@ -420,6 +445,17 @@ void writeKnownConfiguration(Json& document, const Domain::AppConfig& configurat
     image["endpoint"] = configuration.imageProvider.endpoint;
     image["profile"] = configuration.imageProvider.profile;
     image["checkpoint"] = configuration.imageProvider.checkpoint;
+    auto& comfy = document["comfy_ui"];
+    if (!comfy.is_object()) comfy = Json::object();
+    comfy["enabled"] = configuration.comfyUi.enabled;
+    comfy["automatic_setup"] = configuration.comfyUi.automaticSetup;
+    comfy["installation_path"] = configuration.comfyUi.installationPath;
+    comfy["model_storage_path"] = configuration.comfyUi.modelStoragePath;
+    comfy["endpoint"] = configuration.comfyUi.endpoint;
+    comfy["download_budget_bytes"] = configuration.comfyUi.downloadBudgetBytes;
+    comfy["free_space_reserve_bytes"] = configuration.comfyUi.freeSpaceReserveBytes;
+    comfy["generation_timeout_seconds"] = configuration.comfyUi.generationTimeoutSeconds;
+    comfy["quality_preference"] = configuration.comfyUi.qualityPreference;
 }
 
 [[nodiscard]] Json defaultDocument()

@@ -50,3 +50,25 @@ use `reviewer_start` with its opening-message file, then `reviewer_status` or
 `reviewer_cancel`. A reviewer failure or executor self-review is not an approved
 independent review gate. Preserve task-specific authorization and completion
 requirements; do not claim a result that these tools did not return.
+
+For changes to ComfyUI automation, preserve existing image tool contracts and
+strict durable receipts. Verify exact-ID recovery without duplicate generation,
+configured setup limits, inherited project authority, and native user approval
+of the preview before final generation. Status retrieval is not provider success;
+inspect published artifact hashes and independently reopen the output.
+Preserve creation guidance to read `comfy_status` for effective limits and
+`configuration.quality_preference` before choosing a workflow. When the operator
+omits quality, honor that configured default; prefer Wan 2.2 5B for balanced
+video. Choose settings from actual contracts and measured resources; never apply
+a universal resolution, frame-count or sampling rewrite to unknown graphs.
+For a verified video preview or final artifact with `provider_view_url`, call
+`browser_open` with that exact URL while ComfyUI is running, then use
+`desktop_read` on the observed browser window to check its actual address.
+Launch acceptance alone does not verify page loading or playback. Report actual
+browser-launch or observation failures. Present the URL as a copyable reference
+and the complete `artifacts[].path` in a copyable fenced block; the installed
+LM Studio 0.4.26+4 ordinary Markdown link path rejects loopback URLs. Never
+abbreviate file paths. Retain the sampled-frame preview, independent
+`image_analyze`/`reviewer_status` findings and native user approval requirement.
+If a job reports `requires_new_preview`, revise both graphs and create a fresh
+preview before requesting approval of the revised result.

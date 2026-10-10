@@ -1,6 +1,6 @@
 # Native CMake and CTest jobs
 
-This guide describes the current 1.3.28 implementation contract. Current build, signed-install, catalog and native measurements are recorded in the 1.3.28 verification record; isolated provider checks retain their own scope. The examples below are request examples; actual results are recorded separately. See [Testing](TESTING.md) for the repository's verification workflow. Historical 1.3.19 measurements retain their original artifact identity.
+This guide describes the current 1.3.29 implementation contract. Request examples are separate from execution evidence. Read [release verification](validation/RELEASE-1.3.29.md) for current versioned checks and [the retained 1.3.28 record](validation/HOST-CAPABILITIES-1.3.28.md) for its historical native CMake/CTest measurements.
 
 `cmake_test_run` starts a durable, project-owned job in an explicit initialized CMake build tree. `cmake_test_status` reads its actual phase outcomes, validated JUnit counts and paged failure details. The existing `process_read_log`, `process_wait`, `process_poll` and `process_kill` tools operate on the returned `job_id`.
 

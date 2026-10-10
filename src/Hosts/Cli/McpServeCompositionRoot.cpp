@@ -18,6 +18,7 @@
 #include "ForgeConductor/Application/ProjectPolicyService.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsPolicySourceReader.h"
 #include "ForgeConductor/Domain/ProductIdentity.h"
+#include "ForgeConductor/Domain/Utf8.h"
 #include "ForgeConductor/Infrastructure/Windows/BCryptSha256Hasher.h"
 #include "ForgeConductor/Infrastructure/Windows/InfrastructureWindows.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsGitHubReadService.h"
@@ -494,22 +495,6 @@ void ensureDirectory(const Domain::PathText& directory)
         right.data(), static_cast<int>(right.size()), TRUE) == CSTR_EQUAL;
 }
 
-[[nodiscard]] std::wstring quoteWindowsArgument(const std::wstring_view value)
-{
-    std::wstring quoted{L"\""};
-    std::size_t backslashes{};
-    for (const auto character : value) {
-        if (character == L'\\') { ++backslashes; continue; }
-        quoted.append(backslashes * (character == L'\"' ? 2U : 1U) +
-            (character == L'\"' ? 1U : 0U), L'\\');
-        quoted.push_back(character);
-        backslashes = 0U;
-    }
-    quoted.append(backslashes * 2U, L'\\');
-    quoted.push_back(L'\"');
-    return quoted;
-}
-
 [[nodiscard]] std::optional<std::filesystem::path> siblingManagerExecutable()
 {
     std::array<wchar_t, 32'768U> module{};
@@ -550,21 +535,26 @@ void ensureDirectory(const Domain::PathText& directory)
 [[nodiscard]] std::unique_ptr<InfrastructureWindows::WindowsManagerNamedPipeClient>
 ensureDurableManager(const Domain::PathText& home, const Domain::OperationContext& parent,
     const std::shared_ptr<InfrastructureWindows::SystemClock>& clock,
+    Contracts::IProcessSupervisor& processSupervisor, Contracts::IUuidGenerator& uuidGenerator,
     std::string& startupError) noexcept
 {
     try {
-        struct StartupProcess final {
-            HANDLE handle{};
-            ~StartupProcess() noexcept
-            {
-                if (handle) static_cast<void>(::CloseHandle(handle));
-            }
-        } startupProcess;
         startupError = "The matching durable Manager could not be started or authenticated.";
+        const auto boundedDiagnostic = [](const std::string_view value, const std::size_t maximumBytes) {
+            if (!Domain::isValidUtf8(value)) return std::string{"Invalid UTF-8 diagnostic."};
+            auto bytes = (std::min)(value.size(), maximumBytes);
+            while (bytes > 0U && !Domain::isValidUtf8(value.substr(0U, bytes))) --bytes;
+            return std::string{value.substr(0U, bytes)};
+        };
+        const auto recordFailure = [&startupError, &boundedDiagnostic](const std::string_view stage,
+            const Domain::Error& error) {
+            startupError = "Durable Manager " + std::string{stage} + " failed (" +
+                boundedDiagnostic(error.code, 96U) + "): " + boundedDiagnostic(error.message, 384U);
+        };
         auto identity = InfrastructureWindows::WindowsCurrentUserIdentity::load();
-        if (!identity) return {};
+        if (!identity) { recordFailure("current-user identity", identity.error()); return {}; }
         const auto sibling = siblingManagerExecutable();
-        if (!sibling) return {};
+        if (!sibling) { startupError = "The sibling durable Manager executable path could not be resolved."; return {}; }
         const auto& executable = *sibling;
         if (!isSingleLinkRegularExecutable(executable)) {
             startupError = "The regular Manager executable beside this connector is unavailable.";
@@ -572,17 +562,18 @@ ensureDurableManager(const Domain::PathText& home, const Domain::OperationContex
         }
         auto homeWide = strictUtf8ToWide(home.value());
         auto persistentRoot = InfrastructureWindows::WindowsAlphaManagerProfile::persistentDataRoot();
-        if (!homeWide || !persistentRoot) return {};
+        if (!homeWide) { recordFailure("home conversion", homeWide.error()); return {}; }
+        if (!persistentRoot) { recordFailure("persistent profile resolution", persistentRoot.error()); return {}; }
         const bool persistent = sameWindowsPath(homeWide.value(), persistentRoot.value());
         auto profile = InfrastructureWindows::WindowsAlphaManagerProfile::create(home);
-        if (!profile) return {};
+        if (!profile) { recordFailure("selected profile resolution", profile.error()); return {}; }
         InfrastructureWindows::WindowsManagerInstanceLeaseOptions options;
         if (!persistent) options.purposeSuffix = profile.value().purposeSuffix();
         const std::wstring registrySubkey = persistent
             ? std::wstring{InfrastructureWindows::DpapiSecureStorage::DefaultRegistrySubkey}
             : std::wstring{profile.value().secureStorageRegistrySubkey()};
         auto names = InfrastructureWindows::WindowsManagerInstanceLease::namesFor(identity.value(), options);
-        if (!names) return {};
+        if (!names) { recordFailure("instance naming", names.error()); return {}; }
         const auto readyDeadline = (std::min)(parent.deadline,
             clock->monotonicNow() + std::chrono::seconds{10});
         const auto active = [&] { return !parent.isCancellationRequested() &&
@@ -595,22 +586,26 @@ ensureDurableManager(const Domain::PathText& home, const Domain::OperationContex
             InfrastructureWindows::WindowsManagerAuthenticationTokenGenerator generator;
             InfrastructureWindows::WindowsManagerAuthenticationTokenStore tokens{secure, generator};
             auto nonce = tokens.load(context);
-            if (!nonce || !nonce.value()) return {};
+            if (!nonce) { recordFailure("authentication-token read", nonce.error()); return {}; }
+            if (!nonce.value()) { startupError = "The selected durable Manager profile has no authentication token."; return {}; }
             auto client = InfrastructureWindows::WindowsManagerNamedPipeClient::create(
                 clock, std::wstring{names.value().pipeName()}, *nonce.value());
-            if (!client) return {};
+            if (!client) { recordFailure("client creation", client.error()); return {}; }
             auto status = client.value()->status(context);
-            if (!status) return {};
+            if (!status) { recordFailure("authenticated status", status.error()); return {}; }
             const auto verified = validateDurableManagerStatus(status.value(), home, executable);
             if (!verified) {
-                startupError = verified.error().message;
+                recordFailure("package/profile verification", verified.error());
                 return {};
             }
             startupError.clear();
             return std::move(client).value();
         };
         if (auto existing = connect()) return existing;
-        if (!active()) return {};
+        if (!active()) {
+            startupError = "Durable Manager startup deadline expired before profile lease acquisition. Last check: " + startupError;
+            return {};
+        }
         auto startupOptions = options;
         startupOptions.purposeSuffix += persistent ? "startup" : "-startup";
         auto startupLease = InfrastructureWindows::WindowsManagerInstanceLease::acquire(
@@ -624,65 +619,57 @@ ensureDurableManager(const Domain::PathText& home, const Domain::OperationContex
                 ::CloseHandle(existingLease);
                 startupError = "An existing Manager owns this profile but has not passed the matching package, version, and home handshake.";
             } else if (::GetLastError() == ERROR_FILE_NOT_FOUND && active()) {
-                auto arguments = quoteWindowsArgument(executable.native());
-                arguments += persistent ? L" --home " : L" --alpha-root ";
-                arguments += quoteWindowsArgument(homeWide.value());
-                STARTUPINFOW startup{};
-                startup.cb = sizeof(startup);
-                PROCESS_INFORMATION process{};
-                if (!::CreateProcessW(executable.c_str(), arguments.data(), nullptr, nullptr,
-                        FALSE, CREATE_NO_WINDOW, nullptr, executable.parent_path().c_str(),
-                        &startup, &process)) {
-                    startupError = "Windows could not start the matching Manager (error " +
-                        std::to_string(::GetLastError()) + ").";
+                const auto helper = executable.parent_path() / L"forge-conductor.exe";
+                if (!isSingleLinkRegularExecutable(helper)) {
+                    startupError = "The regular Manager bootstrap helper beside this connector is unavailable.";
                     return {};
                 }
-                ::CloseHandle(process.hThread);
-                startupProcess.handle = process.hProcess;
+                auto helperPath = strictWideToUtf8(helper.native());
+                auto helperDirectory = strictWideToUtf8(helper.parent_path().native());
+                if (!helperPath || !helperDirectory) {
+                    startupError = "The Manager bootstrap helper paths could not be converted safely.";
+                    return {};
+                }
+                const auto helperProject = Domain::ProjectId{nextUuid(uuidGenerator)};
+                InfrastructureWindows::WindowsWorkspaceAuthority helperIssuer{
+                    {authorityPolicy(Domain::AuthorityId{nextUuid(uuidGenerator)}, helperProject,
+                        take(Domain::ClientId::parse(nextUuid(uuidGenerator).value())), {pathText(helperDirectory.value())},
+                        Domain::FileAccess::Execute, {Domain::FileAccess::Execute}, {}, true)}};
+                const Domain::OperationContext helperContext{parent.operationId, readyDeadline,
+                    parent.cancellation, parent.correlationId};
+                auto helperAuthority = helperIssuer.authorityFor(helperProject, helperContext);
+                if (!helperAuthority) { recordFailure("desktop bootstrap authority", helperAuthority.error()); return {}; }
+                const auto helperResult = processSupervisor.run(Domain::ProcessRequest{
+                    pathText(helperPath.value()), {"--internal-start-manager"}, pathText(helperDirectory.value()),
+                    {}, true, std::chrono::seconds{10}, 1'024U, 1'024U,
+                    nlohmann::json{{"home", home.value()}, {"isolated_profile", !persistent}}.dump()},
+                    helperAuthority.value(), helperContext);
+                if (!helperResult) { recordFailure("desktop bootstrap helper", helperResult.error()); return {}; }
+                const auto& result = helperResult.value();
+                const auto response = nlohmann::json::parse(result.stdoutUtf8, nullptr, false);
+                if (result.exitCode != 0 || result.timedOut || result.cancelled || !result.terminationConfirmed ||
+                    result.stdoutTruncated || result.stderrTruncated || !result.stderrUtf8.empty() ||
+                    !response.is_object() || response.size() != 1U || !response.contains("ok") ||
+                    !response.at("ok").is_boolean() || !response.at("ok").get<bool>()) {
+                    startupError = "The Windows desktop Shell bootstrap helper failed to launch the matching Manager.";
+                    if (response.is_object() && response.contains("code") && response.at("code").is_string())
+                        startupError += " Code: " + boundedDiagnostic(response.at("code").get<std::string>(), 96U) + ".";
+                    return {};
+                }
             } else {
                 startupError = "The Manager profile ownership could not be checked safely.";
                 return {};
             }
         } else if (startupLease.error().code != Domain::ErrorCodes::OwnershipConflict) {
-            startupError = startupLease.error().message;
+            recordFailure("startup lease acquisition", startupLease.error());
             return {};
         }
         while (active()) {
             if (auto existing = connect()) return existing;
-            if (startupProcess.handle) {
-                const auto state = ::WaitForSingleObject(startupProcess.handle, 0U);
-                if (state == WAIT_OBJECT_0) {
-                    DWORD exitCode{};
-                    if (!::GetExitCodeProcess(startupProcess.handle, &exitCode)) {
-                        startupError = "The Manager startup process exit could not be read (error " +
-                            std::to_string(::GetLastError()) + ").";
-                        return {};
-                    }
-                    // A separately launched Manager may have won the profile
-                    // lease. Only that observed owner justifies waiting after
-                    // this connector's child has already exited.
-                    const HANDLE owner = ::OpenMutexW(SYNCHRONIZE, FALSE,
-                        std::wstring{names.value().mutexName()}.c_str());
-                    if (owner) {
-                        ::CloseHandle(owner);
-                    } else {
-                        const auto nativeError = ::GetLastError();
-                        startupError = nativeError == ERROR_FILE_NOT_FOUND
-                            ? "The matching durable Manager exited during startup with code " +
-                                std::to_string(exitCode) + "."
-                            : "The Manager profile owner could not be checked after startup exit (error " +
-                                std::to_string(nativeError) + ").";
-                        return {};
-                    }
-                } else if (state == WAIT_FAILED) {
-                    startupError = "The Manager startup process could not be observed (error " +
-                        std::to_string(::GetLastError()) + ").";
-                    return {};
-                }
-            }
             std::this_thread::sleep_for(std::chrono::milliseconds{50});
         }
         if (parent.isCancellationRequested()) startupError = "Manager startup was cancelled; the independent process was left unchanged.";
+        else startupError = "Durable Manager readiness deadline expired. Last check: " + startupError;
         return {};
     } catch (...) {
         startupError = "The matching durable Manager startup failed safely.";
@@ -1007,7 +994,7 @@ private:
                     authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Write, operation),
                     authorizePath(*dataAuthority_, dataScope, path, dataRoot, Domain::FileAccess::Create, operation)});
             }, dataRoot);
-        managerBroker_ = ensureDurableManager(dataRoot, startupContext, clock_, managerStartupError_);
+        managerBroker_ = ensureDurableManager(dataRoot, startupContext, clock_, *processSupervisor_, *uuidGenerator_, managerStartupError_);
         agentCatalog_ = take(Application::AgentCatalog::create(
             clock_, std::span<const Application::AgentDefinitionDocument>{},
             startupContext));
@@ -1217,7 +1204,25 @@ private:
                 (std::min)(operation.deadline, clock_->monotonicNow() +
                     ForgeConductor::Manager::ManagerTransportLimits::DefaultMaximumRequestLifetime),
                 operation.cancellation, operation.correlationId};
-            auto status = managerBroker_->status(brokerOperation);
+            auto* activeBroker = managerBroker_.get();
+            std::unique_ptr<InfrastructureWindows::WindowsManagerNamedPipeClient> recoveredBroker;
+            auto status = activeBroker->status(brokerOperation);
+            if (!status && name.starts_with("comfy_") &&
+                (status.error().code == Domain::ErrorCodes::TransportClosed ||
+                 status.error().code == Domain::ErrorCodes::DeadlineExceeded) &&
+                !brokerOperation.isCancellationRequested() &&
+                !brokerOperation.isExpired(clock_->monotonicNow())) {
+                // Only a failed read-only status may bootstrap a replacement.
+                // The invocation below is sent once, including after recovery.
+                std::string recoveryError;
+                recoveredBroker = ensureDurableManager(dataRoot, brokerOperation, clock_,
+                    *processSupervisor_, *uuidGenerator_, recoveryError);
+                if (!recoveredBroker) return Domain::Result<std::string>::failure(Domain::makeError(
+                    status.error().code, recoveryError.empty() ? status.error().message : recoveryError,
+                    status.error().retryable));
+                activeBroker = recoveredBroker.get();
+                status = activeBroker->status(brokerOperation);
+            }
             if (!status) return Domain::Result<std::string>::failure(status.error());
             const auto executable = siblingManagerExecutable();
             if (!executable) return Domain::Result<std::string>::failure(Domain::makeError(
@@ -1225,7 +1230,7 @@ private:
                 "The durable Manager sibling path could not be resolved."));
             const auto verified = validateDurableManagerStatus(status.value(), dataRoot, *executable);
             if (!verified) return Domain::Result<std::string>::failure(verified.error());
-            auto result = managerBroker_->invokeTool(
+            auto result = activeBroker->invokeTool(
                 {project, std::string{name}, std::string{arguments}}, brokerOperation);
             if (!result) return Domain::Result<std::string>::failure(result.error());
             if (!result.value().ok && result.value().error)

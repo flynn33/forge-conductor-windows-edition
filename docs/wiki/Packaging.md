@@ -1,6 +1,6 @@
-# Current source version 1.3.28
+# Current source version 1.3.29
 
-Product version 1.3.28 and package version 1.3.28.0 identify the current release. The verification record separates actual build, signature, package/install, native-model and CI measurements from publication readback. The optional image provider is disabled by default and connects only to an explicitly configured existing local service; packaging does not install/start ComfyUI or download models. See [1.3.28 source notes](Release-1.3.28) and [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
+Product version 1.3.29 and package version 1.3.29.0 identify the current release. The [versioned verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/RELEASE-1.3.29.md) separates actual build, signature, package/install and CI measurements from publication readback and earlier host inference. The package includes the native ComfyUI service and starter resources. Its installer does not run media inference or install model dependencies; after configuration, the managed tools can start the existing runtime and prepare missing identified dependencies. ComfyUI, its interpreter, Edge and FFmpeg remain external applications. See [1.3.29 release notes](Release-1.3.29), [ComfyUI Automation](ComfyUI-Automation) and the retained [legacy image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
 
 ## Superseded installed 1.3.22
 

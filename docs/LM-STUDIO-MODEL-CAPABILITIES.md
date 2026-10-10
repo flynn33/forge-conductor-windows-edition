@@ -1,18 +1,30 @@
 # Forge Conductor capabilities for models in LM Studio
 
-This guide inventories **all 112 distinct model-facing tools in Forge Conductor for Windows 1.3.28** (package **1.3.28.0**), plus its ten specialist playbooks and supporting orchestration services. It explains what the model calls, what the owner configures, and how to read the result.
+This guide inventories **all 125 distinct model-facing tools in Forge Conductor for Windows 1.3.29** (package **1.3.29.0**), plus its ten specialist playbooks and supporting orchestration services. It explains what the model calls, what the operator configures, and how to read the result.
 
-The matching [LM-STUDIO-MODEL-CAPABILITIES.json](LM-STUDIO-MODEL-CAPABILITIES.json) contains every exact advertised `name`, `description` and complete `inputSchema`, alongside role, source and access metadata. Both files describe source commit `eb071505f00d0b890ca12240cbfdbcc7594516e4`, inspected 2026-10-09. They are reference documents; loading them does not register tools, enable an integration or grant permissions.
+The matching [LM-STUDIO-MODEL-CAPABILITIES.json](LM-STUDIO-MODEL-CAPABILITIES.json) contains every exact advertised `name`, `description` and complete `inputSchema`, alongside role, source and access metadata. This inventory describes the current 1.3.29 source; the earlier reference was based on source `eb071505f00d0b890ca12240cbfdbcc7594516e4`, inspected 2026-10-09. These are reference documents; loading them does not register tools or enable an integration.
+
+Version 1.3.29 adds 11 general ComfyUI tools plus `desktop_scroll` and `desktop_drag`. See [ComfyUI automation](COMFYUI-AUTOMATION.md) for setup, workflows, preview approval and recovery. [Versioned release verification](validation/RELEASE-1.3.29.md) and [host qualification](COMFYUI_HOST_QUALIFICATION.md) retain separate source/package and productive-inference evidence.
+
+For `comfy_run` and `comfy_validate`, expected output arrays select graph output node IDs. For example, `"expected_outputs": ["25"]` selects output node `25`; set the output file name in that node's inputs. `preview_expected_outputs` and `final_expected_outputs` override the common list for their respective graphs. Omit the lists or use an empty effective list to infer all graph output nodes from their discovered node contracts.
+
+Before selecting creation settings, read `comfy_status` for effective limits and `configuration.quality_preference`; honor the configured quality when the operator omits it. When video duration is omitted, propose a motion draft of about five seconds. Choose playable MP4/H.264 for final video from discovered output-node contracts unless the operator requests a supported alternative format or codec. Save the selected format in the proposed final graph before preview approval; a later format change requires another preview and approval. Preserve supported requested alternatives and avoid universal output-format rewrites of unknown graphs. This guidance is carried in the `comfy_run` tool description as well as bootstrap instructions.
+
+For an image preview, call the existing `image_read` tool with the verified preview image artifact's `path` to display its larger bounded image before requesting approval. The job-status thumbnail alone is insufficient. Both the `comfy_run` description and bootstrap instructions carry this delivery guidance; existing image preview limits and tool arguments are unchanged.
+
+Successful decoding verifies readable media; it does not establish the requested subject or motion quality. Before describing video content or quality, call the existing `image_analyze` tool with the `path` of the published artifact whose `role` is `sampled_video_contact_sheet`, then poll `reviewer_status` for actual findings. Report missing contact sheets and review failures, including returned errors, and limit visual claims to the reviewed sampled frames. Do not infer observed content from the generation prompt or claim motion quality that those frames do not establish. Both the `comfy_run` description and bootstrap instructions carry this review guidance.
+
+For a verified video preview or final artifact with `provider_view_url`, call the existing `browser_open` tool with that exact URL while ComfyUI is running, then use `desktop_read` on the observed browser window to check its actual address. Launch acceptance alone does not verify page loading or playback; report actual browser-launch or observation failures. Present the URL as a copyable reference and the complete `artifacts[].path` in a copyable fenced block. Retain the sampled-frame preview and never abbreviate file paths. The URL uses the provider's existing local `/view` route; it is supplied only for retrieved provider files, not derived local contact sheets. The installed LM Studio 0.4.26+4 ordinary Markdown link path rejects loopback URLs, so a Markdown link does not establish playable delivery. Its classic-chat renderer also strips Windows file protocols and uses an image preview component. Independent sampled-frame review and native user approval remain required. Browser loading and playback need separately observed evidence; see [ComfyUI automation](COMFYUI-AUTOMATION.md) and [host qualification](COMFYUI_HOST_QUALIFICATION.md).
 
 ## Connections and model access
 
 | LM Studio integration | Role | Tools | How the model accesses it |
 | --- | --- | ---: | --- |
-| `forge-conductor` | Primary | 112 | Enable it in the LM Studio chat; call the advertised tools through LM Studio. |
-| `forge-conductor-fallback` | Fallback | 112 | Select this independent integration in LM Studio; use the same full catalog. |
+| `forge-conductor` | Primary | 125 | Enable it in the LM Studio chat; call the advertised tools through LM Studio. |
+| `forge-conductor-fallback` | Fallback | 125 | Select this independent integration in LM Studio; use the same full catalog. |
 | `forge-conductor-clu` | CLU | 5 | Use `clu.evaluate`, `clu.export_log`, `clu.findings`, `clu.resolve`, `project_policy.read`. |
 
-The five CLU tools are a subset of the 112, and are also exposed by Primary and Fallback. Fallback does not automatically replay a timed-out Primary call or switch back to Primary. Reconcile uncertain side effects before retrying.
+The five CLU tools are a subset of the 125, and are also exposed by Primary and Fallback. Fallback does not automatically replay a timed-out Primary call or switch back to Primary. Reconcile uncertain side effects before retrying.
 
 ### Owner setup
 
@@ -436,6 +448,8 @@ Sources: [HOST-CAPABILITIES.md](HOST-CAPABILITIES.md), [McpToolCatalog.cpp](../s
 <a id="imageprovidertoolpack"></a>
 
 ### Optional ComfyUI generation, variation and masked edits
+
+For new image and video requests, read `comfy_status` first. When ComfyUI automation is enabled, use `comfy_run` with explicit preview and final graphs and wait for the operator's native preview approval. This includes ordinary image requests. The following legacy tools remain available for explicitly requested SD1 generation and masked-editing contracts; starting ComfyUI does not select that legacy path.
 
 **Model access:**
 
@@ -1178,7 +1192,7 @@ These are illustrative requests, not live-call receipts. Replace example project
 
 ## Complete tool argument catalog
 
-All 112 tools appear below, grouped by capability. Every tool uses `tools/call`; set `params.name` to the exact heading and `params.arguments` to the argument object. Primary/Fallback are available for every entry; CLU availability is shown explicitly.
+The 112 existing tools appear below, grouped by capability. The 13 added tools and schemas are documented in [ComfyUI automation](COMFYUI-AUTOMATION.md) and the matching JSON catalog. Every tool uses `tools/call`; set `params.name` to the exact heading and `params.arguments` to the argument object. Primary/Fallback are available for every entry; CLU availability is shown explicitly.
 
 “Required” follows the advertised schema, and nested rows are required only inside their parent. Conditional root constraints are shown separately. Defaults are listed only when the schema supplies them; service defaults and stronger semantic rules are described in the access sections. The JSON companion retains the full original schemas, including nested arrays, additional-property contracts and `oneOf` branches.
 
@@ -3165,10 +3179,10 @@ Source: [McpToolCatalog.cpp](../src/Mcp/McpToolCatalog.cpp), `SourceDescriptors`
 
 ## Evidence and maintenance
 
-All 112 descriptors copied exactly from the semantic golden fixture and joined by name to current SourceDescriptors metadata; full conditional/nested schemas retained. Listing/role/authority/protocol and specialist sources inspected.
+All 125 descriptors copied exactly from the semantic golden fixture and joined by name to current SourceDescriptors metadata; full conditional/nested schemas retained. Listing/role/authority/protocol and specialist sources inspected.
 
-This document is an implementation inventory. It does not establish that every tool was executed in the current Qwen conversation or that every external account/provider is configured. Read the [1.3.28 qualification record](validation/HOST-CAPABILITIES-1.3.28.md) for actual executed build/install/catalog/native scopes and remaining unverified cases.
+This document is an implementation inventory. It does not establish that every tool was executed in the current LM Studio conversation or that every external provider is configured. Read [1.3.29 release verification](validation/RELEASE-1.3.29.md) and [ComfyUI host qualification](COMFYUI_HOST_QUALIFICATION.md) for actual checks and remaining acceptance limits. The [1.3.28 qualification record](validation/HOST-CAPABILITIES-1.3.28.md) retains its historical artifact.
 
-The authoritative descriptor fixture is [mcp-tools-semantic-golden.json](../tests/fixtures/Mcp/mcp-tools-semantic-golden.json). Its file SHA-256 is `8783164b662933394bde49f8fe0f45ba7b1ace5239b5f49f13e852cb39715347`. The separately canonicalized descriptor digest is `70140d728206e194c3b273f9fb9a42b84b4b01db9495db7c8c88dad1cd22c4d1`.
+The authoritative descriptor fixture is [mcp-tools-semantic-golden.json](../tests/fixtures/Mcp/mcp-tools-semantic-golden.json). Its file SHA-256 is `bfaf8164382cbd1f35beb649d9ed2e41c6bb3c1dfc3f9b56040cf1af965d3015`. The separately canonicalized descriptor digest is `9e19a9e3f145166c4803c49d60f9f05c815acde28e00ecc15e4752a06bb75c9e`.
 
 Maintain this pair when the catalog, roles, permissions, playbooks or service contracts change. Check exact descriptor equality, unique name coverage, source metadata, role membership, conditional/nested schemas and the validity of examples. Reference material: [user guide](USER-GUIDE.md), [host workflows](HOST-CAPABILITIES.md), [capability map](PARITY.md), [CMake/CTest](CMAKE-CTEST.md), [image provider](IMAGE-PROVIDER.md).

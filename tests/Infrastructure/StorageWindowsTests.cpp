@@ -2843,6 +2843,50 @@ void configurationOptionalImageProviderIsStrictAndPreservesOwnerFields()
     }
 }
 
+void configurationComfyUiRoundTripLimitsAndLegacyDefaults()
+{
+    ConfigurationFixture fixture;
+    MemoryAtomicFileStore files;
+    files.exists = true;
+    files.content = bytes(R"({"schema_version":1,"future":"preserved","comfy_ui":{"future_mode":"owner"},"image_provider":{"enabled":false,"future_mode":"legacy"}})");
+    WindowsConfigurationStore store{files, fixture.readPath, fixture.writePath, fixture.createPath, fixture.backupReadPath};
+    const auto initial = take(store.load(liveContext()));
+    require(!initial.comfyUi.enabled && initial.comfyUi.automaticSetup &&
+        initial.comfyUi.downloadBudgetBytes == 500'000'000'000ULL &&
+        initial.comfyUi.freeSpaceReserveBytes == 50'000'000'000ULL && initial.comfyUi.generationTimeoutSeconds == 1800U,
+        "Legacy configuration did not retain disabled ComfyUI and preparation defaults.");
+    Domain::AppConfigPatch patch;
+    patch.comfyUi = Domain::ComfyUiConfig{true, false, R"(C:\ComfyUI portable)", R"(D:\Models)",
+        "https://[::1]:8188", 900'000'000'001ULL, 60'000'000'003ULL, 7200U, "quality"};
+    const auto saved = take(store.update(patch, liveContext()));
+    require(saved.comfyUi == *patch.comfyUi && saved.imageProvider == initial.imageProvider,
+        "ComfyUI update changed the legacy image provider or lost 64-bit limits.");
+    const auto document = nlohmann::json::parse(text(files.content));
+    require(document.at("future") == "preserved" && document.at("comfy_ui").at("future_mode") == "owner" &&
+        document.at("image_provider").at("future_mode") == "legacy", "ComfyUI update discarded unrelated owner fields.");
+    WindowsConfigurationStore reopened{files, fixture.readPath, fixture.writePath, fixture.createPath, fixture.backupReadPath};
+    require(take(reopened.load(liveContext())).comfyUi == *patch.comfyUi, "ComfyUI preferences did not survive reopen.");
+    const auto before = files.content;
+    const auto good = *patch.comfyUi;
+    for (const auto& badEndpoint : {"http://localhost:8188", "http://127.0.0.1:08188", "http://127.0.0.1:8188/", "http://10.0.0.1:8188"}) {
+        patch.comfyUi = good; patch.comfyUi->endpoint = badEndpoint;
+        requireError(reopened.update(patch, liveContext()), Domain::ErrorCodes::InvalidRequest,
+            "ComfyUI accepted a remote or noncanonical endpoint.");
+    }
+    for (const auto& badPath : {"relative\\ComfyUI", "C:ComfyUI", "\\\\.\\PhysicalDrive0"}) {
+        patch.comfyUi = good; patch.comfyUi->installationPath = badPath;
+        requireError(reopened.update(patch, liveContext()), Domain::ErrorCodes::InvalidRequest,
+            "ComfyUI accepted relative or device installation path.");
+    }
+    patch.comfyUi = good; patch.comfyUi->downloadBudgetBytes = (std::numeric_limits<std::uint64_t>::max)();
+    requireError(reopened.update(patch, liveContext()), Domain::ErrorCodes::InvalidRequest, "ComfyUI accepted overflowing budget.");
+    patch.comfyUi = good; patch.comfyUi->generationTimeoutSeconds = 0U;
+    requireError(reopened.update(patch, liveContext()), Domain::ErrorCodes::InvalidRequest, "ComfyUI accepted zero timeout.");
+    patch.comfyUi = good; patch.comfyUi->qualityPreference = "unknown";
+    requireError(reopened.update(patch, liveContext()), Domain::ErrorCodes::InvalidRequest, "ComfyUI accepted unsupported quality.");
+    require(files.content == before, "Invalid ComfyUI preferences changed durable configuration bytes.");
+}
+
 void configurationRecoversOnlyFromValidBackup()
 {
     ConfigurationFixture fixture;
@@ -3323,6 +3367,7 @@ void registerStorageWindowsTests(TestRegistry &tests)
             configurationFileSystemAccessIsOwnerPersistedAndStrict);
     addTest(tests, "storage.config.optional-image-provider",
             configurationOptionalImageProviderIsStrictAndPreservesOwnerFields);
+    addTest(tests, "storage.config.comfy-ui", configurationComfyUiRoundTripLimitsAndLegacyDefaults);
     addTest(tests, "storage.config.valid-backup-recovery",
             configurationRecoversOnlyFromValidBackup);
     addTest(tests, "storage.config.hostile-json",

@@ -48,7 +48,7 @@ constexpr auto ChildTimeout = 30s;
 constexpr auto ForcedCleanupTimeout = 5s;
 constexpr auto DrainCancelRetryInterval = 25ms;
 constexpr std::size_t MaximumCapturedBytes = 2U * 1024U * 1024U;
-constexpr std::size_t ExpectedToolCount = 112U;
+constexpr std::size_t ExpectedToolCount = 125U;
 
 std::size_t assertions{};
 std::vector<std::filesystem::path> isolatedManagerHomes;
@@ -392,7 +392,8 @@ void prepareIsolatedProfile(const std::filesystem::path& home)
     const std::filesystem::path& workspace,
     const std::wstring_view role,
     const std::wstring_view deploymentId,
-    const bool homeFromEnvironment)
+    const bool homeFromEnvironment,
+    const HANDLE ownedJob)
 {
     prepareIsolatedProfile(home);
     auto input = createPipe(false);
@@ -432,7 +433,7 @@ void prepareIsolatedProfile(const std::filesystem::path& home)
                 nullptr,
                 nullptr,
                 TRUE,
-                CREATE_NO_WINDOW,
+                CREATE_NO_WINDOW | (ownedJob ? CREATE_SUSPENDED : 0U),
                 nullptr,
                 workspace.native().c_str(),
                 &startup,
@@ -443,6 +444,20 @@ void prepareIsolatedProfile(const std::filesystem::path& home)
 
     UniqueHandle processHandle{process.hProcess};
     UniqueHandle threadHandle{process.hThread};
+    if (ownedJob) {
+        if (!::AssignProcessToJobObject(ownedJob, processHandle.get())) {
+            const auto errorCode = ::GetLastError();
+            static_cast<void>(::TerminateProcess(processHandle.get(), 124U));
+            static_cast<void>(::WaitForSingleObject(processHandle.get(), 5'000U));
+            throw win32Failure("AssignProcessToJobObject(exact MCP connector)", errorCode);
+        }
+        if (::ResumeThread(threadHandle.get()) == (std::numeric_limits<DWORD>::max)()) {
+            const auto errorCode = ::GetLastError();
+            static_cast<void>(::TerminateProcess(processHandle.get(), 124U));
+            static_cast<void>(::WaitForSingleObject(processHandle.get(), 5'000U));
+            throw win32Failure("ResumeThread(exact MCP connector)", errorCode);
+        }
+    }
     input.reader.reset();
     output.writer.reset();
     error.writer.reset();
@@ -768,10 +783,11 @@ public:
         const std::filesystem::path& workspace,
         const std::wstring_view role,
         const std::wstring_view deploymentId,
-        const bool homeFromEnvironment = false)
+        const bool homeFromEnvironment = false,
+        const HANDLE ownedJob = nullptr)
         : child_{launch(
               executable, home, workspace, role, deploymentId,
-              homeFromEnvironment)}
+              homeFromEnvironment, ownedJob)}
     {
         try {
             output_ = std::make_shared<PipeDrainState>(
@@ -816,6 +832,13 @@ public:
                 "The stdio MCP child input is already closed."};
         }
         writeAll(child_.inputWriter.get(), bytes);
+    }
+
+    [[nodiscard]] bool belongsToExactJob(const HANDLE job) const
+    {
+        BOOL member{};
+        if (!::IsProcessInJob(child_.process.get(), job, &member)) throw win32Failure("IsProcessInJob(connector)");
+        return member != FALSE;
     }
 
     [[nodiscard]] std::vector<Json> awaitFrames(
@@ -1099,7 +1122,7 @@ struct RoleObservation final {
     REQUIRE(!initialize.contains("error"));
     const auto& initializeResult = initialize.at("result");
     REQUIRE(initializeResult.at("protocolVersion") == "2025-11-25");
-    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.28");
+    REQUIRE(initializeResult.at("serverInfo").at("version") == "1.3.29");
     REQUIRE(initializeResult.at("capabilities").at("tools").at("listChanged") == false);
     const auto& instructions =
         initializeResult.at("instructions").get_ref<const std::string&>();
@@ -1658,10 +1681,13 @@ void runExitedManagerStartupRegression(
     connector.send(statusRequest(3));
     const auto status = successfulToolPayload(connector.awaitFrames(3U), 3);
     REQUIRE(status.at("durable_manager").at("available") == false);
-    REQUIRE(status.at("durable_manager").at("startup_error") ==
-        "The matching durable Manager exited during startup with code 1.");
+    // The external Shell launch supplies no child process handle. The exact
+    // failure contract is its bounded authenticated readiness check.
+    const auto startupError = status.at("durable_manager").at("startup_error").get<std::string>();
+    REQUIRE(startupError.starts_with("Durable Manager readiness deadline expired. Last check: "));
+    REQUIRE(startupError.find("exited during startup with code") == std::string::npos);
     REQUIRE(status.at("shell_execution").at("durable_across_mcp_reconnect") == false);
-    REQUIRE(std::chrono::steady_clock::now() - started < 8s);
+    REQUIRE(std::chrono::steady_clock::now() - started <= 12s);
     connector.send(toolRequest(4, "host_capabilities", Json::object()));
     const auto capabilities = successfulToolPayload(connector.awaitFrames(4U), 4);
     REQUIRE(capabilities.at("independent_mutable_workers") == false);
@@ -1669,6 +1695,182 @@ void runExitedManagerStartupRegression(
     connector.finish(4U);
     REQUIRE(!probeIsolatedManager(home));
     REQUIRE(snapshotLmStudioProfile(externalProfile) == before);
+}
+
+void runManagerSurvivesConnectorJobCloseRegression(
+    const std::filesystem::path& executable,
+    const std::filesystem::path& root,
+    const std::filesystem::path& externalProfile,
+    const std::filesystem::path& desktopProfile)
+{
+    const auto home = root / L"home";
+    const auto workspace = root / L"workspace";
+    std::filesystem::create_directories(workspace);
+    const auto before = snapshotLmStudioProfile(externalProfile);
+    REQUIRE(!probeIsolatedManager(home));
+    UniqueHandle job{::CreateJobObjectW(nullptr, nullptr)};
+    REQUIRE(job);
+    JOBOBJECT_EXTENDED_LIMIT_INFORMATION limits{};
+    limits.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    REQUIRE(::SetInformationJobObject(job.get(), JobObjectExtendedLimitInformation, &limits, sizeof(limits)));
+    McpProcessSession connector{executable, home, workspace, L"primary", L"owned-connector-job", false, job.get()};
+    REQUIRE(connector.belongsToExactJob(job.get()));
+    connector.send(handshakeStream());
+    static_cast<void>(connector.awaitFrames(2U));
+    connector.send(statusRequest(3));
+    const auto status = successfulToolPayload(connector.awaitFrames(3U), 3);
+    REQUIRE(status.at("durable_manager").at("available") == true);
+    REQUIRE(status.at("durable_manager").at("startup_error").is_null());
+    REQUIRE(status.at("shell_execution").at("durable_across_mcp_reconnect") == true);
+    auto manager = probeIsolatedManager(home);
+    REQUIRE(manager);
+    const auto managerPid = manager->status.processId;
+    UniqueHandle managerProcess{::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, FALSE, managerPid)};
+    REQUIRE(managerProcess);
+    BOOL member{TRUE};
+    REQUIRE(::IsProcessInJob(managerProcess.get(), job.get(), &member));
+    REQUIRE(member == FALSE);
+    std::array<wchar_t, 32'768U> servingImage{};
+    DWORD imageLength = static_cast<DWORD>(servingImage.size());
+    REQUIRE(::QueryFullProcessImageNameW(managerProcess.get(), 0U, servingImage.data(), &imageLength));
+    REQUIRE((std::filesystem::path{std::wstring{servingImage.data(), imageLength}} ==
+        executable.parent_path() / L"ForgeConductor.Manager.exe"));
+    // Explorer owns the bootstrap and supplies its environment. The temporary
+    // connector USERPROFILE must not become the independent Manager's profile.
+    const auto desktopConfiguration=desktopProfile/L".lmstudio"/L"mcp.json";
+    std::optional<ForgeConductor::Manager::ManagerLmStudioSnapshot> inspected;
+    const auto inspectionDeadline=std::chrono::steady_clock::now()+5s;
+    while(std::chrono::steady_clock::now()<inspectionDeadline) {
+        auto health=manager->client->lmStudioStatus(managerContext());
+        if(health){inspected.emplace(std::move(health).value());break;}
+        REQUIRE(health.error().code==Domain::ErrorCodes::LimitExceeded);std::this_thread::sleep_for(25ms);
+    }
+    REQUIRE(inspected);
+    if(std::filesystem::is_regular_file(desktopConfiguration))
+        REQUIRE(normalizedPathKey(inspected->mcpConfigurationPath)==normalizedPathKey(utf8Path(desktopConfiguration)));
+    else {
+        REQUIRE(!inspected->mcpConfigurationRegistered);
+        REQUIRE(inspected->mcpConfigurationPath.empty() ||
+            normalizedPathKey(inspected->mcpConfigurationPath)==normalizedPathKey(utf8Path(desktopConfiguration)));
+    }
+    REQUIRE(normalizedPathKey(inspected->mcpConfigurationPath)!=normalizedPathKey(utf8Path(externalProfile/L".lmstudio"/L"mcp.json")));
+    manager->client->shutdown();
+    connector.finish(3U);
+    job.reset();
+    REQUIRE(::WaitForSingleObject(managerProcess.get(), 0U) == WAIT_TIMEOUT);
+    auto retained = probeIsolatedManager(home);
+    REQUIRE(retained);
+    REQUIRE(retained->status.processId == managerPid);
+    retained->client->shutdown();
+    McpProcessSession successor{executable, home, workspace, L"fallback", L"after-connector-job-close"};
+    successor.send(handshakeStream());
+    static_cast<void>(successor.awaitFrames(2U));
+    successor.send(statusRequest(3));
+    const auto recovered = successfulToolPayload(successor.awaitFrames(3U), 3);
+    REQUIRE(recovered.at("durable_manager").at("available") == true);
+    REQUIRE(recovered.at("durable_manager").at("startup_error").is_null());
+    successor.finish(3U);
+    auto afterReconnect = probeIsolatedManager(home);
+    REQUIRE(afterReconnect);
+    REQUIRE(afterReconnect->status.processId == managerPid);
+    afterReconnect->client->shutdown();
+    REQUIRE(::WaitForSingleObject(managerProcess.get(), 0U) == WAIT_TIMEOUT);
+    REQUIRE(stopIsolatedManager(home));
+    REQUIRE(::WaitForSingleObject(managerProcess.get(), 0U) == WAIT_OBJECT_0);
+    REQUIRE(snapshotLmStudioProfile(externalProfile) == before);
+}
+
+void runComfyManagerRecoveryRegression(
+    const std::filesystem::path& executable,
+    const std::filesystem::path& root,
+    const std::filesystem::path& externalProfile)
+{
+    const auto home = root / L"home", workspace = root / L"workspace";
+    std::filesystem::create_directories(workspace);
+    prepareIsolatedProfile(home);
+    const auto configuration = home / L"config" / L"config.json";
+    Json config;
+    { std::ifstream input{configuration}; REQUIRE(input.is_open()); config = Json::parse(input); }
+    // This fixture admits durable jobs but cannot discover or start the host's ComfyUI.
+    config["comfy_ui"] = {{"enabled", true}, {"automatic_setup", false},
+        {"installation_path", utf8Path(root / L"absent-provider")},
+        {"endpoint", "http://127.0.0.1:1"}};
+    { std::ofstream output{configuration}; REQUIRE(output.is_open()); output << config.dump(); REQUIRE(output.good()); }
+    const auto externalBefore = snapshotLmStudioProfile(externalProfile);
+    McpProcessSession primary{executable, home, workspace, L"primary", L"comfy-manager-recovery-primary"};
+    McpProcessSession fallback{executable, home, workspace, L"fallback", L"comfy-manager-recovery-fallback"};
+    primary.send(handshakeStream()); fallback.send(handshakeStream());
+    static_cast<void>(primary.awaitFrames(2U)); static_cast<void>(fallback.awaitFrames(2U));
+    std::int64_t primaryId{2}, fallbackId{2};
+    const auto primaryCall = [&](const std::string_view name, const Json& arguments) {
+        primary.send(toolRequest(++primaryId, name, arguments));
+        return successfulToolPayload(primary.awaitFrames(static_cast<std::size_t>(primaryId)), primaryId);
+    };
+    const auto waitForFailure = [&](const Json& admitted) {
+        auto result = admitted;
+        for (unsigned attempt{}; !result.at("done").get<bool>() && attempt < 10U; ++attempt)
+            result = primaryCall("comfy_job_status", {{"job_id", admitted.at("job_id")}, {"wait_sec", 1}});
+        REQUIRE(result.at("broker") == "persistent_manager");
+        REQUIRE(result.at("done") == true && result.at("state") == "failed");
+        REQUIRE(result.at("operation") == "control" && result.at("remote_state") == "not_submitted");
+        REQUIRE(result.at("prompt_id").is_null());
+        return result;
+    };
+    const auto first = waitForFailure(primaryCall("comfy_control", {{"action", "start"}}));
+    const auto receiptPath = home / L"comfy-jobs" / first.at("project_id").get<std::string>() /
+        first.at("job_id").get<std::string>() / L"receipt.json";
+    REQUIRE(utf8Path(receiptPath) == first.at("receipt_path").get<std::string>());
+    Json savedReceipt;
+    { std::ifstream input{receiptPath}; REQUIRE(input.is_open()); savedReceipt = Json::parse(input); }
+    REQUIRE(savedReceipt.at("payload").at("owner_released") == true);
+    auto owner = probeIsolatedManager(home); REQUIRE(owner);
+    const auto originalPid = owner->status.processId;
+    UniqueHandle original{::OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION,
+        FALSE, originalPid)};
+    REQUIRE(original); owner->client->shutdown();
+    REQUIRE(terminateAndWait(original.get(), 5s));
+
+    // Both callers remain connected. Only their read-only status probes may
+    // bootstrap the same replacement; neither request creates another job.
+    primary.send(toolRequest(++primaryId, "comfy_job_status", {{"job_id", first.at("job_id")}}));
+    fallback.send(toolRequest(++fallbackId, "comfy_job_list", Json::object()));
+    const auto recovered = successfulToolPayload(primary.awaitFrames(static_cast<std::size_t>(primaryId)), primaryId);
+    const auto listed = successfulToolPayload(fallback.awaitFrames(static_cast<std::size_t>(fallbackId)), fallbackId);
+    REQUIRE(recovered.at("broker") == "persistent_manager" && recovered.at("recovered") == true);
+    REQUIRE(recovered.at("job_id") == first.at("job_id") && recovered.at("state") == "failed");
+    REQUIRE(recovered.at("error") == first.at("error") && recovered.at("prompt_id").is_null());
+    REQUIRE(listed.at("broker") == "persistent_manager" && listed.at("jobs").size() == 1U);
+    REQUIRE(listed.at("jobs")[0].at("job_id") == first.at("job_id"));
+    auto replacement = probeIsolatedManager(home); REQUIRE(replacement);
+    REQUIRE(replacement->status.processId != originalPid);
+    REQUIRE(replacement->status.home == owner->status.home);
+    REQUIRE(primaryCall("comfy_job_status", {{"job_id", first.at("job_id")}}).at("recovered") == true);
+
+    // A mutation after another exact owner exit must create one new durable
+    // job. Recovery must not replay the first admission or this invocation.
+    const auto replacementPid = replacement->status.processId;
+    UniqueHandle replacementProcess{::OpenProcess(PROCESS_TERMINATE | SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION,
+        FALSE, replacementPid)};
+    REQUIRE(replacementProcess); replacement->client->shutdown();
+    REQUIRE(terminateAndWait(replacementProcess.get(), 5s));
+    const auto second = waitForFailure(primaryCall("comfy_control", {{"action", "start"}}));
+    REQUIRE(second.at("job_id") != first.at("job_id"));
+    fallback.send(toolRequest(++fallbackId, "comfy_job_list", Json::object()));
+    const auto twice = successfulToolPayload(fallback.awaitFrames(static_cast<std::size_t>(fallbackId)), fallbackId);
+    REQUIRE(twice.at("broker") == "persistent_manager" && twice.at("jobs").size() == 2U);
+    std::set<std::string> jobs;
+    for (const auto& row : twice.at("jobs")) {
+        REQUIRE(row.at("state") == "failed" && row.at("prompt_id").is_null());
+        REQUIRE(jobs.insert(row.at("job_id").get<std::string>()).second);
+    }
+    REQUIRE(jobs.contains(first.at("job_id").get<std::string>()) && jobs.contains(second.at("job_id").get<std::string>()));
+    auto current = probeIsolatedManager(home); REQUIRE(current);
+    REQUIRE(current->status.processId != replacementPid && current->status.home == owner->status.home);
+    current->client->shutdown();
+    { std::ifstream input{receiptPath}; REQUIRE(input.is_open()); REQUIRE(Json::parse(input) == savedReceipt); }
+    primary.finish(static_cast<std::size_t>(primaryId)); fallback.finish(static_cast<std::size_t>(fallbackId));
+    REQUIRE(stopIsolatedManager(home));
+    REQUIRE(snapshotLmStudioProfile(externalProfile) == externalBefore);
 }
 
 void runIsolatedManagerReviewerRegression(
@@ -1707,6 +1909,23 @@ void runIsolatedManagerReviewerRegression(
     REQUIRE(!probeIsolatedManager(home));
     const auto managerExecutable = executable.parent_path() / L"ForgeConductor.Manager.exe";
     REQUIRE(std::filesystem::is_regular_file(managerExecutable));
+    // This fixture specifically qualifies discovery against synthetic profile
+    // files. Prelaunch only its Manager with that scoped environment; the
+    // separate cold broker/job-close case asserts Explorer's actual profile.
+    prepareIsolatedProfile(home);
+    auto fixtureCommand=quoteWindowsArgument(managerExecutable.native())+L" --alpha-root "+quoteWindowsArgument(home.native());
+    STARTUPINFOW fixtureStartup{};fixtureStartup.cb=sizeof(fixtureStartup);PROCESS_INFORMATION fixtureProcess{};
+    REQUIRE(::CreateProcessW(managerExecutable.c_str(),fixtureCommand.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW,nullptr,
+        managerExecutable.parent_path().c_str(),&fixtureStartup,&fixtureProcess));
+    UniqueHandle fixtureManager{fixtureProcess.hProcess},fixtureThread{fixtureProcess.hThread};
+    struct FixtureManagerCleanup final {HANDLE process;~FixtureManagerCleanup(){static_cast<void>(terminateAndWait(process,5s));}} fixtureCleanup{fixtureManager.get()};
+    const auto fixtureDeadline=std::chrono::steady_clock::now()+10s;
+    std::optional<ManagerProbe> fixtureOwner;
+    while(std::chrono::steady_clock::now()<fixtureDeadline) {
+        fixtureOwner=probeIsolatedManager(home);if(fixtureOwner && fixtureOwner->status.processId==fixtureProcess.dwProcessId)break;
+        REQUIRE(::WaitForSingleObject(fixtureManager.get(),0U)==WAIT_TIMEOUT);std::this_thread::sleep_for(50ms);
+    }
+    REQUIRE(fixtureOwner && fixtureOwner->status.processId==fixtureProcess.dwProcessId);fixtureOwner->client->shutdown();
     std::vector<std::unique_ptr<McpProcessSession>> racing;
     for (const auto role : {L"primary", L"fallback", L"fallback"}) {
         racing.push_back(std::make_unique<McpProcessSession>(executable, home, workspace,
@@ -1724,6 +1943,7 @@ void runIsolatedManagerReviewerRegression(
     auto manager = probeIsolatedManager(home);
     REQUIRE(manager);
     const auto managerPid = manager->status.processId;
+    REQUIRE(managerPid==fixtureProcess.dwProcessId);
     UniqueHandle managerProcess{::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE,
         FALSE, managerPid)};
     REQUIRE(managerProcess);
@@ -1851,7 +2071,14 @@ void runIsolatedManagerReviewerRegression(
     REQUIRE(rejected.at("structuredContent").at("code") == "host_capability_unavailable");
     REQUIRE(rejected.at("structuredContent").at("message").get<std::string>()
         .find("different executable package") != std::string::npos);
-    bound.finish(4U);
+    bound.send(toolRequest(5, "comfy_job_list", Json::object()));
+    const auto rejectedComfyFrames = bound.awaitFrames(5U);
+    const auto& rejectedComfy = responseFor(rejectedComfyFrames, 5).at("result");
+    REQUIRE(rejectedComfy.at("isError") == true);
+    REQUIRE(rejectedComfy.at("structuredContent").at("code") == "host_capability_unavailable");
+    REQUIRE(rejectedComfy.at("structuredContent").at("message").get<std::string>()
+        .find("different executable package") != std::string::npos);
+    bound.finish(5U);
     REQUIRE(stopIsolatedManager(home));
 }
 
@@ -2486,7 +2713,8 @@ void runAgentLifecycleRegression(
 
 void runWithIsolatedExternalProfile(
     const std::filesystem::path& executable,
-    const std::filesystem::path& goldenPath)
+    const std::filesystem::path& goldenPath,
+    const std::filesystem::path& desktopProfile)
 {
     REQUIRE(std::filesystem::is_regular_file(executable));
     const auto golden = loadGolden(goldenPath);
@@ -2713,8 +2941,11 @@ void runWithIsolatedExternalProfile(
     runPolicyPagingRegression(executable, sharedRoot / L"policy-paging");
     runFragmentedToolResultRegression(executable, sharedRoot / L"fragmented-result");
     runIsolatedManagerReviewerRegression(executable, sharedRoot / L"isolated-manager-reviewer", externalProfile);
+    runComfyManagerRecoveryRegression(executable, sharedRoot / L"comfy-manager-recovery", externalProfile);
     runExitedManagerStartupRegression(executable,
         sharedRoot / L"manager-exited-startup", externalProfile, golden);
+    runManagerSurvivesConnectorJobCloseRegression(executable,
+        sharedRoot / L"manager-connector-job-close", externalProfile,desktopProfile);
     for (const auto& ownedHome : isolatedManagerHomes) REQUIRE(stopIsolatedManager(ownedHome));
     isolatedManagerHomes.clear();
     REQUIRE(snapshotLmStudioProfile(externalProfile) == fixtureBefore);
@@ -2728,7 +2959,7 @@ void run(
     REQUIRE(profile && !profile->empty());
     const auto ownerBefore = snapshotLmStudioProfile(std::filesystem::path{*profile});
     try {
-        runWithIsolatedExternalProfile(executable, goldenPath);
+        runWithIsolatedExternalProfile(executable, goldenPath,std::filesystem::path{*profile});
     } catch (...) {
         REQUIRE(snapshotLmStudioProfile(std::filesystem::path{*profile}) == ownerBefore);
         throw;

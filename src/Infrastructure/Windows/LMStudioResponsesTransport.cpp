@@ -43,6 +43,7 @@ using namespace std::chrono_literals;
 constexpr std::size_t MaximumHttpBodyBytes = 2U * 1024U * 1024U;
 constexpr std::size_t MaximumRequestBytes =
     Domain::MaximumContinuityHandoffEncodedBytes + 64U * 1024U;
+constexpr std::size_t MaximumRequestImageBytes = MaximumHttpBodyBytes;
 constexpr std::size_t MaximumRememberedCancellations = 256U;
 constexpr auto MaximumTimeout = 5min;
 
@@ -807,6 +808,7 @@ public:
                     selected.error().retryable);
             }
             Json body{{"model", selected.value()}, {"store", true}};
+            std::size_t requestImageBytes{};
             if (!request.input.empty()) {
                 body["input"] = request.input;
             } else {
@@ -826,6 +828,11 @@ public:
                     }
                     Json content = output.canonicalOutput;
                     if (output.image) {
+                        if (output.image->base64Data.size() > MaximumRequestImageBytes - requestImageBytes) {
+                            return failure<Domain::ManagedProviderTurnResult>(Domain::ErrorCodes::PayloadTooLarge,
+                                "The aggregate managed image previews exceed their request bound.");
+                        }
+                        requestImageBytes += output.image->base64Data.size();
                         content = Json::array({
                             Json{{"type", "input_text"}, {"text", output.canonicalOutput}},
                             Json{{"type", "input_image"}, {"detail", "auto"},
@@ -858,7 +865,7 @@ public:
                 body["previous_response_id"] =
                     request.previousResponseId->value();
             }
-            auto response = postResponses(body, context, request.providerReceiveTimeoutSeconds);
+            auto response = postResponses(body, context, request.providerReceiveTimeoutSeconds, requestImageBytes);
             if (!response) {
                 return failure<Domain::ManagedProviderTurnResult>(
                     response.error().code,
@@ -1073,10 +1080,13 @@ private:
     [[nodiscard]] Domain::Result<Json> postResponses(
         const Json& body,
         const Domain::OperationContext& context,
-        const std::optional<std::uint32_t> receiveTimeoutSeconds = std::nullopt)
+        const std::optional<std::uint32_t> receiveTimeoutSeconds = std::nullopt,
+        const std::size_t imageBytes = 0U)
     {
         const auto encoded = body.dump();
-        if (encoded.size() > MaximumRequestBytes) {
+        // Only validated base64 bytes receive the separate media allowance;
+        // tool metadata, schemas, text and handoffs retain their existing bound.
+        if (imageBytes > MaximumRequestImageBytes || encoded.size() > MaximumRequestBytes + imageBytes) {
             return failure<Json>(
                 Domain::ErrorCodes::PayloadTooLarge,
                 "The LM Studio Responses request exceeds its bound.");

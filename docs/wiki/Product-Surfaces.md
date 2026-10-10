@@ -1,20 +1,22 @@
 # Product surfaces
 
-The 1.3.28 implementation retains the native app design and the 1.3.5 run/action/maintenance removals. The shared Manager diagnostic remains collapsed during 500 ms telemetry observations, so its single-line and multiline status updates no longer move the visible page. Settings retains the owner's host/workspace filesystem selection; dedicated model workflows retain explicit native receipts through the MCP tools.
+The 1.3.29 implementation retains the native app design and the 1.3.5 run/action/maintenance removals. Settings adds local ComfyUI automation configuration and Rig adds its readiness probe. The shared Manager diagnostic remains collapsed during 500 ms telemetry observations. Dedicated model workflows retain explicit native receipts through the existing MCP integrations.
 
 | Destination | Actions |
 |---|---|
 | Workspace | Project/provider selection, package order, immediate CLU folder binding, Auto Continuity toggle, memory browsing and readiness |
-| Rig | Native system/model/process/store observations, actual selected-chat context usage, and Ensure manager/Restart service/Stop service in Runtime configuration |
+| Rig | Native system/model/process/store observations, selected-chat context usage, ComfyUI readiness probe, and Ensure manager/Restart service/Stop service in Runtime configuration |
 | Continuity | Saved packet list/detail, refresh, delete selected packet, clear all packets |
 | Activity | Operational and governance findings/correction history |
-| Settings | Load/save/readback/revert, Test LM Studio, Restart Manager, context reserves, selectable saved records and deletion buttons |
+| Settings | Load/save/readback/revert, Test LM Studio, Restart Manager, context reserves, ComfyUI automation configuration, selectable saved records and deletion buttons |
 
 Removed: Managed Run/readback, Export selected project, Import verify first, Actions frame/Invoke Tool, Advanced Canonical Catalog, Scope Test, Reset Scope, Apply and Verify, and the old Data Maintenance scheme. The five settings actions were retained. Selected project identity/root are carried through the existing three-plugin install/repair action. Sessions are LM Studio chats; baseline agent-session tools do not create a replacement run manager.
 
 The 1.3.14 Rig controls use the existing Manager handlers. Finish owned work or confirm terminal cancellation before restarting/stopping Manager; scheduled triggers require it to remain running. Their presence is established from the App source, while final installed UI acceptance remains pending until executed.
 
-Optional image-provider setup adds no new frontend or server-start action. Configure the existing owner-managed provider block explicitly and inspect actual image_provider_status; the 1.3.28 verification record contains separately measured public Manager/MCP and selected native image-provider scopes. See [the provider contract](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
+The ComfyUI automation card selects the existing installation and optional model storage, loopback endpoint, enablement, automatic setup, download budget, free-space reserve, generation timeout and default quality. Save/readback uses the existing configuration flow. **Probe ComfyUI readiness** reads the effective saved configuration for the selected project; configured settings are distinct from an available runtime or successful inference. The general tool service can start and prepare the selected installation when needed. Preview approval remains an ordinary LM Studio chat reply. See [ComfyUI Automation](ComfyUI-Automation).
+
+The separate legacy image-provider block and six `image_*` routes remain. Their previous public Manager/MCP and selected native measurements retain the [1.3.28 record](Release-1.3.28); see [the legacy provider contract](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md).
 
 ## Retained native continuity source
 

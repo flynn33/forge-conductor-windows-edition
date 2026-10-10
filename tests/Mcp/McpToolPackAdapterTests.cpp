@@ -560,7 +560,7 @@ private:
 
 class NativeCapabilityRecorder final : public Contracts::IWebAccessService,
     public Contracts::IArtifactDocumentService, public Contracts::IDesktopArtifactService,
-    public Contracts::IImageProviderService {
+    public Contracts::IImageProviderService, public Contracts::IComfyUiService {
 public:
     std::vector<std::string> calls;
     Json lastArguments;
@@ -638,7 +638,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
 {
     auto catalog = take(Mcp::McpToolCatalog::create());
     const auto tools = catalog->tools();
-    REQUIRE(tools.size() == 112U);
+    REQUIRE(tools.size() == 125U);
 
     const std::map<std::string_view, std::size_t> expectedPackCounts{
         {"AgentToolPack", 9U},
@@ -657,8 +657,8 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
         {"ShellToolPack", 5U},
         {"EvidenceToolPack", 2U}, {"GitHubReadToolPack", 1U}, {"ProcessToolPack", 7U},
         {"HostInspectionToolPack", 3U}, {"ReviewerToolPack", 3U}, {"VerificationToolPack", 2U},
-        {"WebAccessToolPack", 3U}, {"OfficeDocumentToolPack", 3U}, {"DesktopToolPack", 7U},
-        {"ImageToolPack", 3U}, {"ImageProviderToolPack", 6U}, {"AgentWorkerToolPack", 3U}, {"ScheduledTaskToolPack", 4U}};
+        {"WebAccessToolPack", 3U}, {"OfficeDocumentToolPack", 3U}, {"DesktopToolPack", 9U},
+        {"ImageToolPack", 3U}, {"ImageProviderToolPack", 6U}, {"ComfyUiToolPack", 11U}, {"AgentWorkerToolPack", 3U}, {"ScheduledTaskToolPack", 4U}};
     std::map<std::string_view, std::size_t> actualPackCounts;
     for (const auto& descriptor : tools) {
         ++actualPackCounts[descriptor.tool.pack];
@@ -685,7 +685,7 @@ void testAllCatalogPacksAreBoundedByTheAdapterContract()
             descriptor.tool.pack == "VerificationToolPack" ||
             descriptor.tool.pack == "WebAccessToolPack" || descriptor.tool.pack == "OfficeDocumentToolPack" ||
             descriptor.tool.pack == "DesktopToolPack" || descriptor.tool.pack == "ImageToolPack" ||
-            descriptor.tool.pack == "ImageProviderToolPack" ||
+            descriptor.tool.pack == "ImageProviderToolPack" || descriptor.tool.pack == "ComfyUiToolPack" ||
             descriptor.tool.pack == "AgentWorkerToolPack" || descriptor.tool.pack == "ScheduledTaskToolPack";
         REQUIRE(schema.value("additionalProperties", true) != closedPack);
     }
@@ -931,8 +931,12 @@ void testRuntimeDispatchAndSchemaPolicy()
     adapterDependencies.artifactDocuments = &nativeCapabilities;
     adapterDependencies.desktopArtifacts = &nativeCapabilities;
     adapterDependencies.imageProvider = &nativeCapabilities;
+    adapterDependencies.comfyUi = &nativeCapabilities;
     auto imageProviderBrokerDependencies = adapterDependencies;
     auto unavailableImageProviderDependencies = adapterDependencies;
+    auto comfyBrokerDependencies = adapterDependencies;
+    auto comfyPreviewBrokerDependencies = adapterDependencies;
+    auto unavailableComfyDependencies = adapterDependencies;
     auto workerBrokerDependencies = adapterDependencies;
     auto brokeredBindingDependencies = adapterDependencies;
     auto brokeredExecutionDependencies = adapterDependencies;
@@ -940,7 +944,7 @@ void testRuntimeDispatchAndSchemaPolicy()
     auto capabilityDependencies = adapterDependencies;
     auto visibleChatBridgeDependencies = adapterDependencies;
     auto adapter = take(Mcp::McpToolPackAdapter::create(std::move(adapterDependencies)));
-    REQUIRE(adapter->tools().size() == 112U);
+    REQUIRE(adapter->tools().size() == 125U);
 
     const auto authorizeFor = [&] (
                                   const std::string& toolName,
@@ -1077,6 +1081,107 @@ void testRuntimeDispatchAndSchemaPolicy()
             "{invalid", "bridge-observe-invalid-arguments"), authority, context);
         REQUIRE(!malformed && malformed.error().code == Domain::ErrorCodes::MalformedMessage);
         REQUIRE(observations == 5U);
+    }
+
+    {
+        const Json graph{{"1", {{"class_type", "SaveImage"}, {"inputs", Json::object()}}}};
+        const Json job{{"job_id", "90000000-0000-4000-8000-000000000009"}};
+        const std::vector<std::pair<std::string, Json>> calls{
+            {"comfy_status", Json::object()}, {"comfy_catalog", {{"kind", "nodes"}}},
+            {"comfy_workflow", {{"action", "inspect"}, {"workflow", graph}}},
+            {"comfy_validate", {{"workflow", graph}}}, {"comfy_prepare", {{"workflow", graph}}},
+            {"comfy_control", {{"action", "start"}}},
+            {"comfy_run", {{"stage", "preview"}, {"media_kind", "image"}, {"preview_workflow", graph}, {"final_workflow", graph},
+                {"output_directory", root.value()}}},
+            {"comfy_job_status", job}, {"comfy_job_list", Json::object()},
+            {"comfy_job_cancel", job}, {"comfy_job_resume", job}};
+        auto brokerDependencies = std::move(comfyBrokerDependencies);
+        std::size_t brokerCalls{}; Json forwarded;
+        brokerDependencies.durableToolBroker = [&](std::string_view name, std::string_view arguments,
+            const Domain::ProjectId& project, const Domain::OperationContext&) {
+            REQUIRE(project == projectId); ++brokerCalls; forwarded = Json::parse(arguments);
+            return Domain::Result<std::string>::success(Json{{"ok", true}, {"tool", name}}.dump());
+        };
+        auto broker = take(Mcp::McpToolPackAdapter::create(std::move(brokerDependencies)));
+        for (const auto& [name, args] : calls) {
+            const auto effect = name == "comfy_status" || name == "comfy_catalog" || name == "comfy_validate" ||
+                name == "comfy_job_status" || name == "comfy_job_list" ? Domain::ToolEffect::Read : Domain::ToolEffect::Write;
+            auto direct = take(adapter->handle(authorize(name, effect, args.dump(), "comfy-direct-" + name), authority, context));
+            REQUIRE(direct.receipt.ok && nativeCapabilities.calls.back() == name && nativeCapabilities.lastArguments == args);
+            const auto nativeCalls = nativeCapabilities.calls.size();
+            const auto result = Json::parse(take(broker->handle(authorize(name, effect, args.dump(), "comfy-broker-" + name),
+                authority, context)).canonicalPayload);
+            REQUIRE(result.at("broker") == "persistent_manager" && nativeCapabilities.calls.size() == nativeCalls);
+            const auto scope = forwarded.at("_forge_comfy_scope");
+            REQUIRE(scope.at("project_id") == projectId.value() && scope.at("caller_id") == authority.callerId().value());
+            REQUIRE(scope.at("generation") == authority.generation() && scope.at("shell_enabled") == authority.shellEnabled());
+            REQUIRE(scope.at("trusted_roots") == Json::array({root.value(), secondaryRoot.value()}));
+            REQUIRE(!forwarded.contains("_forge_image_scope") && !forwarded.contains("_forge_worker_scope"));
+        }
+        REQUIRE(brokerCalls == calls.size());
+        const auto before = brokerCalls;
+        auto forged = job; forged["_forge_comfy_scope"] = Json::object();
+        const auto denied = broker->handle(authorize("comfy_job_status", Domain::ToolEffect::Read,
+            forged.dump(), "comfy-public-scope-forgery"), authority, context);
+        REQUIRE(!denied && denied.error().code == Domain::ErrorCodes::InvalidRequest && brokerCalls == before);
+        auto missingDependencies = std::move(unavailableComfyDependencies); missingDependencies.comfyUi = nullptr;
+        auto missing = take(Mcp::McpToolPackAdapter::create(std::move(missingDependencies)));
+        const auto unavailable = missing->handle(authorize("comfy_status", Domain::ToolEffect::Read,
+            "{}", "comfy-service-absent"), authority, context);
+        REQUIRE(!unavailable && unavailable.error().code == Domain::ErrorCodes::HostCapabilityUnavailable);
+    }
+
+    {
+        const std::string encoded{"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jT9kAAAAASUVORK5CYII="};
+        const Json poster{{"mime_type","image/png"},{"base64",encoded},{"sha256",std::string(64U,'b')},{"width",1},{"height",1}};
+        const Json artifact{{"node_id","12"},{"path",root.value()+"/draft.mp4"},{"media_type","video/mp4"},{"bytes",256U},{"sha256",std::string(64U,'a')},
+            {"metadata",{{"decoded",true},{"duration",5.0},{"frame_count",121U}}},{"preview",poster}};
+        const Json jobResult{{"ok",true},{"job_id","90000000-0000-4000-8000-000000000009"},{"state","awaiting_preview_approval"},
+            {"publication_suppressed",false},{"requires_operator_approval",true},{"approval_reply_choices",Json::array({"approved","yes","render final"})},
+            {"receipt_path",root.value()+"/comfy-receipt.json"},{"final_revision",2U},{"artifacts",Json::array({artifact})},{"preview_artifacts",Json::array({artifact})}};
+        const Json arguments{{"job_id","90000000-0000-4000-8000-000000000009"}};
+        Json brokerResponse=jobResult;auto brokerDependencies=std::move(comfyPreviewBrokerDependencies);
+        brokerDependencies.durableToolBroker=[&](std::string_view,std::string_view,const Domain::ProjectId&,const Domain::OperationContext&){return Domain::Result<std::string>::success(brokerResponse.dump());};
+        auto broker=take(Mcp::McpToolPackAdapter::create(std::move(brokerDependencies)));
+        nativeCapabilities.response=jobResult;
+        for(const auto* name:{"comfy_job_status","comfy_job_resume"})for(const bool brokered:{false,true}){
+            const auto effect=std::string_view{name}=="comfy_job_status"?Domain::ToolEffect::Read:Domain::ToolEffect::Write;
+            const auto result=Json::parse(take((brokered?broker.get():adapter.get())->handle(authorize(name,effect,arguments.dump(),std::string{"poster-"}+name+(brokered?"-broker":"-direct")),authority,context)).canonicalPayload);
+            REQUIRE(result.at("image_base64")==encoded&&result.at("image_mime_type")=="image/png"&&result.at("preview_width")==1&&result.at("preview_height")==1);
+            REQUIRE(result.at("preview_png_sha256")==poster.at("sha256")&&result.at("artifacts")[0].at("sha256")==artifact.at("sha256"));
+            for(const auto* group:{"artifacts","preview_artifacts"}){
+                const auto& retained=result.at(group)[0].at("preview");REQUIRE(!retained.contains("base64")&&retained.at("delivered_as_image_content")==true);
+                REQUIRE(retained.at("sha256")==poster.at("sha256")&&retained.at("width")==1&&retained.at("height")==1);
+            }
+            REQUIRE(result.at("approval_reply_choices")==jobResult.at("approval_reply_choices")&&result.at("requires_operator_approval")==true&&result.at("receipt_path")==jobResult.at("receipt_path")&&result.at("final_revision")==2U);
+            REQUIRE(result.dump().size()<=128U*1024U&&result.contains("broker")==brokered);
+        }
+        for(const auto* invalidPreview:{"mime","alphabet","padding","empty","oversized","preview_seal","artifact_seal","dimensions","unverified","suppressed","malformed_suppression"}){
+            auto rejected=jobResult;rejected["preview_artifacts"]=Json::array();auto& preview=rejected["artifacts"][0]["preview"];
+            if(std::string_view{invalidPreview}=="mime")preview["mime_type"]="image/jpeg";
+            else if(std::string_view{invalidPreview}=="alphabet")preview["base64"]="invalid!";
+            else if(std::string_view{invalidPreview}=="padding"){auto padded=encoded;padded[16]='=';preview["base64"]=padded;}
+            else if(std::string_view{invalidPreview}=="empty")preview["base64"]="";
+            else if(std::string_view{invalidPreview}=="oversized")preview["base64"]=encoded+std::string(32U*1024U,'A');
+            else if(std::string_view{invalidPreview}=="preview_seal")preview["sha256"]="unsealed";
+            else if(std::string_view{invalidPreview}=="artifact_seal")rejected["artifacts"][0]["sha256"]="unsealed";
+            else if(std::string_view{invalidPreview}=="dimensions")preview["width"]=0;
+            else if(std::string_view{invalidPreview}=="unverified")rejected["artifacts"][0]["metadata"]["decoded"]=false;
+            else if(std::string_view{invalidPreview}=="malformed_suppression")rejected["publication_suppressed"]="false";
+            else rejected["publication_suppressed"]=true;
+            nativeCapabilities.response=rejected;const auto result=Json::parse(take(adapter->handle(authorize("comfy_job_status",Domain::ToolEffect::Read,arguments.dump(),std::string{"poster-invalid-"}+invalidPreview),authority,context)).canonicalPayload);
+            REQUIRE(!result.contains("image_base64")&&result==rejected);
+        }
+        auto firstUnverified=artifact;firstUnverified["node_id"]="unverified";firstUnverified["sha256"]=std::string(64U,'c');firstUnverified["metadata"]["decoded"]=false;
+        auto selection=jobResult;selection["artifacts"].insert(selection["artifacts"].begin(),firstUnverified);nativeCapabilities.response=selection;
+        const auto selected=Json::parse(take(adapter->handle(authorize("comfy_job_status",Domain::ToolEffect::Read,arguments.dump(),"poster-first-verified"),authority,context)).canonicalPayload);
+        REQUIRE(selected.at("image_base64")==encoded&&selected.at("artifacts")[0].at("preview").contains("base64")&&!selected.at("artifacts")[1].at("preview").contains("base64"));
+        auto full=jobResult;full["preview_artifacts"]=Json::array();full["bounded_padding"]="";full["bounded_padding"]=std::string(128U*1024U-full.dump().size()-1U,'x');nativeCapabilities.response=full;
+        const auto nearLimit=Json::parse(take(adapter->handle(authorize("comfy_job_status",Domain::ToolEffect::Read,arguments.dump(),"poster-job-bound-no-growth"),authority,context)).canonicalPayload);
+        REQUIRE(nearLimit==full&&!nearLimit.contains("image_base64")&&nearLimit.dump().size()<128U*1024U);
+        full["bounded_padding"]=full.at("bounded_padding").get<std::string>()+"xx";nativeCapabilities.response=full;
+        const auto oversized=adapter->handle(authorize("comfy_job_status",Domain::ToolEffect::Read,arguments.dump(),"poster-job-oversized"),authority,context);
+        REQUIRE(!oversized&&oversized.error().code==Domain::ErrorCodes::PayloadTooLarge);nativeCapabilities.response.reset();
     }
 
     {
@@ -1279,9 +1384,10 @@ void testRuntimeDispatchAndSchemaPolicy()
     {
         const auto capabilities = Json::parse(take(adapter->handle(authorize("host_capabilities", Domain::ToolEffect::Read,
             "{}", "native-capability-report"), authority, context)).canonicalPayload);
-        REQUIRE(capabilities.at("tool_count") == 112U);
+        REQUIRE(capabilities.at("tool_count") == 125U);
         REQUIRE(capabilities.at("dedicated").at("word_excel_powerpoint_creation") == true);
         REQUIRE(capabilities.at("dedicated").at("independent_image_analysis") == true);
+        REQUIRE(capabilities.at("dedicated").at("comfyui_workflow_automation") == true);
         REQUIRE(capabilities.at("dedicated").at("optional_generative_image_provider_adapter") == true);
         auto noReviewDependencies = capabilityDependencies;
         noReviewDependencies.reviewerRuns = []() -> Contracts::IManagedRunService* { return nullptr; };
@@ -1795,6 +1901,34 @@ void testRuntimeDispatchAndSchemaPolicy()
     REQUIRE(bootstrap.find("shell_job_start") != std::string::npos);
     REQUIRE(bootstrap.find("descendants are terminated") != std::string::npos);
     REQUIRE(bootstrap.find("Running is not failure") != std::string::npos);
+    REQUIRE(bootstrap.find("read comfy_status for effective limits and configuration.quality_preference") != std::string::npos);
+    REQUIRE(bootstrap.find("When comfy_status reports configuration.enabled=true, route every new image or video creation request through comfy_run, including ordinary images") != std::string::npos);
+    REQUIRE(bootstrap.find("After comfy_control, do not switch to legacy image_generate") != std::string::npos);
+    REQUIRE(bootstrap.find("comfy_catalog kind=templates") != std::string::npos);
+    REQUIRE(bootstrap.find("comfy_workflow action=import") != std::string::npos && bootstrap.find("action=export") != std::string::npos);
+    REQUIRE(bootstrap.find("image_upload, audio_upload or video_upload") != std::string::npos);
+    REQUIRE(bootstrap.find("every intended motion output node must have its own decoded playable artifact") != std::string::npos);
+    REQUIRE(bootstrap.find("For an image preview, call image_read with the verified preview image artifact.path to display its larger bounded image before requesting approval; the job-status thumbnail alone is insufficient") != std::string::npos);
+    REQUIRE(bootstrap.find("Successful decoding verifies readable media, not the requested subject or motion quality") != std::string::npos);
+    REQUIRE(bootstrap.find("call image_analyze with the path of the published artifact whose role is sampled_video_contact_sheet, then poll reviewer_status for actual findings") != std::string::npos);
+    REQUIRE(bootstrap.find("For a verified video preview or final artifact with provider_view_url, call browser_open with that exact URL while ComfyUI is running") != std::string::npos);
+    REQUIRE(bootstrap.find("then use desktop_read on the observed browser window to check its actual address") != std::string::npos);
+    REQUIRE(bootstrap.find("Launch acceptance alone does not verify page loading or playback") != std::string::npos);
+    REQUIRE(bootstrap.find("Report actual browser-launch or observation failures") != std::string::npos);
+    REQUIRE(bootstrap.find("Present the URL as a copyable reference and the complete artifacts[].path in a copyable fenced block") != std::string::npos);
+    REQUIRE(bootstrap.find("ordinary Markdown link path rejects loopback URLs") != std::string::npos);
+    REQUIRE(bootstrap.find("Retain the sampled-frame preview") != std::string::npos);
+    REQUIRE(bootstrap.find("Report unavailable contact sheets and review failures with their actual errors") != std::string::npos);
+    REQUIRE(bootstrap.find("limit visual claims to reviewed sampled frames and do not claim unverified motion quality or repeat the prompt as observed content") != std::string::npos);
+    REQUIRE(bootstrap.find("only when the operator separately requests those SD1 or masked-editing contracts, or ComfyUI automation is disabled") != std::string::npos);
+    REQUIRE(bootstrap.find("When the operator omits quality, honor that configured default") != std::string::npos);
+    REQUIRE(bootstrap.find("prefer Wan 2.2 5B for balanced video") != std::string::npos);
+    REQUIRE(bootstrap.find("When video duration is omitted, propose about five seconds") != std::string::npos);
+    REQUIRE(bootstrap.find("choose playable MP4 with H.264 from the discovered output node contracts unless the operator requests a supported alternative format or codec") != std::string::npos);
+    REQUIRE(bootstrap.find("save the selected format in the proposed final graph before preview approval; a later format change requires a new preview and approval") != std::string::npos);
+    REQUIRE(bootstrap.find("Do not apply a universal output-format rewrite to unknown graphs") != std::string::npos);
+    REQUIRE(bootstrap.find("Never apply a universal resolution, frame-count or sampling rewrite to unknown graphs") != std::string::npos);
+    REQUIRE(bootstrap.find("unless the operator requests another quality") == std::string::npos);
     REQUIRE(bootstrap.find("Read and follow the instruction package folders") !=
             std::string::npos);
     REQUIRE(bootstrap.find("Development policy source: A:/development-policy") !=

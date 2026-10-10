@@ -1,6 +1,6 @@
-# Windows workflow capabilities in 1.3.28
+# Windows workflow capabilities in 1.3.29
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.28 implementation.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.29 implementation.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,7 +8,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-The current 1.3.28 source contains 112 Primary/Fallback tools, retaining the original 80 plus 32 additions. Six optional image-provider tools extend native CMake/CTest jobs, paged accessibility reads, bounded previews, web, DOCX/XLSX/PPTX, visible desktop/browser, PNG drawing/image analysis, independent workers and schedules. Current source, package and selected native measurements are recorded in the 1.3.28 verification record. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. See [1.3.28 source notes](Release-1.3.28).
+The current 1.3.29 catalog contains 125 Primary/Fallback tools: all previous 112 plus eleven general ComfyUI tools and desktop scroll/drag. Native CMake/CTest jobs, paged accessibility reads, bounded previews, web, DOCX/XLSX/PPTX, desktop/browser input, PNG drawing/image analysis, independent workers and schedules remain. General ComfyUI automation adds managed local image/video workflows, dependency preparation, preview approval and verified artifacts alongside the separate legacy image provider. See [ComfyUI Automation](ComfyUI-Automation), [1.3.29 release notes](Release-1.3.29) and [versioned verification](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/RELEASE-1.3.29.md). Historical measurements retain their original identities.
 
 Rig's corrected display shows the observed native conversation and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for actual rollover state; preference readback does not establish completed rollover. The historical 1.3.19 package included this correction; its installed/readback and current-chat evidence remains bound to that artifact above.
 
@@ -46,4 +46,4 @@ Meaningful changes use the installed Forge Conductor application's local Windows
 
 Desktop input reports submission and requires subsequent observation. Browser launch is not proof of page loading. Screen capture includes overlapping visible windows, and Windows account/integrity restrictions still apply.
 
-See the [complete capability contracts and limits](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/HOST-CAPABILITIES.md), [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md) and [1.3.28 verification scope](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.28.md). The [published 1.3.21 measured verification](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.21.md) and [1.3.19 executed verification](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.19.md) remain historical.
+See the [complete capability contracts and limits](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/HOST-CAPABILITIES.md), [ComfyUI Automation](ComfyUI-Automation), [legacy image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md) and [1.3.29 verification scope](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/RELEASE-1.3.29.md). The [published 1.3.28 record](Release-1.3.28), [1.3.21 measured verification](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.21.md) and [1.3.19 executed verification](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/HOST-CAPABILITIES-1.3.19.md) remain historical.

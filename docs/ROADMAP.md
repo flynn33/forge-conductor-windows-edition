@@ -1,6 +1,6 @@
 # Roadmap
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.28 release.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.29 release.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,9 +8,9 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-## Current source version: 1.3.28 — measured verification
+## Current source version: 1.3.29 — local ComfyUI automation
 
-Version 1.3.28 implements 112 Primary/Fallback tools while preserving all original tools, ten specialist playbooks and five CLU tools. Native CMake/CTest run/status jobs, paged accessibility reads and optional higher-resolution bounded image previews extend dedicated web, native Office documents, desktop/browser, PNG/image analysis, independent managed workers and persistent schedules. Existing shell/process jobs, reviews, memory, policy, deployment and continuity remain. Current build, signed-install, catalog and native measurements are recorded in the 1.3.28 verification record; isolated provider checks retain their own scope. See the [capability guide](HOST-CAPABILITIES.md), [CMake/CTest guide](CMAKE-CTEST.md), [implementation notes](releases/1.3.28.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.28.md).
+Version 1.3.29 implements 125 Primary/Fallback tools, retaining all prior tools, ten specialist playbooks and five CLU tools. Local ComfyUI automation adds general workflow control, preparation, saved preview approval and verified final delivery, with image, text-to-video and image-to-video starters. See the [automation guide](COMFYUI-AUTOMATION.md), [host qualification](COMFYUI_HOST_QUALIFICATION.md), [release notes](releases/1.3.29.md), and [versioned release verification](validation/RELEASE-1.3.29.md). Earlier source and installed records remain bound to their named artifacts.
 
 The 1.3.21 source persists the interrupted native handoff phase in a bounded, current-user DPAPI checkpoint. A single writer owns native controls; reconstruction requires fresh project/provider/route confirmation and selected-chat evidence. Uncertain New chat or Send effects remain `recovery_pending` and are not replayed. The 118-group Infrastructure suite passed, including the private same-PID observer reconstruction regression and 20 durability cases. The current verification record distinguishes observed Manager survival across connector CLI loss and automatic rollover from unverified Manager reconstruction or UI interruption. Physical context exhaustion and already-running agent reattachment were not exercised. Historical 1.3.20 checkpoint-process primitive evidence retains its original source identity and is not a current installed qualification. See the [continuity implementation](implementation/CONTEXT-CONTINUITY.md).
 
@@ -25,7 +25,7 @@ The 1.3.28 implementation uses `ManagerVisibleChatContinuity` as an `IManagerTra
 
 Manager lifetime does not grant saved authority or confirm an uncertain UI effect. Current project/provider/route validation, the OS-held single-writer lease and selected-native evidence still gate control dispatch. An empty or unrelated third chat does not establish the successor. Explicit route migration requires a fresh authorized Primary callback, matching actual native packet/recovery evidence and exact preservation of the old encrypted checkpoint. Uncertain New chat or Send is reconciled without automatic replay. Completion requires the actual handed message, successor `context_get` and a following successful Forge tool result. Installed 1.3.28 automatic delivery passed the source-bound reserve-pressure scope recorded in the 1.3.28 verification record.
 
-The [superseded 1.3.22 investigation](releases/1.3.22.md) passed final source and signed-install checks but did not complete automatic packet delivery. Current 1.3.28 release measurements have their own source-bound verification record.
+The [superseded 1.3.22 investigation](releases/1.3.22.md) passed final source and signed-install checks but did not complete automatic packet delivery. Recorded 1.3.28 release measurements have their own source-bound verification record.
 
 ## Follow-up
 

@@ -519,6 +519,36 @@ void imageJobPollingDoesNotTriggerIdenticalCallHandoff()
     REQUIRE(continuity.automaticCalls() == 0U);
 }
 
+void comfyJobPollingDoesNotTriggerIdenticalCallHandoff()
+{
+    LegacyContinuityFake continuity;
+    FixedHasher hasher;
+    FixedClock clock;
+    auto guard = take(Mcp::McpInvocationGuard::create(continuity, hasher, clock));
+    const auto caller = client("comfy-poll-client");
+    std::uint64_t sequence{1U};
+    for (const auto name : {"comfy_job_status", "comfy_job_list"}) {
+        for (std::uint64_t index = 0U; index < 20U; ++index) {
+            const auto call = request(caller, name,
+                std::string_view{name} == "comfy_job_status"
+                    ? R"json({"job_id":"10000000-0000-4000-8000-000000000001","wait_sec":1})json"
+                    : R"json({"offset":0,"limit":10})json", sequence++);
+            const auto operation = context(call, sequence);
+            REQUIRE(!take(guard->beforeInvoke(call, descriptor(call), operation)).immediateOutcome);
+            REQUIRE(guard->pendingCallCount() == 1U);
+            const auto result = take(guard->afterInvoke(call, descriptor(call),
+                Domain::Result<Domain::ToolCallOutcome>::success(successOutcome(call)), operation));
+            REQUIRE(result.receipt.ok);
+            REQUIRE(!guard->snapshot(caller).blocked);
+            REQUIRE(!guard->snapshot(caller).handoffPending);
+            REQUIRE(guard->pendingCallCount() == 0U);
+            REQUIRE(guard->trackedLoopClientCount() == 0U);
+        }
+    }
+    REQUIRE(continuity.budgetCalls() == 0U);
+    REQUIRE(continuity.automaticCalls() == 0U);
+}
+
 void identicalCallsSoftHandoffHardBlockAndResume()
 {
     LegacyContinuityFake continuity;
@@ -1263,6 +1293,7 @@ int main()
                       Mcp::McpInvocationGuard>);
         shellJobPollingDoesNotTriggerIdenticalCallHandoff();
         imageJobPollingDoesNotTriggerIdenticalCallHandoff();
+        comfyJobPollingDoesNotTriggerIdenticalCallHandoff();
         identicalCallsSoftHandoffHardBlockAndResume();
         repeatedCallsRetainAuthorizedWorkspaceAndObservedFiles();
         recoveredPacketScopesSuccessorAutomaticAndBudgetPersistence();

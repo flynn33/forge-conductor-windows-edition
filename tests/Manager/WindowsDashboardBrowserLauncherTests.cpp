@@ -4,6 +4,7 @@
 #include "Infrastructure/Windows/Detail/IWindowsDashboardUriLaunchPlatform.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsDashboardBrowserLauncher.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsDashboardUriActivationCommand.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsManagerBootstrapCommand.h"
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsProcessSupervisor.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsRuntimeDiagnostics.h"
@@ -32,6 +33,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <nlohmann/json.hpp>
 
 namespace ForgeConductor::Infrastructure::Windows::Detail {
 
@@ -533,6 +535,49 @@ void realHelperRejectsOversizedStdinAtProcessBoundary(
                 result.value().stderrUtf8.find(std::string(16U, 'x')) ==
                     std::string::npos,
             "real helper output did not retain only the typed secret-free failure");
+}
+
+void realManagerBootstrapHasFixedStructuredProcessBoundary(const std::wstring_view helperPath)
+{
+    const auto absolute = std::filesystem::absolute(std::filesystem::path{helperPath});
+    const auto executable = take(Domain::PathText::create(strictWideToUtf8(absolute.wstring())));
+    const auto root = take(Domain::PathText::create(strictWideToUtf8(absolute.parent_path().wstring())));
+    const TestContext context;
+    Fakes::DeterministicWorkspaceAuthority issuer{
+        parse<Domain::AuthorityId>("c3000000-0000-4000-8000-000000000012"),
+        parse<Domain::ClientId>("manager-bootstrap-process"), {root}, Domain::FileAccess::Execute,
+        {Domain::FileAccess::Execute}, {}, true, 1U};
+    const auto authority = take(issuer.authorityFor(
+        parse<Domain::ProjectId>("c3000000-0000-4000-8000-000000000013"), context.active()));
+    const auto budgets = Domain::budgetsForProfile(Domain::ResourceProfile::Constrained8GiB);
+    Infrastructure::Windows::SystemClock clock;
+    auto diagnostics = std::make_shared<Infrastructure::Windows::WindowsRuntimeDiagnostics>(clock, budgets);
+    Infrastructure::Windows::WindowsProcessSupervisor supervisor{budgets, diagnostics};
+    struct Case final { std::vector<std::string> arguments; std::string input; int exit; std::string code; };
+    const std::vector<Case> cases{
+        {{"--internal-start-manager"}, "{}", 1, "invalid_request"},
+        {{"--internal-start-manager"},
+            R"({"home":"C:\\ForgeHome","isolated_profile":true,"executable":"notepad.exe"})", 1, "invalid_request"},
+        {{"--internal-start-manager", "--open"}, "", 2, "invalid_request"},
+        {{"--internal-start-manager"}, std::string(
+            Infrastructure::Windows::WindowsManagerBootstrapCommand::MaximumRequestBytes + 1U, 'x'),
+            1, "payload_too_large"}};
+    for (const auto& test : cases) {
+        const auto result = take(supervisor.run(Domain::ProcessRequest{
+            executable, test.arguments, root, {}, true, 5s, 1'024U, 1'024U, test.input}, authority, context.active()));
+        require(result.exitCode == test.exit && result.terminationConfirmed && !result.timedOut && !result.cancelled,
+            "The actual Manager bootstrap helper did not retain its bounded failure state.");
+        require(result.stderrUtf8.empty() && !result.stdoutTruncated && !result.stderrTruncated,
+            "The actual Manager helper emitted unexpected or truncated process output.");
+        const auto response = nlohmann::json::parse(result.stdoutUtf8);
+        require(response == nlohmann::json{{"ok", false}, {"code", test.code}},
+            "The actual Manager helper changed its fixed structured failure response.");
+        require(result.stdoutUtf8.find("ForgeHome") == std::string::npos &&
+            result.stdoutUtf8.find("notepad") == std::string::npos &&
+            result.stdoutUtf8.find(std::string(16U, 'x')) == std::string::npos,
+            "The actual Manager helper echoed arbitrary request contents.");
+    }
+    supervisor.shutdown();
 }
 
 void admissionIsPromptAndHelperRequestIsSecretSafe()
@@ -1136,6 +1181,7 @@ int wmain(const int argc, wchar_t** argv)
             "expected the exact sibling CLI test helper path");
         ForgeConductor::Tests::realHelperRejectsOversizedStdinAtProcessBoundary(
             argv[1]);
+        ForgeConductor::Tests::realManagerBootstrapHasFixedStructuredProcessBoundary(argv[1]);
         ForgeConductor::Tests::admissionIsPromptAndHelperRequestIsSecretSafe();
         ForgeConductor::Tests::
             endpointContextAndConfigurationRejectBeforeProcessAdmission();

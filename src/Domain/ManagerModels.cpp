@@ -31,6 +31,7 @@ Result<void> validateManagerSettings(const ManagerSettings& settings)
     }
     auto provider = defaultAppConfig();
     provider.fileSystemAccess = settings.fileSystemAccess;
+    provider.comfyUi = settings.comfyUi;
     provider.localModel.host = settings.localModelHost;
     provider.localModel.port = settings.localModelPort;
     provider.localModel.secure = settings.localModelSecure;
@@ -84,6 +85,7 @@ Result<ManagerSettings> applyManagerSettingsPatch(
     }
     if (patch.shellEnabled) settings.shellEnabled = *patch.shellEnabled;
     if (patch.fileSystemAccess) settings.fileSystemAccess = *patch.fileSystemAccess;
+    if (patch.comfyUi) settings.comfyUi = *patch.comfyUi;
     auto validated = validateManagerSettings(settings);
     if (!validated) {
         return Result<ManagerSettings>::failure(std::move(validated).error());

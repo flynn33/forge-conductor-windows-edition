@@ -4,9 +4,11 @@
 #include "ForgeConductor/Domain/OperationContext.h"
 #include "ForgeConductor/Domain/Result.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace ForgeConductor::Infrastructure::Windows {
@@ -19,6 +21,17 @@ struct LMStudioNativeToolResult final {
     std::string pluginIdentifier;
     std::string requestId;
     std::vector<std::string> textBodies;
+    std::size_t messageIndex{};
+    std::size_t selectedVersion{};
+};
+
+struct LMStudioNativeUserMessage final {
+    std::string text;
+    std::size_t messageIndex{};
+    std::size_t selectedVersion{};
+    // Conservative exclusion of the reserved message prefixes emitted by
+    // Forge continuity control; false does not attest human authorship.
+    bool forgeGenerated{};
 };
 
 struct LMStudioConversationObservation final {
@@ -38,6 +51,7 @@ struct LMStudioConversationObservation final {
     std::string generationEvidence;
     std::vector<std::string> plugins;
     std::vector<std::string> userMessages;
+    std::vector<LMStudioNativeUserMessage> userMessageEvidence;
     std::vector<LMStudioNativeToolResult> nativeToolResults;
 };
 
@@ -49,6 +63,12 @@ public:
     [[nodiscard]] static Domain::Result<
         std::optional<LMStudioConversationObservation>> read(
         const Domain::PathText& lmStudioRoot,
+        const Domain::OperationContext& context) noexcept;
+    // Reads an exact saved predecessor without selecting or modifying it.
+    [[nodiscard]] static Domain::Result<
+        std::optional<LMStudioConversationObservation>> readConversation(
+        const Domain::PathText& lmStudioRoot,
+        std::string_view conversationId,
         const Domain::OperationContext& context) noexcept;
 };
 

@@ -16,7 +16,9 @@ Primary owns native chat rollover; all three integrations remain enabled in the 
 
 ## Where to look
 
-Workspace contains project/package/policy/continuity readiness. Rig shows native observations. Continuity lists packets and provides delete-selection/clear. Activity shows operational/governance history. Settings keeps load/save/readback/revert/test/restart and selectable saved records with delete buttons.
+Workspace contains project/package/policy/continuity readiness. Rig shows native observations and the ComfyUI readiness probe. Continuity lists packets and provides delete-selection/clear. Activity shows operational/governance history. Settings keeps load/save/readback/revert/test/restart and selectable saved records with delete buttons, and adds the ComfyUI automation card in 1.3.29.
+
+For image/video creation, enable **ComfyUI automation**, select the existing installation and model storage, and save the endpoint and limits. Automatic setup defaults to enabled with a 500 GB operation budget, 50 GB reserve and 30-minute generation timeout. Probe the effective saved readiness, then describe the desired media in LM Studio. The model prepares the workflow, displays a verified preview and waits for your `approved`, `yes` or `render final` reply before rendering the saved final. See [ComfyUI Automation](ComfyUI-Automation).
 
 Historical rollover qualification used reserve pressure while the primary worker stayed alive. The 1.3.11 checks verify native observing state and project-scoped pickup; no new rollover or physical-exhaustion run was performed. Interrupted UI handoff recovery remains process-local. See [Continuity](Continuity).
 

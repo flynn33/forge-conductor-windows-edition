@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.3.29 — local ComfyUI automation
+
+Forge Conductor **1.3.29 / Windows package 1.3.29.0** adds local ComfyUI automation for images and video. Describe the result in LM Studio; the model discovers nodes and models, constructs the workflow, starts or prepares the selected local installation, renders a preview, and uses a subsequent saved operator approval to execute the sealed final plan. Eleven general ComfyUI tools plus `desktop_scroll` and `desktop_drag` bring Primary and Fallback to **125 tools**. The six existing image tools, five CLU tools, and ten specialist playbooks remain.
+
+Added durable workflow preparation, preview/final render plans, exact-ID recovery after lost acknowledgements or Manager replacement, verified artifact collections, native frontend serialization, and dependency manifests with streamed download accounting and rollback. The operator approves the actual saved preview revision through a normal chat reply; a verified redelivery can recover that reply without adding another user message. Existing image receipts and mask behavior remain separate and compatible.
+
+Added the ComfyUI Settings card and Rig readiness, local image/text-to-video/image-to-video starter resources, and existing-tool guidance for larger image previews, browser video delivery and independent sampled review. The existing LM Studio Responses path now accounts separately for bounded image content while preserving its text-only and handoff limit.
+
+See [release notes](docs/releases/1.3.29.md), [automation contracts](docs/COMFYUI-AUTOMATION.md), [actual host results](docs/COMFYUI_HOST_QUALIFICATION.md), and [versioned release verification](docs/validation/RELEASE-1.3.29.md). Previous candidate checks, actual inference, versioned package verification and operator quality acceptance retain distinct scopes.
+
 ## 1.3.28 — Compact packets, terminal recovery and current connector presence
 
 Forge Conductor **1.3.28 / Windows package 1.3.28.0** corrects packet-request instructions, explicit terminal recovery and current connector presence. Handoff and repair prompts ask for only the outer `packet_json` argument, with every packet field inside its encoded JSON object; direct-field calls and refusal of conflicting outer fields remain supported. The advisory output target never takes priority over actual facts, exact values, constraints or paths. The Manager filters the current presence projection through the existing 25-second heartbeat window before enforcing its bound, while full-history reads and refusal of an oversized current collection remain intact. All 112 Primary/Fallback tool names, five CLU tools and ten specialist playbooks remain; the only catalog amendment is the `session_handoff` packet_json description.

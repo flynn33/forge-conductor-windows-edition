@@ -1,5 +1,9 @@
 # User guide
 
+## Automated ComfyUI workflows
+
+Forge Conductor 1.3.29 adds local workflow automation for image, video and other file outputs. Enable it in Settings, select the installation and automatic-setup limits, and describe the desired result in LM Studio. The model discovers nodes and models, edits and preflights workflows, prepares dependencies, and returns a verified preview. Reply `approved`, `yes`, or `render final` after reviewing the preview; final rendering uses its sealed plan. The operator does not need to build or run a ComfyUI graph manually. See [automation](COMFYUI-AUTOMATION.md), [actual host results](COMFYUI_HOST_QUALIFICATION.md) and [versioned verification](validation/RELEASE-1.3.29.md). The current catalog contains 125 tools; older installed measurements retain their named release scopes.
+
 ## Optional image generation and editing
 
 Choose tools by purpose. image_write draws shapes and text. image_analyze starts an independent read-only interpretation of an existing image, and reviewer_status reads that analysis. To generate through the separately configured ComfyUI provider, first inspect image_provider_status, then start image_generate or image_edit and poll image_job_status. Use image_job_cancel for local publication suppression and image_job_resume for explicit fresh authorized reattachment to an exact existing provider job. Analysis and reviewer status do not start or report generative jobs.
@@ -21,7 +25,7 @@ Launch Forge Conductor from Start. The destinations are **Workspace**, **Rig**, 
 
 The Manager persists project access, packages, policy bindings, memory, preferences, telemetry and scheduled model tasks. The 1.3.28 implementation places the native chat observer under Manager lifetime, with Primary supplying authorized observations. Closing Forge's window does not cancel LM Studio chat work. Scheduled inference requires Manager to remain running.
 
-The current 1.3.28 source catalog defines 112 Primary/Fallback tools, retaining the dedicated web, Office, desktop/browser, image, independent-worker and scheduled-task workflows and adding native CMake/CTest jobs. Current build, signed-install, catalog and native measurements are recorded in the 1.3.28 verification record; isolated provider checks retain their own scope. Call `host_capabilities` before assuming a capability is missing; see the [host capability guide](HOST-CAPABILITIES.md) for contracts and bounds. The owner can choose host filesystem mode for ordinary local volumes or retain workspace-only mode. Relative artifact paths keep the selected project directory in both modes.
+The current 1.3.29 source catalog defines 125 Primary/Fallback tools, preserving the existing web, Office, desktop/browser, image, CMake/CTest, worker, scheduling and continuity workflows. Call `host_capabilities` for actual availability and prerequisites. See the [host guide](HOST-CAPABILITIES.md) and [release verification](validation/RELEASE-1.3.29.md). Filesystem mode remains selectable; relative artifact paths retain the selected project directory.
 
 Call `schedule_list` with `{}` for this caller/project's schedule summaries. Creation, cancellation and run-now receipts also return summaries. For complete task text, frozen roots/tool names, history, logs and notification receipts, call `schedule_list` with `schedule_id`. Append `record_json_page` from each response in order, then parse the complete JSON. Continue with `next_offset` and the returned `revision`; `max_bytes` is optional and accepts 1–32,768 bytes. A `conflict` means the record changed during the read: restart at offset 0. Inspect the reconstructed latest run's actual state/output before treating work as completed.
 

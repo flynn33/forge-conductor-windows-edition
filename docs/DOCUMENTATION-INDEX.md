@@ -2,7 +2,7 @@
 
 ## Current product documentation
 
-The current source implementation is 1.3.28 with 112 Primary/Fallback tools; current build, signed-install, catalog and native measurements are recorded in the 1.3.28 verification record; isolated provider checks retain their own scope. Earlier release and verification entries retain their named artifact identities.
+The current source implementation is 1.3.29 with 125 Primary/Fallback tools. General ComfyUI automation is described in its feature guide; actual inference and versioned release checks retain separate records. Earlier release and verification entries retain their named artifact identities.
 
 - [README](../README.md)
 - [Product status](STATUS.md)
@@ -22,6 +22,10 @@ The current source implementation is 1.3.28 with 112 Primary/Fallback tools; cur
 - [Windows toolchain](WINDOWS_TOOLCHAIN.md)
 - [Post-1.0 enhancements](DEFERRED.md)
 - [Packaging inputs](../packaging/README.md)
+- [ComfyUI automation contracts and setup](COMFYUI-AUTOMATION.md)
+- [Actual ComfyUI host qualification](COMFYUI_HOST_QUALIFICATION.md)
+- [1.3.29 release notes](releases/1.3.29.md)
+- [1.3.29 versioned release verification](validation/RELEASE-1.3.29.md)
 - [1.3.28 release notes](releases/1.3.28.md)
 - [1.3.28 verification record](validation/HOST-CAPABILITIES-1.3.28.md)
 - [Superseded, unpublished 1.3.27 installed investigation](releases/1.3.27.md)

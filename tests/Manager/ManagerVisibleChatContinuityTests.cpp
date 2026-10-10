@@ -873,6 +873,8 @@ void completeNativeRecovery(OwnerFixture& fixture)
 {
     fixture.start();
     fixture.observing();
+    require(!fixture.status().contains("predecessor_lmstudio_session_id"),
+            "An observing chat exposed a verified predecessor before native recovery.");
     fixture.pressure();
     fixture.await([](const Json& status) {
         return status.value("state", std::string{}) == "waiting_for_model_packet";
@@ -895,6 +897,8 @@ void completeNativeRecovery(OwnerFixture& fixture)
     fixture.append(assistant(Json::array({nativeTool("session_handoff", handoff, 1U)})));
     const auto resuming = fixture.await(
         [](const Json& status) { return status.value("state", std::string{}) == "resuming"; });
+    require(!resuming.contains("predecessor_lmstudio_session_id"),
+            "An incomplete native successor exposed a verified predecessor.");
     require(resuming["owner"] == "manager" &&
                 resuming["owner_process_id"] == ::GetCurrentProcessId() &&
                 resuming["owner_process_id"] == before["owner_process_id"] &&
@@ -922,10 +926,33 @@ void completeNativeRecovery(OwnerFixture& fixture)
         "Native context_get completed recovery without a following successful native Forge tool.");
     fixture.append(assistant(
         Json::array({nativeTool("agent_list", Json{{"ok", true}}, 3U), generation(3000U)})));
-    fixture.await(
+    const auto resumed = fixture.await(
         [](const Json& status) { return status.value("state", std::string{}) == "resumed"; });
+    require(resumed.value("predecessor_lmstudio_session_id", std::string{}) ==
+                "project/chat.conversation.json" &&
+                resumed.value("successor_lmstudio_session_id", std::string{}) ==
+                "project/successor.conversation.json",
+            "Completed native recovery did not expose its recorded predecessor and successor.");
     require(fixture.creations == 1U && fixture.deliveries == 1U && fixture.sends == 2U,
             "Completed native recovery repeated a native effect.");
+}
+
+void verifiedPredecessorSurvivesOrdinarySuccessorProgress()
+{
+    OwnerFixture fixture;
+    completeNativeRecovery(fixture);
+    fixture.append(assistant(Json::array({generation(4000U)})));
+    const auto progressed = fixture.await([](const Json& status) {
+        return status.contains("context_telemetry") &&
+               status.at("context_telemetry").value("tokens_used", 0U) == 4000U;
+    });
+    require(progressed.value("predecessor_lmstudio_session_id", std::string{}) ==
+                "project/chat.conversation.json" &&
+                progressed.value("successor_lmstudio_session_id", std::string{}) ==
+                "project/successor.conversation.json" && progressed.value("state", std::string{}) == "resumed",
+            "Ordinary native successor progress lost the verified predecessor relation.");
+    require(fixture.creations == 1U && fixture.deliveries == 1U,
+            "Reading verified lineage after ordinary progress repeated native effects.");
 }
 
 void callerExitKeepsManagerObserverAndNativeRecovery()
@@ -1063,6 +1090,8 @@ int main()
             rejectedUnboundObservationRetainsItsStatusDiagnostic);
     addTest(tests, "ManagerVisibleChatContinuity.caller_exit_native_recovery",
             callerExitKeepsManagerObserverAndNativeRecovery);
+    addTest(tests, "ManagerVisibleChatContinuity.verified_predecessor_after_progress",
+            verifiedPredecessorSurvivesOrdinarySuccessorProgress);
     addTest(tests, "ManagerVisibleChatContinuity.same_project_alias_scope",
             sameProjectAliasRetainsOriginalCheckpointScope);
     addTest(tests, "ManagerVisibleChatContinuity.idle_switch_pending_refusal",

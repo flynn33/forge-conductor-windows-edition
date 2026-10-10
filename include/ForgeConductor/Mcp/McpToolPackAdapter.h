@@ -24,6 +24,7 @@
 #include "ForgeConductor/Contracts/IArtifactDocumentService.h"
 #include "ForgeConductor/Contracts/IDesktopArtifactService.h"
 #include "ForgeConductor/Contracts/IImageProviderService.h"
+#include "ForgeConductor/Contracts/IComfyUiService.h"
 
 #include <chrono>
 #include <cstdint>
@@ -91,6 +92,7 @@ struct McpToolPackDependencies final {
     std::function<Contracts::IScheduledTaskService*()> scheduledTasks;
     std::string managerStartupError;
     Contracts::IImageProviderService* imageProvider{};
+    Contracts::IComfyUiService* comfyUi{};
     std::function<Domain::Result<std::string>(const Domain::ProjectId&,
         const Domain::OperationContext&)> visibleChatRemoteStatus;
     std::function<void(const Domain::ProjectId&, const Domain::PathText&,

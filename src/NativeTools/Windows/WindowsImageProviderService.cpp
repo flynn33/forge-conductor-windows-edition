@@ -4,6 +4,7 @@
 #include "ForgeConductor/Domain/Utf8.h"
 #include "ImageProviderCodec.h"
 #include "NativeFileOperations.h"
+#include "ProviderOperationLease.h"
 #include "Infrastructure/Windows/Detail/OperationContextGuard.h"
 #include "Infrastructure/Windows/Detail/UtfConversion.h"
 
@@ -912,6 +913,7 @@ private:
         Record initial; { std::lock_guard lock{entry->mutex}; initial = entry->record; }
         const auto context = internalContext(initial,cancellation,std::chrono::seconds{initial.request.timeoutSeconds});
         try {
+            const auto providerLease = take(Detail::ProviderOperationLease::acquire(initial.provider.endpoint,context));
             static_cast<void>(fresh(initial,context)); sameProvider(initial,context);
             if (!attach) {
                 preflight(initial.provider,initial.request.source.has_value(),initial.request.mask.has_value(),context);

@@ -1,0 +1,382 @@
+{
+  "format": "forge.comfyui.starters",
+  "version": 1,
+  "contract_sources": [
+    "ComfyUI/nodes.py",
+    "ComfyUI/comfy_extras/nodes_model_advanced.py",
+    "ComfyUI/comfy_extras/nodes_wan.py",
+    "ComfyUI/comfy_extras/nodes_video.py",
+    "ComfyUI/comfy_api/latest/_util/video_types.py",
+    "comfyui_workflow_templates_media_video/templates/video_wan2_2_5B_ti2v.json"
+  ],
+  "policy": {
+    "managed_render_plan_required": true,
+    "preview_approval_required": true,
+    "recheck_live_contracts": true,
+    "sealed_inputs_required": true,
+    "resource_measurements_required_for_final": true,
+    "do_not_apply_settings_to_unknown_graphs": true
+  },
+  "workflows": [
+    {
+      "id": "sd1_image",
+      "title": "SD1 image",
+      "media_type": "image/png",
+      "quality_preference": "balanced",
+      "preview_file": "sd1_image.preview.api.json",
+      "final_file": "sd1_image.final.api.json",
+      "expected_outputs": [
+        "9"
+      ],
+      "input_bindings": [],
+      "parameters": {
+        "prompt": {
+          "node_id": "6",
+          "input": "text",
+          "type": "STRING"
+        },
+        "negative_prompt": {
+          "node_id": "7",
+          "input": "text",
+          "type": "STRING"
+        },
+        "seed": {
+          "node_id": "3",
+          "input": "seed",
+          "type": "INT"
+        },
+        "width": {
+          "node_id": "5",
+          "input": "width",
+          "type": "INT"
+        },
+        "height": {
+          "node_id": "5",
+          "input": "height",
+          "type": "INT"
+        },
+        "steps": {
+          "node_id": "3",
+          "input": "steps",
+          "type": "INT"
+        }
+      },
+      "starting_settings": {
+        "preview": {
+          "width": 512,
+          "height": 512,
+          "steps": 12
+        },
+        "final": {
+          "width": 768,
+          "height": 768,
+          "steps": 28
+        }
+      },
+      "required_models": [
+        {
+          "directory": "checkpoints",
+          "name": "cyberrealistic_final.safetensors",
+          "bindings": [
+            {
+              "node_id": "4",
+              "input": "ckpt_name"
+            }
+          ],
+          "observed_host_bytes": 2132651162,
+          "reuse_installed": true,
+          "publisher_source": null,
+          "download_policy": "Resolve identified publisher and exact model identity before downloading; otherwise select an installed SD1 checkpoint and bind its seal."
+        }
+      ],
+      "qualification": {
+        "fixture_verified": true,
+        "host_inference_verified": false,
+        "operator_quality_accepted": false,
+        "comfyui_contract_version": "0.16.3",
+        "workflow_templates_video_version": "0.3.56"
+      }
+    },
+    {
+      "id": "wan22_5b_t2v",
+      "title": "Wan 2.2 5B text to video",
+      "media_type": "video/mp4",
+      "quality_preference": "balanced",
+      "preview_file": "wan22_5b_t2v.preview.api.json",
+      "final_file": "wan22_5b_t2v.final.api.json",
+      "expected_outputs": [
+        "12"
+      ],
+      "input_bindings": [],
+      "parameters": {
+        "prompt": {
+          "node_id": "5",
+          "input": "text",
+          "type": "STRING"
+        },
+        "negative_prompt": {
+          "node_id": "6",
+          "input": "text",
+          "type": "STRING"
+        },
+        "seed": {
+          "node_id": "9",
+          "input": "seed",
+          "type": "INT"
+        },
+        "width": {
+          "node_id": "7",
+          "input": "width",
+          "type": "INT"
+        },
+        "height": {
+          "node_id": "7",
+          "input": "height",
+          "type": "INT"
+        },
+        "length": {
+          "node_id": "7",
+          "input": "length",
+          "type": "INT"
+        },
+        "steps": {
+          "node_id": "9",
+          "input": "steps",
+          "type": "INT"
+        },
+        "fps": {
+          "node_id": "11",
+          "input": "fps",
+          "type": "FLOAT"
+        }
+      },
+      "starting_settings": {
+        "preview": {
+          "width": 640,
+          "height": 384,
+          "frames": 81,
+          "fps": 16,
+          "steps": 12,
+          "duration_seconds": 5.0625
+        },
+        "final": {
+          "width": 1280,
+          "height": 704,
+          "frames": 121,
+          "fps": 24,
+          "steps": 20,
+          "duration_seconds": 5.041666666666667
+        }
+      },
+      "duration_contract": {
+        "latent_node": "7",
+        "frame_input": "length",
+        "temporal_stride": 4,
+        "frame_offset": 1,
+        "dimension_multiple": 32,
+        "fps_node": "11",
+        "fps_input": "fps",
+        "default_draft_seconds": 5
+      },
+      "required_models": [
+        {
+          "directory": "diffusion_models",
+          "name": "wan2.2_ti2v_5B_fp16.safetensors",
+          "bindings": [
+            {
+              "node_id": "2",
+              "input": "unet_name"
+            }
+          ],
+          "observed_host_bytes": 9999658848,
+          "publisher": "Comfy-Org",
+          "publisher_source": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+          "reuse_installed": true,
+          "resolve_sha256_before_download": true
+        },
+        {
+          "directory": "text_encoders",
+          "name": "umt5_xxl_fp16.safetensors",
+          "bindings": [
+            {
+              "node_id": "3",
+              "input": "clip_name"
+            }
+          ],
+          "observed_host_bytes": 11366399385,
+          "publisher": "Comfy-Org",
+          "publisher_source": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged",
+          "reuse_installed": true,
+          "resolve_sha256_before_download": true
+        },
+        {
+          "directory": "vae",
+          "name": "wan2.2_vae.safetensors",
+          "bindings": [
+            {
+              "node_id": "4",
+              "input": "vae_name"
+            }
+          ],
+          "observed_host_bytes": 1409400960,
+          "publisher": "Comfy-Org",
+          "publisher_source": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+          "reuse_installed": true,
+          "resolve_sha256_before_download": true
+        }
+      ],
+      "qualification": {
+        "fixture_verified": true,
+        "host_inference_verified": false,
+        "operator_quality_accepted": false,
+        "comfyui_contract_version": "0.16.3",
+        "workflow_templates_video_version": "0.3.56"
+      }
+    },
+    {
+      "id": "wan22_5b_i2v",
+      "title": "Wan 2.2 5B image to video",
+      "media_type": "video/mp4",
+      "quality_preference": "balanced",
+      "preview_file": "wan22_5b_i2v.preview.api.json",
+      "final_file": "wan22_5b_i2v.final.api.json",
+      "expected_outputs": [
+        "12"
+      ],
+      "input_bindings": [
+        {
+          "name": "start_image",
+          "node_id": "1",
+          "input": "image",
+          "media_type": "image/*",
+          "required": true,
+          "seal_before_preview": true
+        }
+      ],
+      "parameters": {
+        "prompt": {
+          "node_id": "5",
+          "input": "text",
+          "type": "STRING"
+        },
+        "negative_prompt": {
+          "node_id": "6",
+          "input": "text",
+          "type": "STRING"
+        },
+        "seed": {
+          "node_id": "9",
+          "input": "seed",
+          "type": "INT"
+        },
+        "width": {
+          "node_id": "7",
+          "input": "width",
+          "type": "INT"
+        },
+        "height": {
+          "node_id": "7",
+          "input": "height",
+          "type": "INT"
+        },
+        "length": {
+          "node_id": "7",
+          "input": "length",
+          "type": "INT"
+        },
+        "steps": {
+          "node_id": "9",
+          "input": "steps",
+          "type": "INT"
+        },
+        "fps": {
+          "node_id": "11",
+          "input": "fps",
+          "type": "FLOAT"
+        }
+      },
+      "starting_settings": {
+        "preview": {
+          "width": 640,
+          "height": 384,
+          "frames": 81,
+          "fps": 16,
+          "steps": 12,
+          "duration_seconds": 5.0625
+        },
+        "final": {
+          "width": 1280,
+          "height": 704,
+          "frames": 121,
+          "fps": 24,
+          "steps": 20,
+          "duration_seconds": 5.041666666666667
+        }
+      },
+      "duration_contract": {
+        "latent_node": "7",
+        "frame_input": "length",
+        "temporal_stride": 4,
+        "frame_offset": 1,
+        "dimension_multiple": 32,
+        "fps_node": "11",
+        "fps_input": "fps",
+        "default_draft_seconds": 5
+      },
+      "required_models": [
+        {
+          "directory": "diffusion_models",
+          "name": "wan2.2_ti2v_5B_fp16.safetensors",
+          "bindings": [
+            {
+              "node_id": "2",
+              "input": "unet_name"
+            }
+          ],
+          "observed_host_bytes": 9999658848,
+          "publisher": "Comfy-Org",
+          "publisher_source": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+          "reuse_installed": true,
+          "resolve_sha256_before_download": true
+        },
+        {
+          "directory": "text_encoders",
+          "name": "umt5_xxl_fp16.safetensors",
+          "bindings": [
+            {
+              "node_id": "3",
+              "input": "clip_name"
+            }
+          ],
+          "observed_host_bytes": 11366399385,
+          "publisher": "Comfy-Org",
+          "publisher_source": "https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged",
+          "reuse_installed": true,
+          "resolve_sha256_before_download": true
+        },
+        {
+          "directory": "vae",
+          "name": "wan2.2_vae.safetensors",
+          "bindings": [
+            {
+              "node_id": "4",
+              "input": "vae_name"
+            }
+          ],
+          "observed_host_bytes": 1409400960,
+          "publisher": "Comfy-Org",
+          "publisher_source": "https://huggingface.co/Comfy-Org/Wan_2.2_ComfyUI_Repackaged",
+          "reuse_installed": true,
+          "resolve_sha256_before_download": true
+        }
+      ],
+      "qualification": {
+        "fixture_verified": true,
+        "host_inference_verified": false,
+        "operator_quality_accepted": false,
+        "comfyui_contract_version": "0.16.3",
+        "workflow_templates_video_version": "0.3.56"
+      }
+    }
+  ]
+}

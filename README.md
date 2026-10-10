@@ -1,6 +1,14 @@
 # Forge Conductor for Windows
 
-## Current 1.3.28 release
+## Current 1.3.29 — local ComfyUI automation
+
+Forge Conductor **1.3.29 / Windows package 1.3.29.0** adds local ComfyUI automation for images and video. Describe the result in LM Studio; the model discovers nodes and models, constructs the workflow, starts or prepares the selected local installation, renders a preview, and uses a subsequent saved operator approval to execute the sealed final plan. Eleven general ComfyUI tools plus `desktop_scroll` and `desktop_drag` bring Primary and Fallback to **125 tools**. The six existing image tools, five CLU tools, and ten specialist playbooks remain.
+
+ComfyUI automation settings and Rig readiness expose the local installation, automatic setup, model storage, download budget, free-space reserve, generation timeout, and quality preference. Defaults are 500 GB per preparation operation, a 50 GB reserve, and 30 minutes. Image, text-to-video, and image-to-video starter workflows are included. Arbitrary workflows use discovered node contracts; unresolved publisher or package contracts return actual preparation errors. The model presents the verified preview and waits for `approved`, `yes`, or `render final` in the native LM Studio chat.
+
+Media inference runs on the Windows host while LM Studio keeps its existing model connection. Verified artifacts retain paths, byte counts, SHA-256 and measured media metadata. Video delivery uses the existing browser tools and sampled independent image review; decoding alone does not establish visual quality. Read the [automation guide](docs/COMFYUI-AUTOMATION.md), [actual host qualification](docs/COMFYUI_HOST_QUALIFICATION.md), [release notes](docs/releases/1.3.29.md), and [versioned release verification](docs/validation/RELEASE-1.3.29.md). Host inference, package installation, publication and operator quality acceptance have separate evidence.
+
+## Previous 1.3.28 release
 
 Forge Conductor **1.3.28 / Windows package 1.3.28.0** corrects packet-request instructions, explicit terminal recovery and current connector presence. Handoff and repair prompts ask for only the outer `packet_json` argument, with every packet field inside its encoded JSON object; direct-field calls and refusal of conflicting outer fields remain supported. The advisory output target never takes priority over actual facts, exact values, constraints or paths. The Manager filters the current presence projection through the existing 25-second heartbeat window before enforcing its bound, while full-history reads and refusal of an oversized current collection remain intact. All 112 Primary/Fallback tool names, five CLU tools and ten specialist playbooks remain; the only catalog amendment is the `session_handoff` packet_json description.
 
@@ -28,7 +36,7 @@ The installed, unpublished **1.3.26 / Windows package 1.3.26.0** artifact at sou
 
 The selected Qwen recovery capture contained **24 messages**. Two actual Primary calls returned saved context and status reporting **1.3.26 / 112 tools**; the response reached `eosFound`. Manager remained `recovery_pending` at inherited checkpoint revision **14**: `WaitingPacket`, no packet or successor, no effect, and false packet-request acknowledgement, while delivery acknowledgement and context recovery remained true from the older cycle. The current source begins a new packet-request cycle without clearing those two flags. Fresh native readback did not satisfy the existing successor-and-packet recovery eligibility. Automatic New chat/Send and successor continuation were not established, and no 1.3.26 release was published. The subsequent 1.3.27 changes and their checks have separate inputs. The independently retained native process handles recorded all three predecessor connector CLIs and bridge processes exiting with code `1` while Manager PID `35288` remained alive. This is separate from the normal code `0` isolated processes and does not prove automatic handoff. Selected native five-group and native image-provider scopes were not qualified by these captures.
 
-See [release notes](docs/releases/1.3.28.md), [current verification](docs/validation/HOST-CAPABILITIES-1.3.28.md) and [retained 1.3.24 scopes](docs/validation/HOST-CAPABILITIES-1.3.24.md).
+See [release notes](docs/releases/1.3.28.md), [1.3.28 verification](docs/validation/HOST-CAPABILITIES-1.3.28.md) and [retained 1.3.24 scopes](docs/validation/HOST-CAPABILITIES-1.3.24.md).
 
 ## 1.3.28 bounded dispatch-context
 The 1.3.28 implementation gives each continuity control dispatch a fresh **25-second** operation context, separate from the **20-second** observation tick, and uses that same dispatch context for receipt callbacks, fresh authority/configuration checks and checkpoint persistence. It preserves the cancellation token, revalidates the current authority before effects, and retains the existing controller's 25-second cap and queries. No deadline extension revives cancelled work, no permission or route check is relaxed, and uncertain New chat/Send remains unreplayed. Actual installed automatic delivery and source checks have separate current-artifact measurements in the verification record.
@@ -59,7 +67,7 @@ The superseded installed 1.3.22 candidate at source `9178abdf12998af56df4860a56b
 
 See [retained 1.3.22 measurements](docs/validation/HOST-CAPABILITIES-1.3.22.md).
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.28 release.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.29 release.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -83,9 +91,9 @@ Forge Conductor is a native Windows 11 workspace and MCP tool server for project
 
 The installed, unpublished 1.3.20.0 candidate was superseded after repeated native CMake builds exposed an MSBuild `FileTracker.InitializeCommonApplicationDataPaths` failure before the requested target. The 1.3.21 source adds the bounded `SystemDrive` default and strengthens the native known-folder, repeated-build and intended-failure regressions. Measured 1.3.21 source, package, installed-catalog and native-model checks passed; retained 1.3.20 attempts keep their original source and package identities.
 
-The current source version is **1.3.28**, with **112 tools** in Primary and Fallback, ten specialist playbooks and CLU's five governance tools. LM Studio models can use dedicated web search/fetch/HTTP, native DOCX/XLSX/PPTX creation, Windows desktop observation and input, PNG drawing, image previews and independent image analysis, native CMake/CTest jobs, independent model workers, and persistent model-task schedules. Owner-selected host filesystem access covers ordinary local volumes while relative paths keep the selected project as their default. The narrower workspace mode remains selectable. Current build, signed-install, catalog and native measurements are recorded in the 1.3.28 verification record; isolated provider checks retain their own scope. See the [capability guide](docs/HOST-CAPABILITIES.md), [1.3.28 release notes](docs/releases/1.3.28.md) and [measured verification record](docs/validation/HOST-CAPABILITIES-1.3.28.md). Published 1.3.19 evidence remains historical above.
+The current source version is **1.3.29**, with **125 tools** in Primary and Fallback, ten specialist playbooks and CLU's five governance tools. The catalog includes general ComfyUI automation alongside the existing web, native Office, desktop/browser, image, CMake/CTest, worker, scheduling and continuity workflows. See the [capability guide](docs/HOST-CAPABILITIES.md), [release notes](docs/releases/1.3.29.md), and [versioned verification](docs/validation/RELEASE-1.3.29.md). Earlier installed measurements retain their named source and package identities.
 
-The [complete LM Studio model capability reference](docs/LM-STUDIO-MODEL-CAPABILITIES.md) and [matching JSON catalog](docs/LM-STUDIO-MODEL-CAPABILITIES.json) document all 112 tools, exact schemas, role and worker access, ten specialist playbooks, owner setup, asynchronous workflows, paging and external prerequisites. The examples are schema-checked illustrations; runtime qualification retains its separately recorded scope.
+The [complete LM Studio model capability reference](docs/LM-STUDIO-MODEL-CAPABILITIES.md) and [matching JSON catalog](docs/LM-STUDIO-MODEL-CAPABILITIES.json) document all 125 tools, exact schemas, role and worker access, ten specialist playbooks, setup, asynchronous workflows, paging and external prerequisites. Reference examples do not establish that every tool was executed on the host.
 
 Native Office files and PNG drawings require neither Office nor Python. Scheduled model tasks require Manager to stay running; future schedules restore after restart, while interrupted runs with uncertain effects require explicit authorization before another attempt. Optional generative artwork uses an explicitly configured ComfyUI provider; cloud email, calendar and chat accounts retain separately configured connections or authorized APIs. `host_capabilities` reports the implemented tools, current filesystem policy, and these connection requirements.
 
@@ -98,10 +106,10 @@ Schedule lists and mutation receipts provide bounded summaries. Retrieve complet
 ## Product surfaces
 
 - **Workspace:** project/provider selection, ordered instruction packages, CLU development-policy governance, Auto Continuity, and readiness.
-- **Rig:** live system, selected LM Studio chat context, model, storage, process, and workflow observations; **Ensure manager**, **Restart service** and **Stop service** controls in Runtime configuration.
+- **Rig:** live system, selected LM Studio chat context, model, storage, process, ComfyUI readiness, and workflow observations; **Ensure manager**, **Restart service** and **Stop service** controls in Runtime configuration.
 - **Continuity:** saved packet list, selected packet details, delete-selection, and clear actions.
 - **Activity:** operational outcomes, governance findings, corrections, notifications, and exported evidence.
-- **Settings:** effective configuration, context capacity and reserves, and saved-record actions. Load, save/readback, revert, Test LM Studio, and Restart Manager remain available.
+- **Settings:** effective configuration, ComfyUI automation and preparation limits, context capacity and reserves, and saved-record actions. Load, save/readback, revert, Test LM Studio, and Restart Manager remain available.
 
 Sessions are LM Studio chats. There is no replacement run manager. Removed controls and callable actions include Managed Run/readback, Export selected project, Import verify first, the Actions frame and Invoke Tool, Advanced Canonical Catalog, Scope Test, Reset Scope, Apply and Verify, and the previous Data Maintenance scheme. Saved project records remain selectable and deletable through buttons.
 
@@ -117,7 +125,7 @@ Ordinary launches use `%LOCALAPPDATA%\Forge Conductor`; disposable verification 
 
 ## Build and verify
 
-Repository verification now schedules 169 CTest entries, preserving all 141 Infrastructure groups in three separately bounded processes. The released 1.3.28 package retains its exact artifact-source 167-entry results; the repository test registration is documented separately in [Testing](docs/TESTING.md).
+The configured Release graph contains 177 CTest entries, including ComfyUI service, backend, dependency-package, starter-workflow and compatibility coverage. Prior release results retain their original test registrations and artifact identities. See [Testing](docs/TESTING.md) for the complete suite and focused ComfyUI command.
 
 Requirements and commands are in [Build](docs/BUILD.md) and [Testing](docs/TESTING.md):
 
@@ -128,7 +136,7 @@ Requirements and commands are in [Build](docs/BUILD.md) and [Testing](docs/TESTI
 ./scripts/Run-Static-Gates.ps1
 ```
 
-Current source contracts and measurements are recorded in [the 1.3.28 notes](docs/releases/1.3.28.md) and [qualification record](docs/validation/HOST-CAPABILITIES-1.3.28.md). The installed, superseded 1.3.22 investigation and published 1.3.21/1.3.19 records retain their exact source and package identities. The current distribution and publication readback are checked separately against the exact source.
+Current source contracts are described in [the 1.3.29 notes](docs/releases/1.3.29.md) and [automation guide](docs/COMFYUI-AUTOMATION.md). The [release verification record](docs/validation/RELEASE-1.3.29.md) records versioned build, packaging, installation and publication checks; the [host report](docs/COMFYUI_HOST_QUALIFICATION.md) retains productive inference and visual limitations separately.
 
 Historical 1.3.19 checks are recorded separately in the measured qualification above. The installed, unpublished [1.3.18 investigation](docs/validation/HOST-CAPABILITIES-1.3.18.md) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact.
 

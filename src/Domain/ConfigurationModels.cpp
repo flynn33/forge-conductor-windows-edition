@@ -80,9 +80,44 @@ Result<void> validateImageProviderConfig(const ImageProviderConfig& config)
     return Result<void>::success();
 }
 
+Result<void> validateComfyUiConfig(const ComfyUiConfig& config)
+{
+    ImageProviderConfig endpoint;
+    endpoint.endpoint = config.endpoint;
+    if (config.endpoint.empty() || !validateImageProviderConfig(endpoint)) {
+        return Result<void>::failure(makeError(ErrorCodes::InvalidRequest,
+            "ComfyUI endpoint must be an explicit loopback HTTP(S) address with port."));
+    }
+    const auto absoluteDirectory = [](const std::string& path) {
+        if (path.empty()) return true;
+        if (path.size() > PathText::MaximumBytes || path.find_first_of("\0\r\n", 0U, 3U) != std::string::npos || !isValidUtf8(path)) return false;
+        const bool drive = path.size() >= 3U &&
+            ((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z')) &&
+            path[1] == ':' && (path[2] == '\\' || path[2] == '/');
+        const auto serverEnd = path.find('\\', 2U);
+        const bool unc = path.starts_with("\\\\") && !path.starts_with("\\\\?\\") && !path.starts_with("\\\\.\\") &&
+            serverEnd != std::string::npos && serverEnd > 2U && serverEnd + 1U < path.size() && path[serverEnd + 1U] != '\\';
+        return drive || unc;
+    };
+    if (!absoluteDirectory(config.installationPath) || !absoluteDirectory(config.modelStoragePath)) {
+        return Result<void>::failure(makeError(ErrorCodes::InvalidRequest,
+            "Configured ComfyUI installation and model storage must be absolute Windows directory paths."));
+    }
+    if (config.downloadBudgetBytes == 0U || config.downloadBudgetBytes > 10'000'000'000'000ULL ||
+        config.freeSpaceReserveBytes > 10'000'000'000'000ULL ||
+        config.generationTimeoutSeconds == 0U || config.generationTimeoutSeconds > 7'200U ||
+        (config.qualityPreference != "balanced" && config.qualityPreference != "quality" && config.qualityPreference != "preview")) {
+        return Result<void>::failure(makeError(ErrorCodes::InvalidRequest,
+            "ComfyUI requires a download budget within 1 byte through 10 TB, a reserve up to 10 TB, "
+            "a timeout within 1 through 7200 seconds, and balanced, quality or preview quality."));
+    }
+    return Result<void>::success();
+}
+
 Result<void> validateAppConfig(const AppConfig& config)
 {
     if (auto valid = validateImageProviderConfig(config.imageProvider); !valid) return valid;
+    if (auto valid = validateComfyUiConfig(config.comfyUi); !valid) return valid;
     if (config.fileSystemAccess != FileSystemAccessMode::Workspace &&
         config.fileSystemAccess != FileSystemAccessMode::Host) {
         return Result<void>::failure(makeError(
@@ -159,6 +194,7 @@ Result<AppConfig> applyConfigPatch(const AppConfig& config, const AppConfigPatch
     if (patch.allowedRoots) updated.allowedRoots = *patch.allowedRoots;
     if (patch.fileSystemAccess) updated.fileSystemAccess = *patch.fileSystemAccess;
     if (patch.imageProvider) updated.imageProvider = *patch.imageProvider;
+    if (patch.comfyUi) updated.comfyUi = *patch.comfyUi;
     if (patch.shellEnabled) updated.shell.enabled = *patch.shellEnabled;
     if (patch.shellTimeout) updated.shell.defaultTimeout = *patch.shellTimeout;
     if (patch.dashboardHost) updated.dashboard.host = *patch.dashboardHost;

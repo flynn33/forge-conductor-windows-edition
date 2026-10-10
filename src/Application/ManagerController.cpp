@@ -61,7 +61,8 @@ namespace {
         config.localModel.handoffReserve,
         config.localModel.estimationSafetyMargin,
         config.shell.enabled,
-        config.fileSystemAccess};
+        config.fileSystemAccess,
+        config.comfyUi};
 }
 
 [[nodiscard]] Domain::AppConfigPatch configPatchFromManagerPatch(
@@ -87,6 +88,7 @@ namespace {
     mapped.estimationSafetyMargin = patch.estimationSafetyMargin;
     mapped.shellEnabled = patch.shellEnabled;
     mapped.fileSystemAccess = patch.fileSystemAccess;
+    mapped.comfyUi = patch.comfyUi;
     return mapped;
 }
 

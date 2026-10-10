@@ -2726,6 +2726,126 @@ void continuitySendUsesFreshBudgetAndPreservesAuthority() {
     }
 }
 
+void selectedUserMessagePositionsAndVersionsAreExact()
+{
+    ConversationFixture fixture;
+    const auto nativeUser = [](std::string text) {
+        return Json{{"type", "singleStep"}, {"role", "user"},
+            {"content", Json::array({Json{{"type", "text"}, {"text", std::move(text)}}})}};
+    };
+    auto selectedUser = nativeUser("render ");
+    selectedUser["content"].push_back(Json{{"type", "image"}, {"text", "must not be interpreted as approval"}});
+    selectedUser["content"].push_back(Json{{"type", "text"}, {"text", "final"}});
+    auto assistant = version(Json::array({generation(2000U, 32768U)}));
+    assistant["content"] = Json::array({Json{{"type", "text"}, {"text", "approved"}}});
+    auto document = conversation(Json::array({
+        message(Json::array({assistant})),
+        message(Json::array({nativeUser("yes"), selectedUser}), 1U),
+        message(Json::array({Json{{"type", "singleStep"}, {"role", "system"},
+            {"content", Json::array({Json{{"type", "text"}, {"text", "approved"}}})}}})),
+        message(Json::array({nativeUser("change lighting")}))}));
+    fixture.save(document);
+    TestContext context;
+    const auto first = take(WindowsLMStudioConversationReader::read(fixture.path(), context.active()));
+    require(first && first->userMessageEvidence.size() == 2U && first->userMessages.size() == 2U,
+        "Native evidence admitted assistant/system text or discarded selected user messages.");
+    require(first->userMessageEvidence[0].text == "render final" && first->userMessages[0] == "render final" &&
+        first->userMessageEvidence[0].messageIndex == 1U && first->userMessageEvidence[0].selectedVersion == 1U &&
+        first->userMessageEvidence[1].text == "change lighting" && first->userMessageEvidence[1].messageIndex == 3U &&
+        first->userMessageEvidence[1].selectedVersion == 0U,
+        "User evidence lost exact native positions, selected revisions, text part filtering or chronology.");
+    document["messages"][1]["currentlySelected"] = 0U;
+    document["messages"].push_back(message(Json::array({nativeUser("approved")})));
+    fixture.save(document);
+    const auto revised = take(WindowsLMStudioConversationReader::read(fixture.path(), context.active()));
+    require(revised && revised->userMessageEvidence.size() == 3U &&
+        revised->userMessageEvidence[0].messageIndex == 1U && revised->userMessageEvidence[0].selectedVersion == 0U &&
+        revised->userMessageEvidence[0].text == "yes" && revised->userMessageEvidence[2].messageIndex == 4U &&
+        revised->userMessageEvidence[2].text == "approved",
+        "Edited native versions or subsequent user messages were assigned fabricated positions.");
+}
+
+void nativeContinuityMessagesAreExcludedFromApproval()
+{
+    ConversationFixture fixture;
+    const auto nativeUser = [](std::string text) {
+        return Json{{"type", "singleStep"}, {"role", "user"},
+            {"content", Json::array({Json{{"type", "text"}, {"text", std::move(text)}}})}};
+    };
+    fixture.save(conversation(Json::array({
+        message(Json::array({nativeUser("Auto Continuity: context pressure reached at this completed pause.")})),
+        message(Json::array({nativeUser("Auto Continuity cannot use this incomplete packet.")})),
+        message(Json::array({nativeUser("Resume this Forge project from its model-written continuity packet. Call context_get.")})),
+        message(Json::array({nativeUser("yes")})),
+        message(Json::array({nativeUser("approved")})),
+        message(Json::array({nativeUser("render final")}))})));
+    TestContext context;
+    const auto observation = take(WindowsLMStudioConversationReader::read(fixture.path(), context.active()));
+    require(observation && observation->userMessageEvidence.size() == 6U && observation->userMessages.size() == 6U,
+        "Continuity attribution discarded or manufactured native message evidence.");
+    for (std::size_t index = 0U; index < observation->userMessageEvidence.size(); ++index) {
+        const auto& evidence = observation->userMessageEvidence[index];
+        require(evidence.forgeGenerated == (index < 3U) && evidence.messageIndex == index &&
+                evidence.selectedVersion == 0U && evidence.text == observation->userMessages[index],
+            "Known Forge continuity prefixes or normal approval choices were classified incorrectly.");
+    }
+}
+
+void exactSavedConversationKeepsSelectionAndNativeVersions()
+{
+    ConversationFixture fixture;
+    const auto user = [](std::string text) {
+        return Json{{"type", "singleStep"}, {"role", "user"},
+            {"content", Json::array({Json{{"type", "text"}, {"text", std::move(text)}}})}};
+    };
+    fixture.save(conversation(Json::array({message(Json::array({user("approved in successor")}))})));
+    const auto predecessorPath = fixture.root() / "conversations" / "project" / "predecessor.conversation.json";
+    ConversationFixture::write(predecessorPath, conversation(Json::array({
+        message(Json::array({version(Json::array({generation(100U, 32768U)}))})),
+        message(Json::array({user("yes"), user("make it blue")}), 1U),
+        message(Json::array({user("Auto Continuity: saved predecessor boundary")}))})));
+    const auto selection = fixture.root() / ".internal" / "conversation-config.json";
+    TestContext context;
+    const auto predecessor = take(WindowsLMStudioConversationReader::readConversation(
+        fixture.path(), "project/predecessor.conversation.json", context.active()));
+    require(predecessor && predecessor->conversationId == "project/predecessor.conversation.json" &&
+        predecessor->userMessageEvidence.size() == 2U && predecessor->userMessageEvidence[0].text == "make it blue" &&
+        predecessor->userMessageEvidence[0].messageIndex == 1U && predecessor->userMessageEvidence[0].selectedVersion == 1U &&
+        predecessor->userMessageEvidence[1].forgeGenerated,
+        "Exact predecessor read lost selected native revisions, positions or continuity attribution.");
+    const auto current = take(WindowsLMStudioConversationReader::read(fixture.path(), context.active()));
+    require(current && current->conversationId == "project/chat.conversation.json" &&
+        current->userMessageEvidence.size() == 1U && current->userMessageEvidence[0].text == "approved in successor",
+        "Reading the predecessor changed selection or borrowed successor user evidence.");
+    ConversationFixture::write(selection, Json{{"selectedConversation", nullptr}});
+    require(take(WindowsLMStudioConversationReader::readConversation(fixture.path(),
+        "project/predecessor.conversation.json", context.active())).has_value() &&
+        !take(WindowsLMStudioConversationReader::read(fixture.path(), context.active())).has_value(),
+        "Exact saved read depended on selection or selected the predecessor as a side effect.");
+    requireError(WindowsLMStudioConversationReader::readConversation(fixture.path(),
+        "project/missing.conversation.json", context.active()), Domain::ErrorCodes::RecordNotFound,
+        "Missing predecessor fabricated a conversation.");
+    requireError(WindowsLMStudioConversationReader::readConversation(fixture.path(),
+        "../outside.conversation.json", context.active()), Domain::ErrorCodes::PathOutsideAuthority,
+        "Exact saved read escaped the native conversation repository.");
+    for (const auto& invalid : std::vector<std::string>{"", "C:/outside.conversation.json",
+        "project/predecessor.conversation.json:stream", "project/predecessor" + std::string(1U, '\0') + ".conversation.json"})
+        requireError(WindowsLMStudioConversationReader::readConversation(fixture.path(), invalid, context.active()),
+            Domain::ErrorCodes::InvalidRequest, "Invalid exact native identifier reached file observation.");
+    { std::ofstream output{predecessorPath, std::ios::binary | std::ios::trunc}; output << "{\"messages\":["; }
+    requireError(WindowsLMStudioConversationReader::readConversation(fixture.path(),
+        "project/predecessor.conversation.json", context.active()), Domain::ErrorCodes::MalformedMessage,
+        "Incomplete predecessor bytes fabricated user evidence.");
+    std::filesystem::resize_file(predecessorPath, 64ULL * 1024ULL * 1024ULL + 1ULL);
+    requireError(WindowsLMStudioConversationReader::readConversation(fixture.path(),
+        "project/predecessor.conversation.json", context.active()), Domain::ErrorCodes::PayloadTooLarge,
+        "Exact saved read bypassed the established native file size bound.");
+    context.cancellation.request_stop();
+    requireError(WindowsLMStudioConversationReader::readConversation(fixture.path(),
+        "project/predecessor.conversation.json", context.active()), Domain::ErrorCodes::Cancelled,
+        "Cancelled exact saved read attempted predecessor file observation.");
+}
+
 void freshEmptyConversation()
 {
     ConversationFixture fixture;
@@ -2737,7 +2857,7 @@ void freshEmptyConversation()
         "a freshly created empty conversation lost its native identifier");
     require(observation->usedTokens == 0U && observation->contextCapacity == 0U &&
         !observation->overflow && !observation->toolsActive &&
-        observation->userMessages.empty() && observation->nativeToolResults.empty() &&
+        observation->userMessages.empty() && observation->userMessageEvidence.empty() && observation->nativeToolResults.empty() &&
         observation->generationEvidence.empty(),
         "an empty conversation fabricated usage, delivery, or tool evidence");
 }
@@ -2746,6 +2866,9 @@ void freshEmptyConversation()
 
 void registerWindowsLMStudioConversationReaderTests(TestRegistry& tests)
 {
+    addTest(tests, "LMStudioConversationReader.exact_saved_predecessor_selection_versions_bounds", exactSavedConversationKeepsSelectionAndNativeVersions);
+    addTest(tests, "LMStudioConversationReader.selected_user_message_positions_versions", selectedUserMessagePositionsAndVersionsAreExact);
+    addTest(tests, "LMStudioConversationReader.native_continuity_approval_exclusion", nativeContinuityMessagesAreExcludedFromApproval);
     addTest(tests, "LMStudioChatContinuity.terminal_confirmed_packet_repair_native_recovery",
         terminalConfirmedPacketRepairNativeRecovery);
     addTest(tests, "LMStudioChatContinuity.model_packet_prompts_use_one_lossless_compact_envelope",

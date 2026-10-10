@@ -113,7 +113,7 @@ public:
     const auto document = Json::parse(encoded);
     require(document.is_object() && document.value("schemaVersion", 0) == 1 &&
                 document.contains("tools") && document.at("tools").is_array() &&
-                document.at("tools").size() == 112U,
+                document.at("tools").size() == 125U,
             "the reviewed MCP semantic golden has the wrong schema or tool count");
     require(document.at("tools").dump().size() <= 80'000U,
             "the compact reviewed MCP tool catalog exceeds the verifier wire capture bound");
@@ -143,7 +143,7 @@ public:
 
 [[nodiscard]] std::string successfulResponse(
     const Domain::LMStudioConnectorRole role,
-    const std::size_t toolCount = 112U,
+    const std::size_t toolCount = 125U,
     const bool duplicateLast = false,
     const bool reverseLastTwo = false,
     const bool emptyDescription = false,
@@ -167,7 +167,7 @@ public:
                                   : role == Domain::LMStudioConnectorRole::Fallback
                                       ? "forge-conductor-fallback"
                                       : "forge-conductor-clu"},
-                    {"version", "1.3.28"}}}}}};
+                    {"version", "1.3.29"}}}}}};
     Json tools = canonicalTools();
     if (role == Domain::LMStudioConnectorRole::Clu) {
         tools.erase(std::remove_if(
@@ -178,7 +178,7 @@ public:
             }), tools.end());
     }
     const auto selectedCount = role == Domain::LMStudioConnectorRole::Clu &&
-            toolCount == 112U
+            toolCount == 125U
         ? 5U
         : toolCount;
     require(selectedCount <= tools.size(), "the requested verifier tool subset is invalid");
@@ -469,7 +469,7 @@ void testSuccessfulRoleVerificationAndRequestShape()
 
     require(health.role == Domain::LMStudioConnectorRole::Primary && health.ready,
             "the primary verifier did not return ready health");
-    require(health.protocolVersion == "2025-11-25" && health.toolCount == 112U,
+    require(health.protocolVersion == "2025-11-25" && health.toolCount == 125U,
             "the primary verifier returned the wrong protocol or tool count");
     require(processes.lastAuthorityIntent() == Domain::FileAccess::Write,
             "the verifier rejected or rewrote a deploy authority with an Execute grant");
@@ -510,7 +510,7 @@ void testSuccessfulRoleVerificationAndRequestShape()
         authority,
         operationContext(2U)));
     require(fallback.role == Domain::LMStudioConnectorRole::Fallback && fallback.ready &&
-                fallback.toolCount == 112U,
+                fallback.toolCount == 125U,
             "the fallback verifier did not return ready health");
     const auto fallbackRequest = processes.lastRequest();
     require(fallbackRequest.has_value() &&
@@ -540,11 +540,13 @@ void testProtocolDriftAndProcessFailuresFailClosed()
     ScriptedProcessSupervisor processes;
     WindowsLMStudioServeVerifier verifier{processes};
     const auto authority = AuthorityIssuer::create();
-    const auto verify = [&](const std::uint32_t index) {
+    const auto verify = [&](const std::uint32_t index,
+                            const Domain::LMStudioConnectorRole role =
+                                Domain::LMStudioConnectorRole::Primary) {
         return verifier.verify(
             path("C:\\Forge\\forge-conductor.exe"),
             path("C:\\Forge\\home"),
-            Domain::LMStudioConnectorRole::Primary,
+            role,
             std::nullopt,
             authority,
             operationContext(index));
@@ -628,22 +630,37 @@ void testProtocolDriftAndProcessFailuresFailClosed()
                  "an excessive-depth MCP response was accepted");
 
     std::string manyValues{"\"nodes\":["};
-    // Empty arrays generate start/end events while retaining enough room for
-    // the complete current descriptor inventory under the 80,000-byte cap.
-    for (std::size_t index{}; index < 8'200U; ++index) {
+    // Keep this parser-bound fixture independent of growth in the Primary
+    // catalog by retaining the complete five-tool CLU transcript.
+    for (std::size_t index{}; index < 137U; ++index) {
         if (index != 0U) {
             manyValues.push_back(',');
         }
-        manyValues.append("[]");
+        manyValues.append(std::string(60U, '[') + '0' + std::string(60U, ']'));
     }
     manyValues.append("],");
-    auto excessiveEvents = successfulResponse(Domain::LMStudioConnectorRole::Primary);
+    auto excessiveEvents = successfulResponse(Domain::LMStudioConnectorRole::Clu);
     excessiveEvents.insert(1U, manyValues);
     require(excessiveEvents.size() <= 80'000U,
             "the event-limit fixture collided with the separate output byte limit");
+    std::size_t eventCount{};
+    int maximumDepth{};
+    const auto eventFrame = excessiveEvents.substr(0U, excessiveEvents.find('\n'));
+    static_cast<void>(Json::parse(eventFrame,
+        [&](const int depth, const Json::parse_event_t, Json&) {
+            ++eventCount;
+            maximumDepth = std::max(maximumDepth, depth);
+            return true;
+        }));
+    require(eventCount > 16'384U && maximumDepth <= 64,
+            "the event-limit fixture did not isolate the actual parser event bound");
     processes.setOutput(std::move(excessiveEvents));
-    requireError(verify(33U), Domain::ErrorCodes::HostCapabilityUnavailable,
+    const auto excessiveEventResult = verify(33U, Domain::LMStudioConnectorRole::Clu);
+    requireError(excessiveEventResult, Domain::ErrorCodes::HostCapabilityUnavailable,
                  "an excessive-node MCP response was accepted");
+    require(excessiveEventResult.error().message ==
+                "The MCP serve smoke response could not be parsed safely.",
+            "the excessive-event fixture failed at an unrelated verification boundary");
 
     auto extraFrame = successfulResponse(Domain::LMStudioConnectorRole::Primary);
     extraFrame.append("{}\n");
@@ -735,11 +752,12 @@ void testProtocolDriftAndProcessFailuresFailClosed()
     processes.setOutput(mutateTools(
         successfulResponse(Domain::LMStudioConnectorRole::Primary),
         [](Json& tools) {
-            constexpr std::array<std::string_view, 32U> hostExtensionNames{
+            constexpr std::array<std::string_view, 45U> hostExtensionNames{
                 "agent_cancel", "agent_poll", "agent_spawn", "browser_open",
                 "cmake_test_run", "cmake_test_status",
                 "desktop_capture", "desktop_click", "desktop_key", "desktop_list",
-                "desktop_read", "desktop_type", "document_write", "host_capabilities",
+                "desktop_read", "desktop_type", "desktop_scroll", "desktop_drag", "document_write", "host_capabilities",
+                "comfy_status", "comfy_catalog", "comfy_workflow", "comfy_validate", "comfy_prepare", "comfy_control", "comfy_run", "comfy_job_status", "comfy_job_list", "comfy_job_cancel", "comfy_job_resume",
                 "http_request", "image_analyze", "image_edit", "image_generate", "image_job_cancel", "image_job_resume", "image_job_status", "image_provider_status", "image_read", "image_write", "presentation_write",
                 "schedule_cancel", "schedule_create", "schedule_list", "schedule_run_now",
                 "spreadsheet_write", "web_fetch", "web_search"};
@@ -769,7 +787,7 @@ void testProtocolDriftAndProcessFailuresFailClosed()
                 methods.begin(), methods.end(), [](const Json& method) {
                     return method.get<std::string>() == "DELETE";
                 }), methods.end());
-            require(methods.size() == 6U && tools.size() == 112U,
+            require(methods.size() == 6U && tools.size() == 125U,
                     "the HTTP schema drift fixture changed its tool inventory");
         }));
     requireError(verify(43U), Domain::ErrorCodes::HostCapabilityUnavailable,
@@ -788,39 +806,39 @@ void testProtocolDriftAndProcessFailuresFailClosed()
                         properties.at("schedule_id").at("maxLength") == 36,
                     "the canonical bounded record retrieval schema is missing");
             properties.erase("revision");
-            require(tools.size() == 112U, "the schedule schema drift fixture changed its tool inventory");
+            require(tools.size() == 125U, "the schedule schema drift fixture changed its tool inventory");
         }));
     requireError(verify(44U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "a full catalog without the schedule record revision contract was accepted");
 
     processes.setOutput(successfulResponse(
-        Domain::LMStudioConnectorRole::Primary, 112U, true, false));
+        Domain::LMStudioConnectorRole::Primary, 125U, true, false));
     requireError(verify(13U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "duplicate MCP tool names were accepted");
 
     processes.setOutput(successfulResponse(
-        Domain::LMStudioConnectorRole::Primary, 112U, false, true));
+        Domain::LMStudioConnectorRole::Primary, 125U, false, true));
     requireError(verify(14U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "nondeterministic MCP tool ordering was accepted");
 
     processes.setOutput(successfulResponse(
-        Domain::LMStudioConnectorRole::Primary, 112U, false, false, true, false));
+        Domain::LMStudioConnectorRole::Primary, 125U, false, false, true, false));
     requireError(verify(15U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "an empty MCP tool description was accepted");
 
     processes.setOutput(successfulResponse(
-        Domain::LMStudioConnectorRole::Primary, 112U, false, false, false, true));
+        Domain::LMStudioConnectorRole::Primary, 125U, false, false, false, true));
     requireError(verify(16U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "a non-object MCP input schema was accepted");
 
     processes.setOutput(successfulResponse(
-        Domain::LMStudioConnectorRole::Primary, 112U, false, false, false, false,
+        Domain::LMStudioConnectorRole::Primary, 125U, false, false, false, false,
         true, false));
     requireError(verify(27U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "a wrong but sorted canonical MCP tool name was accepted");
 
     processes.setOutput(successfulResponse(
-        Domain::LMStudioConnectorRole::Primary, 112U, false, false, false, false,
+        Domain::LMStudioConnectorRole::Primary, 125U, false, false, false, false,
         false, true));
     requireError(verify(28U), Domain::ErrorCodes::HostCapabilityUnavailable,
                  "a compatible-looking canonical MCP schema drift was accepted");

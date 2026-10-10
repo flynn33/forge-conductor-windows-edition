@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <iterator>
 #include <mutex>
 #include <optional>
 #include <stdexcept>
@@ -280,7 +281,7 @@ public:
     }
 
 private:
-    static constexpr std::size_t MaximumCapturedRequestBytes = 512U * 1024U;
+    static constexpr std::size_t MaximumCapturedRequestBytes = 3U * 1024U * 1024U;
 
     [[noreturn]] static void throwSocketError(const std::string_view action)
     {
@@ -1013,6 +1014,149 @@ void lmStudioResponsesEmitsBoundedManagedImageContent()
     server.requireHealthy();
 }
 
+[[nodiscard]] std::string largePngPreview(const std::size_t encodedBytes)
+{
+    REQUIRE(encodedBytes % 4U == 0U && encodedBytes >= 128U);
+    constexpr std::array<unsigned char, 68U> pixelPng{
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+        0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52,
+        0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+        0x08, 0x04, 0x00, 0x00, 0x00, 0xb5, 0x1c, 0x0c,
+        0x02, 0x00, 0x00, 0x00, 0x0b, 0x49, 0x44, 0x41,
+        0x54, 0x78, 0xda, 0x63, 0xfc, 0xff, 0x1f, 0x00,
+        0x03, 0x03, 0x02, 0x00, 0xef, 0xa2, 0xa7, 0x5b,
+        0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44,
+        0xae, 0x42, 0x60, 0x82};
+    // A valid PNG tEXt chunk makes wire size deterministic without a codec dependency.
+    std::string text{"fixture"};
+    text.push_back('\0');
+    text.append(encodedBytes / 4U * 3U - pixelPng.size() - 12U - text.size(), 'A');
+    const auto appendWord = [](std::string& destination, const std::uint32_t word) {
+        for (int shift = 24; shift >= 0; shift -= 8)
+            destination.push_back(static_cast<char>((word >> shift) & 0xffU));
+    };
+    std::string chunk{"tEXt"};
+    chunk += text;
+    std::uint32_t crc = 0xffffffffU;
+    for (const unsigned char byte : chunk) {
+        crc ^= byte;
+        for (unsigned bit{}; bit < 8U; ++bit)
+            crc = (crc >> 1U) ^ ((crc & 1U) ? 0xedb88320U : 0U);
+    }
+    std::string bytes{reinterpret_cast<const char*>(pixelPng.data()), pixelPng.size() - 12U};
+    appendWord(bytes, static_cast<std::uint32_t>(text.size()));
+    bytes += chunk;
+    appendWord(bytes, crc ^ 0xffffffffU);
+    bytes.append(reinterpret_cast<const char*>(pixelPng.data() + pixelPng.size() - 12U), 12U);
+    REQUIRE(bytes.size() % 3U == 0U);
+    constexpr std::string_view alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string encoded;
+    encoded.reserve(encodedBytes);
+    for (std::size_t index{}; index < bytes.size(); index += 3U) {
+        const auto value = (static_cast<std::uint32_t>(static_cast<unsigned char>(bytes[index])) << 16U) |
+            (static_cast<std::uint32_t>(static_cast<unsigned char>(bytes[index + 1U])) << 8U) |
+            static_cast<unsigned char>(bytes[index + 2U]);
+        for (int shift = 18; shift >= 0; shift -= 6)
+            encoded.push_back(alphabet[(value >> shift) & 0x3fU]);
+    }
+    REQUIRE(encoded.size() == encodedBytes);
+    REQUIRE(Domain::isValidManagedImagePreview({"image/png", encoded}));
+    return encoded;
+}
+
+[[nodiscard]] std::vector<Domain::McpToolDescriptor> imageReviewDescriptors()
+{
+    const auto fixture = std::filesystem::path{__FILE__}.parent_path().parent_path() /
+        L"fixtures" / L"Mcp" / L"mcp-tools-semantic-golden.json";
+    std::ifstream input{fixture, std::ios::binary};
+    REQUIRE(input.good());
+    const std::string encoded{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
+    REQUIRE(!encoded.empty() && encoded.size() <= 128U * 1024U);
+    const auto catalog = Json::parse(encoded).at("tools");
+    std::vector<Domain::McpToolDescriptor> result;
+    for (const auto* name : {"image_read", "fs_read", "comfy_job_status"}) {
+        const auto found = std::find_if(catalog.begin(), catalog.end(), [name](const auto& tool) {
+            return tool.at("name") == name;
+        });
+        REQUIRE(found != catalog.end());
+        result.push_back({Domain::ToolDescriptor{name, found->at("description").template get<std::string>(),
+            "fixture", Domain::ToolEffect::Read, Domain::ToolAvailability::Available, true, false},
+            found->at("inputSchema").dump()});
+    }
+    return result;
+}
+
+void lmStudioResponsesSeparatesImageAndTextRequestBounds()
+{
+    const auto reply = [](const char* id) {
+        return Json{{"id", id}, {"status", "completed"}, {"output_text", "Image reviewed."},
+            {"usage", {{"input_tokens", 28}, {"output_tokens", 6}}}}.dump();
+    };
+    LoopbackHttpServer server{{
+        {"GET", "/v1/models", 200U, R"({"data":[{"id":"fixture-model"}]})"},
+        {"POST", "/v1/responses", 200U, reply("resp_large_image")},
+        {"POST", "/v1/responses", 200U, reply("resp_max_image")},
+        {"POST", "/v1/responses", 200U, reply("resp_aggregate_images")}}};
+    InfrastructureWindows::LMStudioResponsesTransport transport{responsesConfiguration(server.port())};
+    const auto large = largePngPreview(410'492U);
+    const auto maximum = largePngPreview(Domain::MaximumManagedImagePreviewBase64Bytes);
+    Domain::ManagedProviderTurnRequest request{
+        parse<Domain::ProjectId>(ProjectIdText), parse<Domain::SessionId>(SuccessorSessionIdText), 9U, {},
+        parse<Domain::ProviderSessionId>("resp_image_origin"), imageReviewDescriptors(),
+        {{"call_image_1", R"({"image_mime_type":"image/png","image_content_block":true})",
+            Domain::ManagedImagePreview{"image/png", large}}}};
+    const auto context = operationContext("65656565-6565-4565-8565-656565656561", 10s);
+    REQUIRE(take(transport.complete(request, context)).responseId.value() == "resp_large_image");
+    request.toolOutputs[0].image->base64Data = maximum;
+    REQUIRE(take(transport.complete(request, context)).responseId.value() == "resp_max_image");
+    for (unsigned index = 2U; index <= 4U; ++index)
+        request.toolOutputs.push_back({"call_image_" + std::to_string(index), R"({"image_content_block":true})",
+            Domain::ManagedImagePreview{"image/png", maximum}});
+    REQUIRE(take(transport.complete(request, context)).responseId.value() == "resp_aggregate_images");
+    REQUIRE(server.waitUntilHandled(4U, 5s));
+    const auto requests = server.requests();
+    const auto largeBody = Json::parse(requests[1].body);
+    REQUIRE(requests[1].body.size() > Domain::MaximumContinuityHandoffEncodedBytes + 64U * 1024U);
+    REQUIRE(largeBody.at("previous_response_id") == "resp_image_origin");
+    REQUIRE(largeBody.at("input").size() == 1U);
+    const auto& content = largeBody.at("input").at(0).at("output");
+    REQUIRE(largeBody.at("input").at(0).at("call_id") == "call_image_1");
+    REQUIRE(content.size() == 2U && content.at(0).at("type") == "input_text");
+    REQUIRE(content.at(0).at("text") == request.toolOutputs[0].canonicalOutput);
+    REQUIRE(content.at(1) == Json({{"type", "input_image"}, {"detail", "auto"},
+        {"image_url", "data:image/png;base64," + large}}));
+    REQUIRE(largeBody.at("tools").size() == request.tools.size());
+    for (std::size_t index{}; index < request.tools.size(); ++index) {
+        REQUIRE(largeBody.at("tools").at(index).at("name") == request.tools[index].tool.name);
+        REQUIRE(largeBody.at("tools").at(index).at("parameters") == Json::parse(request.tools[index].inputSchema));
+    }
+    const auto maximumBody = Json::parse(requests[2].body);
+    REQUIRE(maximumBody.at("input").at(0).at("output").at(1).at("image_url") ==
+        "data:image/png;base64," + maximum);
+    const auto aggregateBody = Json::parse(requests[3].body);
+    REQUIRE(aggregateBody.at("input").size() == 4U);
+    for (unsigned index{}; index < 4U; ++index) {
+        REQUIRE(aggregateBody.at("input").at(index).at("call_id") == "call_image_" + std::to_string(index + 1U));
+        REQUIRE(aggregateBody.at("input").at(index).at("output").at(1).at("image_url") ==
+            "data:image/png;base64," + maximum);
+    }
+    request.toolOutputs.push_back({"call_image_5", R"({"image_content_block":true})",
+        Domain::ManagedImagePreview{"image/png", maximum}});
+    const auto aggregateOverflow = transport.complete(request, context);
+    requireError(aggregateOverflow, Domain::ErrorCodes::PayloadTooLarge);
+    REQUIRE(aggregateOverflow.error().message == "The aggregate managed image previews exceed their request bound.");
+    request.toolOutputs.resize(1U);
+    request.toolOutputs[0].canonicalOutput.assign(Domain::MaximumContinuityHandoffEncodedBytes + 64U * 1024U, 'x');
+    requireError(transport.complete(request, context), Domain::ErrorCodes::PayloadTooLarge);
+    request.toolOutputs[0].image.reset();
+    requireError(transport.complete(request, context), Domain::ErrorCodes::PayloadTooLarge);
+    auto handoff = bootstrapRequest();
+    handoff.canonicalHandoffUtf8.assign(Domain::MaximumContinuityHandoffEncodedBytes + 1U, 'x');
+    requireError(transport.bootstrap(handoff, context), Domain::ErrorCodes::PayloadTooLarge);
+    REQUIRE(server.requests().size() == 4U);
+    server.requireHealthy();
+}
+
 void malformedAndOversizedResponsesFailClosed()
 {
     ResponseScript malformed{
@@ -1738,6 +1882,20 @@ void automaticSetupUsesRealManagerAndPersistsProject()
     const auto freshSettings = connection.providerSettings({});
     REQUIRE(freshSettings.loaded);
     REQUIRE(freshSettings.settings.localModelName == prepared.model);
+    for (const auto mode : {Domain::FileSystemAccessMode::Workspace,Domain::FileSystemAccessMode::Host}) {
+        Domain::ManagerSettingsPatch probePolicy;
+        probePolicy.fileSystemAccess=mode;
+        REQUIRE(take(client->updateSettings(probePolicy,true,context())).settings.fileSystemAccess==mode);
+        const auto probe=connection.invokeTool(prepared.projectId,"comfy_status","{}",{});
+        if(!probe.loaded || !probe.snapshot) throw std::runtime_error{"Read-only Comfy status probe failed: "+probe.message};
+        const auto status=Json::parse(probe.snapshot->canonicalPayload);
+        REQUIRE(probe.snapshot->ok && status.at("configured")==false && status.at("available")==false);
+        const auto invalidProbe=connection.invokeTool(prepared.projectId,"comfy_status",R"({"_forge_comfy_scope":{}})",{});
+        REQUIRE(!invalidProbe.loaded && !invalidProbe.snapshot && invalidProbe.message.find("empty argument object")!=std::string::npos);
+    }
+    Domain::ManagerSettingsPatch restoredProbePolicy;
+    restoredProbePolicy.fileSystemAccess=Domain::FileSystemAccessMode::Workspace;
+    REQUIRE(take(client->updateSettings(restoredProbePolicy,true,context())).settings.fileSystemAccess==Domain::FileSystemAccessMode::Workspace);
     auto run = connection.startManagedRun(prepared.projectId,
         "forge-conductor-manager", 0U, "Write setup-proof.txt in this project.", true, {});
     REQUIRE(!run.loaded && !run.snapshot);
@@ -1897,6 +2055,8 @@ int main()
         std::cout << "PASS lmstudio_responses.managed_function_output\n";
         lmStudioResponsesEmitsBoundedManagedImageContent();
         std::cout << "PASS lmstudio_responses.managed_image_content\n";
+        lmStudioResponsesSeparatesImageAndTextRequestBounds();
+        std::cout << "PASS lmstudio_responses.separate_image_text_bounds\n";
         malformedAndOversizedResponsesFailClosed();
         std::cout << "PASS winhttp_transport.response_validation_bounds\n";
         rateLimitUsageAndProviderCancellationAreExact();
@@ -1905,7 +2065,7 @@ int main()
         std::cout << "PASS winhttp_transport.deadline_cancellation\n";
         shutdownClosesActiveAndFutureRequests();
         std::cout << "PASS winhttp_transport.shutdown\n";
-        std::cout << "SUMMARY passed=18 failed=0 assertions="
+        std::cout << "SUMMARY passed=19 failed=0 assertions="
                   << assertionCount.load(std::memory_order_relaxed) << '\n';
         return EXIT_SUCCESS;
     } catch (const std::exception& error) {

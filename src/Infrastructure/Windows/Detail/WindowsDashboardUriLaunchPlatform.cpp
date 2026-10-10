@@ -1,4 +1,8 @@
 #include "IWindowsDashboardUriLaunchPlatform.h"
+#include "IWindowsManagerBootstrapPlatform.h"
+#include "CommandLineBuilder.h"
+#include "UtfConversion.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsAlphaManagerProfile.h"
 
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -11,6 +15,8 @@
 #include <ShlDisp.h>
 #include <ShlObj.h>
 
+#include <array>
+#include <filesystem>
 #include <cstddef>
 #include <limits>
 #include <string>
@@ -136,6 +142,95 @@ template <typename Target, typename Source>
     return Domain::Result<void>::success();
 }
 
+[[nodiscard]] Domain::Result<void> resolveDesktopShell(ComReference<IShellDispatch2>& shell)
+{
+    ComReference<IShellWindows> shellWindows;
+    const HRESULT created = ::CoCreateInstance(
+        __uuidof(ShellWindows), nullptr, CLSCTX_LOCAL_SERVER,
+        __uuidof(IShellWindows),
+        reinterpret_cast<void**>(shellWindows.put()));
+    if (FAILED(created) || !shellWindows) {
+        return Domain::Result<void>::failure(shellFailure(
+            "connect to its local desktop server", created));
+    }
+
+    VARIANT location{};
+    VARIANT locationRoot{};
+    ::VariantInit(&location);
+    ::VariantInit(&locationRoot);
+    location.vt = VT_I4;
+    location.lVal = CSIDL_DESKTOP;
+    long desktopWindow{};
+    ComReference<IDispatch> desktopDispatch;
+    const HRESULT found = shellWindows->FindWindowSW(
+        &location, &locationRoot, SWC_DESKTOP, &desktopWindow,
+        SWFO_NEEDDISPATCH, desktopDispatch.put());
+    if (found != S_OK || !desktopDispatch) {
+        return Domain::Result<void>::failure(shellFailure(
+            "resolve the interactive desktop", found));
+    }
+
+    ComReference<IServiceProvider> desktopServices;
+    auto serviceInterface = queryInterface(
+        *desktopDispatch.get(), desktopServices,
+        "obtain the desktop Shell service provider");
+    if (!serviceInterface) {
+        return serviceInterface;
+    }
+
+    ComReference<IShellBrowser> desktopBrowser;
+    const HRESULT browserService = desktopServices->QueryService(
+        SID_STopLevelBrowser, __uuidof(IShellBrowser),
+        reinterpret_cast<void**>(desktopBrowser.put()));
+    if (FAILED(browserService) || !desktopBrowser) {
+        return Domain::Result<void>::failure(shellFailure(
+            "obtain the top-level desktop browser service",
+            browserService));
+    }
+
+    ComReference<IShellView> shellView;
+    const HRESULT activeView =
+        desktopBrowser->QueryActiveShellView(shellView.put());
+    if (FAILED(activeView) || !shellView) {
+        return Domain::Result<void>::failure(shellFailure(
+            "obtain the active desktop Shell view", activeView));
+    }
+
+    ComReference<IDispatch> backgroundDispatch;
+    const HRESULT background = shellView->GetItemObject(
+        SVGIO_BACKGROUND, __uuidof(IDispatch),
+        reinterpret_cast<void**>(backgroundDispatch.put()));
+    if (FAILED(background) || !backgroundDispatch) {
+        return Domain::Result<void>::failure(shellFailure(
+            "obtain the desktop Shell background", background));
+    }
+
+    ComReference<IShellFolderViewDual> desktopView;
+    auto viewInterface = queryInterface(
+        *backgroundDispatch.get(), desktopView,
+        "obtain the desktop Shell view");
+    if (!viewInterface) {
+        return viewInterface;
+    }
+
+    ComReference<IDispatch> applicationDispatch;
+    const HRESULT application =
+        desktopView->get_Application(applicationDispatch.put());
+    if (FAILED(application) || !applicationDispatch) {
+        return Domain::Result<void>::failure(shellFailure(
+            "obtain the desktop Shell application", application));
+    }
+
+    auto shellInterface = queryInterface(
+        *applicationDispatch.get(), shell,
+        "obtain the registered-URI Shell dispatcher");
+    if (!shellInterface) {
+        return shellInterface;
+    }
+
+    return Domain::Result<void>::success();
+}
+
 class WindowsDashboardUriLaunchPlatform final
     : public IWindowsDashboardUriLaunchPlatform {
 public:
@@ -155,90 +250,9 @@ public:
             // browser in the helper's kill-on-close job. CLSID_ShellWindows is
             // explicitly requested as a local COM server; the desktop Shell
             // therefore owns the ShellExecute call and any associated browser.
-            ComReference<IShellWindows> shellWindows;
-            const HRESULT created = ::CoCreateInstance(
-                __uuidof(ShellWindows), nullptr, CLSCTX_LOCAL_SERVER,
-                __uuidof(IShellWindows),
-                reinterpret_cast<void**>(shellWindows.put()));
-            if (FAILED(created) || !shellWindows) {
-                return Domain::Result<void>::failure(shellFailure(
-                    "connect to its local desktop server", created));
-            }
-
-            VARIANT location{};
-            VARIANT locationRoot{};
-            ::VariantInit(&location);
-            ::VariantInit(&locationRoot);
-            location.vt = VT_I4;
-            location.lVal = CSIDL_DESKTOP;
-            long desktopWindow{};
-            ComReference<IDispatch> desktopDispatch;
-            const HRESULT found = shellWindows->FindWindowSW(
-                &location, &locationRoot, SWC_DESKTOP, &desktopWindow,
-                SWFO_NEEDDISPATCH, desktopDispatch.put());
-            if (found != S_OK || !desktopDispatch) {
-                return Domain::Result<void>::failure(shellFailure(
-                    "resolve the interactive desktop", found));
-            }
-
-            ComReference<IServiceProvider> desktopServices;
-            auto serviceInterface = queryInterface(
-                *desktopDispatch.get(), desktopServices,
-                "obtain the desktop Shell service provider");
-            if (!serviceInterface) {
-                return serviceInterface;
-            }
-
-            ComReference<IShellBrowser> desktopBrowser;
-            const HRESULT browserService = desktopServices->QueryService(
-                SID_STopLevelBrowser, __uuidof(IShellBrowser),
-                reinterpret_cast<void**>(desktopBrowser.put()));
-            if (FAILED(browserService) || !desktopBrowser) {
-                return Domain::Result<void>::failure(shellFailure(
-                    "obtain the top-level desktop browser service",
-                    browserService));
-            }
-
-            ComReference<IShellView> shellView;
-            const HRESULT activeView =
-                desktopBrowser->QueryActiveShellView(shellView.put());
-            if (FAILED(activeView) || !shellView) {
-                return Domain::Result<void>::failure(shellFailure(
-                    "obtain the active desktop Shell view", activeView));
-            }
-
-            ComReference<IDispatch> backgroundDispatch;
-            const HRESULT background = shellView->GetItemObject(
-                SVGIO_BACKGROUND, __uuidof(IDispatch),
-                reinterpret_cast<void**>(backgroundDispatch.put()));
-            if (FAILED(background) || !backgroundDispatch) {
-                return Domain::Result<void>::failure(shellFailure(
-                    "obtain the desktop Shell background", background));
-            }
-
-            ComReference<IShellFolderViewDual> desktopView;
-            auto viewInterface = queryInterface(
-                *backgroundDispatch.get(), desktopView,
-                "obtain the desktop Shell view");
-            if (!viewInterface) {
-                return viewInterface;
-            }
-
-            ComReference<IDispatch> applicationDispatch;
-            const HRESULT application =
-                desktopView->get_Application(applicationDispatch.put());
-            if (FAILED(application) || !applicationDispatch) {
-                return Domain::Result<void>::failure(shellFailure(
-                    "obtain the desktop Shell application", application));
-            }
-
             ComReference<IShellDispatch2> shell;
-            auto shellInterface = queryInterface(
-                *applicationDispatch.get(), shell,
-                "obtain the registered-URI Shell dispatcher");
-            if (!shellInterface) {
-                return shellInterface;
-            }
+            auto resolved = resolveDesktopShell(shell);
+            if (!resolved) return resolved;
 
             const UniqueBstr file{uri};
             const UniqueBstr verb{L"open"};
@@ -278,12 +292,92 @@ public:
     }
 };
 
+class WindowsManagerBootstrapPlatform final : public IWindowsManagerBootstrapPlatform {
+public:
+    [[nodiscard]] Domain::Result<void> start(
+        const Domain::PathText& home, const bool isolatedProfile) noexcept override
+    {
+        try {
+            auto wideHome = strictUtf8ToUtf16(home.value());
+            if (!wideHome) return Domain::Result<void>::failure(std::move(wideHome).error());
+            const auto attributes = ::GetFileAttributesW(wideHome.value().c_str());
+            if (attributes == INVALID_FILE_ATTRIBUTES ||
+                (attributes & FILE_ATTRIBUTE_DIRECTORY) == 0U ||
+                (attributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0U)
+                return Domain::Result<void>::failure(Domain::makeError(
+                    Domain::ErrorCodes::InvalidRequest, "The Manager bootstrap requires an existing regular home directory."));
+            auto profile = WindowsAlphaManagerProfile::create(home);
+            auto persistent = WindowsAlphaManagerProfile::persistentDataRoot();
+            if (!profile) return Domain::Result<void>::failure(std::move(profile).error());
+            if (!persistent) return Domain::Result<void>::failure(std::move(persistent).error());
+            const auto equalPath = [](const std::wstring_view left, const std::wstring_view right) {
+                return ::CompareStringOrdinal(left.data(), static_cast<int>(left.size()),
+                    right.data(), static_cast<int>(right.size()), TRUE) == CSTR_EQUAL;
+            };
+            if (!equalPath(wideHome.value(), profile.value().nativeDataRoot()) ||
+                isolatedProfile == equalPath(profile.value().nativeDataRoot(), persistent.value()))
+                return Domain::Result<void>::failure(Domain::makeError(
+                    Domain::ErrorCodes::Conflict, "The Manager bootstrap profile mode or canonical home does not match."));
+            std::array<wchar_t, 32'768U> module{};
+            const auto length = ::GetModuleFileNameW(nullptr, module.data(), static_cast<DWORD>(module.size()));
+            if (length == 0U || length >= module.size()) return Domain::Result<void>::failure(
+                Domain::makeError(Domain::ErrorCodes::InternalFailure, "The Manager bootstrap could not resolve its executable."));
+            const auto executable = std::filesystem::path{std::wstring{module.data(), length}}.parent_path() /
+                L"ForgeConductor.Manager.exe";
+            const HANDLE file = ::CreateFileW(executable.c_str(), FILE_READ_ATTRIBUTES,
+                FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
+                FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OPEN_REPARSE_POINT, nullptr);
+            if (file == INVALID_HANDLE_VALUE) return Domain::Result<void>::failure(
+                Domain::makeError(Domain::ErrorCodes::HostCapabilityUnavailable, "The regular Manager sibling is unavailable."));
+            struct FileCloser final { HANDLE value; ~FileCloser() { static_cast<void>(::CloseHandle(value)); } } close{file};
+            FILE_ATTRIBUTE_TAG_INFO tag{};
+            FILE_STANDARD_INFO standard{};
+            if (!::GetFileInformationByHandleEx(file, FileAttributeTagInfo, &tag, sizeof(tag)) ||
+                !::GetFileInformationByHandleEx(file, FileStandardInfo, &standard, sizeof(standard)) ||
+                (tag.FileAttributes & (FILE_ATTRIBUTE_DIRECTORY | FILE_ATTRIBUTE_REPARSE_POINT)) != 0U ||
+                standard.DeletePending || standard.NumberOfLinks != 1U)
+                return Domain::Result<void>::failure(Domain::makeError(
+                    Domain::ErrorCodes::IntegrityFailure, "The Manager sibling is not a regular single-link executable."));
+            auto arguments = CommandLineBuilder::buildArgumentString(
+                {isolatedProfile ? "--alpha-root" : "--home", profile.value().dataRoot().value()});
+            if (!arguments) return Domain::Result<void>::failure(std::move(arguments).error());
+            ComApartment apartment;
+            auto initialized = apartment.initialize();
+            if (!initialized) return initialized;
+            ComReference<IShellDispatch2> shell;
+            auto resolved = resolveDesktopShell(shell);
+            if (!resolved) return resolved;
+            const UniqueBstr image{executable.native()};
+            const UniqueBstr params{arguments.value()};
+            const UniqueBstr directory{executable.parent_path().native()};
+            const UniqueBstr verb{L"open"};
+            if (!image || !params || !directory || !verb) return Domain::Result<void>::failure(
+                Domain::makeError(Domain::ErrorCodes::InternalFailure, "The Manager bootstrap could not allocate Shell arguments."));
+            VARIANT args{}, cwd{}, operation{}, show{};
+            args.vt = cwd.vt = operation.vt = VT_BSTR;
+            args.bstrVal = params.get(); cwd.bstrVal = directory.get(); operation.bstrVal = verb.get();
+            show.vt = VT_I4; show.lVal = SW_HIDE;
+            const auto started = shell->ShellExecute(image.get(), args, cwd, operation, show);
+            if (FAILED(started)) return Domain::Result<void>::failure(shellFailure("start its matching Manager sibling", started));
+            return Domain::Result<void>::success();
+        } catch (...) {
+            return Domain::Result<void>::failure(Domain::makeError(
+                Domain::ErrorCodes::InternalFailure, "The Manager desktop bootstrap failed safely."));
+        }
+    }
+};
+
 } // namespace
 
 std::unique_ptr<IWindowsDashboardUriLaunchPlatform>
 createWindowsDashboardUriLaunchPlatform()
 {
     return std::make_unique<WindowsDashboardUriLaunchPlatform>();
+}
+
+std::unique_ptr<IWindowsManagerBootstrapPlatform> createWindowsManagerBootstrapPlatform()
+{
+    return std::make_unique<WindowsManagerBootstrapPlatform>();
 }
 
 } // namespace ForgeConductor::Infrastructure::Windows::Detail

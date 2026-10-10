@@ -22,6 +22,13 @@ $backend = Join-Path $root "out/build/windows-msvc-x64/bin/$Configuration"
 foreach ($name in @('forge-conductor.exe','ForgeConductor.Manager.exe','ForgeConductor.SessionHost.exe')) {
     Copy-Item -LiteralPath (Join-Path $backend $name) -Destination $output -Force
 }
+$comfyResources = Join-Path $backend 'Resources/ComfyUI'
+if (-not (Test-Path -LiteralPath (Join-Path $comfyResources 'starter_manifest.json') -PathType Leaf)) {
+    throw 'The built Manager is missing its ComfyUI starter resources.'
+}
+$resourceOutput = Join-Path $output 'Resources'
+New-Item -ItemType Directory -Path $resourceOutput -Force | Out-Null
+Copy-Item -LiteralPath $comfyResources -Destination $resourceOutput -Recurse -Force
 $entries = foreach ($name in @('ForgeConductorApp.exe','forge-conductor.exe','ForgeConductor.Manager.exe','ForgeConductor.SessionHost.exe')) {
     $file = Join-Path $output $name
     @{name=$name;path=$file;sha256=(Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant()}

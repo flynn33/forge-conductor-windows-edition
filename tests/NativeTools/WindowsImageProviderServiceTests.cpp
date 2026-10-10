@@ -49,7 +49,7 @@ class Configuration final : public Contracts::IConfigurationStore {
 public:
     std::mutex mutex;
     Domain::AppConfig config;
-    Configuration() { config.imageProvider = {true,"http://127.0.0.1:8188","sd1","cyberrealistic_final2.safetensors"}; }
+    Configuration() { config.imageProvider = {true,"http://127.0.0.1:49182","sd1","cyberrealistic_final2.safetensors"}; }
     Domain::Result<Domain::AppConfig> load(const Domain::OperationContext&) noexcept override {
         std::lock_guard lock{mutex}; return Domain::Result<Domain::AppConfig>::success(config);
     }
@@ -203,7 +203,7 @@ void disabledAndInvalidBeforeEffects(){
     Fixture f;{std::lock_guard lock{f.configuration.mutex};f.configuration.config.imageProvider={};}
     auto status=f.execute("image_provider_status",Json::object());require(!status.at("configured")&&!status.at("available")&&f.provider->calls.empty(),"Disabled provider must perform no network activity.");
     requireError(f.invoke("image_generate",f.args()),Domain::ErrorCodes::HostCapabilityUnavailable,"Disabled generation was admitted.");
-    {std::lock_guard lock{f.configuration.mutex};f.configuration.config.imageProvider={true,"http://127.0.0.1:8188","sd1","cyberrealistic_final2.safetensors"};}
+    {std::lock_guard lock{f.configuration.mutex};f.configuration.config.imageProvider={true,"http://127.0.0.1:49182","sd1","cyberrealistic_final2.safetensors"};}
     for(const auto& change:std::vector<Json>{{{"width",65U}},{{"seed",-1}},{{"denoise",0.0}},{{"preview_max_dimension",127U}},{{"extra",true}}}){
         auto args=f.args();args.update(change);requireError(f.invoke("image_generate",args),Domain::ErrorCodes::InvalidRequest,"Invalid boundary argument was admitted.");
     }
@@ -388,11 +388,13 @@ void finishedCachePressureKeepsDurableReadsAndAdmissions(){
     require(next.at("state")=="completed"&&f.provider->count("/prompt")==3U,"Finished cache pressure blocked ordinary admission or fabricated/replayed remote generations.");
 }
 void activeWorkerLimitPreservesAllOwnedWorkers(){
-    Fixture f;f.provider->mode=Provider::Mode::BlockPreflight;std::vector<Json> live;
+    Fixture f;{std::lock_guard lock{f.configuration.mutex};f.configuration.config.imageProvider.endpoint="http://127.0.0.1:49178";}
+    f.provider->mode=Provider::Mode::BlockPreflight;std::vector<Json> live;
     for(unsigned i{};i<8U;++i){auto args=f.args("live-"+std::to_string(i)+".png");args["timeout_sec"]=30U;live.push_back(f.execute("image_generate",args));}
     const auto end=std::chrono::steady_clock::now()+3s;
-    while(f.provider->preflightEntered.load()!=8U&&std::chrono::steady_clock::now()<end)std::this_thread::sleep_for(2ms);
-    require(f.provider->preflightEntered.load()==8U,"Eight live worker fixtures did not reach their exact owned preflight boundary.");
+    while(f.provider->preflightEntered.load()!=1U&&std::chrono::steady_clock::now()<end)std::this_thread::sleep_for(2ms);
+    require(f.provider->preflightEntered.load()==1U&&f.provider->count("/object_info/CheckpointLoaderSimple")==1U,
+        "The shared provider lease did not admit exactly one worker to the blocked preflight boundary.");
     requireError(f.invoke("image_generate",f.args("ninth.png")),Domain::ErrorCodes::LimitExceeded,"A ninth active worker was admitted.");
     require(f.provider->count("/prompt")==0U&&std::filesystem::is_empty(f.root/"workspace"),"Admission limit started a generation or published a destination.");
     for(const auto& job:live){const auto observed=f.execute("image_job_status",{{"job_id",job.at("job_id")}});require(observed.at("done")==false&&observed.at("state")=="before_dispatch","Admission refusal evicted or stopped an owned active worker.");}

@@ -3,7 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 
 project(
     ForgeConductorWindows
-    VERSION 1.3.28
+    VERSION 1.3.29
     LANGUAGES CXX RC
 )
 
@@ -64,6 +64,11 @@ function(forge_configure_native_target target_name)
         WIN32_LEAN_AND_MEAN
         NOMINMAX
     )
+    get_target_property(_forge_native_type ${target_name} TYPE)
+    if(_forge_native_type STREQUAL "EXECUTABLE")
+        target_link_options(${target_name} PRIVATE
+            "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/src/Hosts/NativeLongPaths.manifest")
+    endif()
 endfunction()
 
 function(forge_add_layer target_name alias_name)
@@ -344,6 +349,7 @@ set(FORGE_INFRASTRUCTURE_WINDOWS_SOURCES
     src/Infrastructure/Windows/WindowsLMStudioHostActivator.cpp
     src/Infrastructure/Windows/WindowsLMStudioServeVerifier.cpp
     src/Infrastructure/Windows/WindowsManagerAuthentication.cpp
+    src/Infrastructure/Windows/WindowsManagerBootstrapCommand.cpp
     src/Infrastructure/Windows/WindowsManagerInstanceLease.cpp
     src/Infrastructure/Windows/WindowsManagerNamedPipeClient.cpp
     src/Infrastructure/Windows/WindowsManagerNamedPipeServer.cpp
@@ -498,6 +504,9 @@ set(FORGE_NATIVE_TOOLS_WINDOWS_SOURCES
     src/NativeTools/Windows/ImageProviderCodec.cpp
     src/NativeTools/Windows/WindowsImageProviderHttpTransport.cpp
     src/NativeTools/Windows/WindowsImageProviderService.cpp
+    src/NativeTools/Windows/ComfyUiNativeSupport.cpp
+    src/NativeTools/Windows/WindowsComfyUiBackend.cpp
+    src/NativeTools/Windows/WindowsComfyUiService.cpp
     src/NativeTools/Windows/WindowsWebAccessService.cpp
     src/NativeTools/Windows/WindowsShellService.cpp
     src/NativeTools/Windows/CMakeTestSupport.cpp
@@ -511,7 +520,7 @@ forge_add_layer(ForgeConductor.NativeTools.Windows ForgeConductor::NativeTools.W
     ForgeConductor::Infrastructure.Windows)
 forge_configure_native_target(ForgeConductor.NativeTools.Windows)
 target_link_libraries(ForgeConductor.NativeTools.Windows PRIVATE nlohmann_json::nlohmann_json
-    ole32 oleaut32 user32 gdi32 windowscodecs uiautomationcore shell32 winhttp shlwapi xmllite)
+    ole32 oleaut32 user32 gdi32 windowscodecs uiautomationcore shell32 winhttp shlwapi xmllite bcrypt iphlpapi ws2_32)
 target_include_directories(ForgeConductor.NativeTools.Windows
     PUBLIC "${PROJECT_SOURCE_DIR}/include"
     PRIVATE "${PROJECT_SOURCE_DIR}/src")
@@ -673,6 +682,12 @@ set(FORGE_AGENT_RESOURCE_FILES
     src/ForgeConductor.Application/Resources/Agents/test.md
 )
 set(FORGE_AGENT_RESOURCE_PATHS)
+set(FORGE_COMFY_RESOURCE_ROOT "${PROJECT_SOURCE_DIR}/src/ForgeConductor.Application/Resources/ComfyUI")
+add_custom_command(TARGET ForgeConductor.Manager POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory "${FORGE_COMFY_RESOURCE_ROOT}"
+        "$<TARGET_FILE_DIR:ForgeConductor.Manager>/Resources/ComfyUI"
+    COMMENT "Staging ComfyUI starter render plans beside Manager"
+    VERBATIM)
 foreach(_forge_agent_resource IN LISTS FORGE_AGENT_RESOURCE_FILES)
     if(NOT EXISTS "${PROJECT_SOURCE_DIR}/${_forge_agent_resource}")
         message(FATAL_ERROR
@@ -867,7 +882,7 @@ if(BUILD_TESTING)
     target_include_directories(ForgeConductor.App.TelemetryPresentationTests PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src/Hosts/App)
     target_link_libraries(ForgeConductor.App.TelemetryPresentationTests PRIVATE
-        ForgeConductor::Domain)
+        ForgeConductor::Domain nlohmann_json::nlohmann_json)
     add_test(
         NAME ForgeConductor.App.TelemetryPresentationTests
         COMMAND $<TARGET_FILE:ForgeConductor.App.TelemetryPresentationTests>)
@@ -926,6 +941,7 @@ if(BUILD_TESTING)
         tests/Manager/ManagerPipeInfrastructureTests.cpp
         tests/Manager/TaskSchedulerDurationCodecTests.cpp
         tests/Manager/WindowsManagerAuthenticationTests.cpp
+        tests/Manager/WindowsManagerBootstrapCommandTests.cpp
         tests/Manager/WindowsManagerInfrastructureTestMain.cpp
         tests/Manager/WindowsManagerStartupComRaiiTests.cpp
         tests/Manager/WindowsManagerStartupComHandlerTests.cpp
@@ -939,7 +955,8 @@ if(BUILD_TESTING)
         "${PROJECT_SOURCE_DIR}/tests")
     target_link_libraries(
         ForgeConductor.Manager.WindowsInfrastructureTests PRIVATE
-        ForgeConductor::Infrastructure.Windows)
+        ForgeConductor::Infrastructure.Windows
+        nlohmann_json::nlohmann_json)
     add_test(
         NAME ForgeConductor.Manager.WindowsInfrastructureTests
         COMMAND $<TARGET_FILE:ForgeConductor.Manager.WindowsInfrastructureTests>)
@@ -1018,7 +1035,8 @@ if(BUILD_TESTING)
         "${PROJECT_SOURCE_DIR}/tests")
     target_link_libraries(
         ForgeConductor.Manager.BrowserLauncherTests PRIVATE
-        ForgeConductor::Infrastructure.Windows)
+        ForgeConductor::Infrastructure.Windows
+        nlohmann_json::nlohmann_json)
     add_dependencies(
         ForgeConductor.Manager.BrowserLauncherTests
         ForgeConductor.Cli)
@@ -2552,8 +2570,10 @@ if(BUILD_TESTING)
         file(RELATIVE_PATH _header_relative "${PROJECT_SOURCE_DIR}/include" "${_header}")
         string(REPLACE "\\" "/" _header_relative "${_header_relative}")
         string(MAKE_C_IDENTIFIER "${_header_relative}" _header_identifier)
+        string(SHA256 _header_filename "${_header_relative}")
+        string(SUBSTRING "${_header_filename}" 0 16 _header_filename)
         set(_isolation_source
-            "${CMAKE_CURRENT_BINARY_DIR}/generated/p05-header-isolation/${_header_identifier}.cpp")
+            "${CMAKE_CURRENT_BINARY_DIR}/generated/p05-header-isolation/${_header_filename}.cpp")
         file(GENERATE OUTPUT "${_isolation_source}" CONTENT
             "#include <${_header_relative}>\nint ${_header_identifier}_isolated() noexcept { return 0; }\n")
         list(APPEND _forge_header_isolation_sources "${_isolation_source}")
@@ -2731,8 +2751,10 @@ if(BUILD_TESTING)
         file(RELATIVE_PATH _header_relative "${PROJECT_SOURCE_DIR}/include" "${_header}")
         string(REPLACE "\\" "/" _header_relative "${_header_relative}")
         string(MAKE_C_IDENTIFIER "${_header_relative}" _header_identifier)
+        string(SHA256 _header_filename "${_header_relative}")
+        string(SUBSTRING "${_header_filename}" 0 16 _header_filename)
         set(_isolation_source
-            "${CMAKE_CURRENT_BINARY_DIR}/generated/p06-header-isolation/${_header_identifier}.cpp")
+            "${CMAKE_CURRENT_BINARY_DIR}/generated/p06-header-isolation/${_header_filename}.cpp")
         file(GENERATE OUTPUT "${_isolation_source}" CONTENT
             "#include <${_header_relative}>\nint ${_header_identifier}_isolated() noexcept { return 0; }\n")
         list(APPEND _forge_p06_header_isolation_sources "${_isolation_source}")
@@ -2936,8 +2958,10 @@ if(BUILD_TESTING)
         file(RELATIVE_PATH _header_relative "${PROJECT_SOURCE_DIR}/include" "${_header}")
         string(REPLACE "\\" "/" _header_relative "${_header_relative}")
         string(MAKE_C_IDENTIFIER "${_header_relative}" _header_identifier)
+        string(SHA256 _header_filename "${_header_relative}")
+        string(SUBSTRING "${_header_filename}" 0 16 _header_filename)
         set(_isolation_source
-            "${CMAKE_CURRENT_BINARY_DIR}/generated/p07-header-isolation/${_header_identifier}.cpp")
+            "${CMAKE_CURRENT_BINARY_DIR}/generated/p07-header-isolation/${_header_filename}.cpp")
         file(GENERATE OUTPUT "${_isolation_source}" CONTENT
             "#include <${_header_relative}>\nint ${_header_identifier}_isolated() noexcept { return 0; }\n")
         list(APPEND _forge_p07_header_isolation_sources "${_isolation_source}")
@@ -3615,6 +3639,68 @@ if(BUILD_TESTING)
         ForgeConductor::NativeTools.Windows ForgeConductor::Infrastructure.Windows
         nlohmann_json::nlohmann_json crypt32)
 
+    foreach(FORGE_COMFY_TEST IN ITEMS Service Backend)
+        set(FORGE_COMFY_TEST_TARGET "ForgeConductor.NativeTools.ComfyUi${FORGE_COMFY_TEST}Tests")
+        add_executable(${FORGE_COMFY_TEST_TARGET}
+            "tests/NativeTools/WindowsComfyUi${FORGE_COMFY_TEST}Tests.cpp")
+        forge_configure_native_target(${FORGE_COMFY_TEST_TARGET})
+        target_include_directories(${FORGE_COMFY_TEST_TARGET} PRIVATE src tests)
+        target_link_libraries(${FORGE_COMFY_TEST_TARGET} PRIVATE
+            ForgeConductor::NativeTools.Windows nlohmann_json::nlohmann_json ws2_32 advapi32 crypt32)
+        if(FORGE_COMFY_TEST STREQUAL "Backend")
+            add_test(NAME ${FORGE_COMFY_TEST_TARGET}
+                COMMAND $<TARGET_FILE:${FORGE_COMFY_TEST_TARGET}> --suite core)
+            add_test(NAME ForgeConductor.NativeTools.ComfyUiBackendPreparationTests
+                COMMAND $<TARGET_FILE:${FORGE_COMFY_TEST_TARGET}> --suite preparation)
+            set_tests_properties(ForgeConductor.NativeTools.ComfyUiBackendPreparationTests PROPERTIES
+                LABELS "T-UNIT;T-INTEGRATION;T-COMFY;T-SEC" TIMEOUT 120)
+            add_test(NAME ForgeConductor.NativeTools.ComfyUiAutomaticSetupTests
+                COMMAND $<TARGET_FILE:${FORGE_COMFY_TEST_TARGET}> --suite automatic-setup)
+            set_tests_properties(ForgeConductor.NativeTools.ComfyUiAutomaticSetupTests PROPERTIES
+                LABELS "T-UNIT;T-INTEGRATION;T-COMFY" TIMEOUT 120)
+            add_test(NAME ForgeConductor.NativeTools.ComfyUiPreparationLifecycleTests
+                COMMAND $<TARGET_FILE:${FORGE_COMFY_TEST_TARGET}> --suite preparation-lifecycle)
+            set_tests_properties(ForgeConductor.NativeTools.ComfyUiPreparationLifecycleTests PROPERTIES
+                LABELS "T-UNIT;T-INTEGRATION;T-COMFY;T-SEC" TIMEOUT 120)
+            add_test(NAME ForgeConductor.NativeTools.ComfyUiPreparationTransferTests
+                COMMAND $<TARGET_FILE:${FORGE_COMFY_TEST_TARGET}> --suite preparation-transfer)
+            set_tests_properties(ForgeConductor.NativeTools.ComfyUiPreparationTransferTests PROPERTIES
+                LABELS "T-UNIT;T-INTEGRATION;T-COMFY" TIMEOUT 120)
+            add_test(NAME ForgeConductor.NativeTools.ComfyUiPackageResolutionTests
+                COMMAND $<TARGET_FILE:${FORGE_COMFY_TEST_TARGET}> --suite package-resolution)
+            set_tests_properties(ForgeConductor.NativeTools.ComfyUiPackageResolutionTests PROPERTIES
+                LABELS "T-UNIT;T-INTEGRATION;T-COMFY" TIMEOUT 120)
+        else()
+            add_test(NAME ${FORGE_COMFY_TEST_TARGET} COMMAND $<TARGET_FILE:${FORGE_COMFY_TEST_TARGET}>)
+        endif()
+        set_tests_properties(${FORGE_COMFY_TEST_TARGET} PROPERTIES
+            LABELS "T-UNIT;T-INTEGRATION;T-COMFY;T-SEC" TIMEOUT 120)
+    endforeach()
+
+    add_executable(ForgeConductor.NativeTools.ComfyUiStarterWorkflowTests
+        tests/NativeTools/WindowsComfyUiStarterWorkflowTests.cpp)
+    forge_configure_native_target(ForgeConductor.NativeTools.ComfyUiStarterWorkflowTests)
+    target_include_directories(ForgeConductor.NativeTools.ComfyUiStarterWorkflowTests PRIVATE
+        "${PROJECT_SOURCE_DIR}/tests")
+    target_link_libraries(ForgeConductor.NativeTools.ComfyUiStarterWorkflowTests PRIVATE
+        ForgeConductor::Domain nlohmann_json::nlohmann_json)
+    add_test(NAME ForgeConductor.NativeTools.ComfyUiStarterWorkflowTests
+        COMMAND $<TARGET_FILE:ForgeConductor.NativeTools.ComfyUiStarterWorkflowTests>
+            "${FORGE_COMFY_RESOURCE_ROOT}"
+            "${PROJECT_SOURCE_DIR}/tests/NativeTools/Fixtures/comfy_starter_object_info.json")
+    set_tests_properties(ForgeConductor.NativeTools.ComfyUiStarterWorkflowTests PROPERTIES
+        LABELS "T-UNIT;T-COMFY" TIMEOUT 60)
+
+    add_executable(ForgeConductor.NativeTools.ComfyUiHostQualification EXCLUDE_FROM_ALL
+        tests/NativeTools/WindowsComfyUiHostQualification.cpp)
+    forge_configure_native_target(ForgeConductor.NativeTools.ComfyUiHostQualification)
+    target_include_directories(ForgeConductor.NativeTools.ComfyUiHostQualification PRIVATE
+        "${PROJECT_SOURCE_DIR}/src" "${PROJECT_SOURCE_DIR}/tests")
+    target_compile_definitions(ForgeConductor.NativeTools.ComfyUiHostQualification PRIVATE
+        FC_COMFY_SOURCE_RESOURCE_DIR="${FORGE_COMFY_RESOURCE_ROOT}")
+    target_link_libraries(ForgeConductor.NativeTools.ComfyUiHostQualification PRIVATE
+        ForgeConductor::NativeTools.Windows nlohmann_json::nlohmann_json ws2_32 advapi32 crypt32)
+
     add_executable(ForgeConductor.NativeTools.PdfTests
         tests/NativeTools/WindowsPdfServiceTests.cpp)
     forge_configure_native_target(ForgeConductor.NativeTools.PdfTests)
@@ -3702,8 +3788,10 @@ if(BUILD_TESTING)
         file(RELATIVE_PATH _header_relative "${PROJECT_SOURCE_DIR}/include" "${_header}")
         string(REPLACE "\\" "/" _header_relative "${_header_relative}")
         string(MAKE_C_IDENTIFIER "${_header_relative}" _header_identifier)
+        string(SHA256 _header_filename "${_header_relative}")
+        string(SUBSTRING "${_header_filename}" 0 16 _header_filename)
         set(_isolation_source
-            "${CMAKE_CURRENT_BINARY_DIR}/generated/p13-header-isolation/${_header_identifier}.cpp")
+            "${CMAKE_CURRENT_BINARY_DIR}/generated/p13-header-isolation/${_header_filename}.cpp")
         file(GENERATE OUTPUT "${_isolation_source}" CONTENT
             "#include <${_header_relative}>\nint ${_header_identifier}_isolated() noexcept { return 0; }\n")
         list(APPEND _forge_p13_header_isolation_sources "${_isolation_source}")

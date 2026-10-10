@@ -259,6 +259,7 @@
          <Border Style="{ThemeResource ForgeInsetStyle}" Padding="12,9"><Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="90"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><FontIcon Glyph="&#xE71B;" Foreground="{ThemeResource ForgeTextSecondaryBrush}"/><TextBlock Grid.Column="1" Text="Provider"/><Ellipse x:Name="ProviderDot" Grid.Column="2" Width="8" Height="8" Fill="{ThemeResource ForgeSuccessBrush}" VerticalAlignment="Center"/><TextBlock x:Name="ProviderHealth" Grid.Column="3" Margin="8,0,0,0" Text="Waiting for a sample" TextTrimming="CharacterEllipsis"/><FontIcon Grid.Column="4" Glyph="&#xE76C;" Foreground="{ThemeResource ForgeTextTertiaryBrush}"/></Grid></Border>
          <Border Style="{ThemeResource ForgeInsetStyle}" Padding="12,9"><Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="90"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><FontIcon Glyph="&#xE8F1;" Foreground="{ThemeResource ForgeTextSecondaryBrush}"/><TextBlock Grid.Column="1" Text="Continuity"/><Ellipse x:Name="ContinuityDot" Grid.Column="2" Width="8" Height="8" Fill="{ThemeResource ForgeSuccessBrush}" VerticalAlignment="Center"/><TextBlock x:Name="ContinuityHealth" Grid.Column="3" Margin="8,0,0,0" Text="Waiting for a sample" TextTrimming="CharacterEllipsis"/><FontIcon Grid.Column="4" Glyph="&#xE76C;" Foreground="{ThemeResource ForgeTextTertiaryBrush}"/></Grid></Border>
          <Border Style="{ThemeResource ForgeInsetStyle}" Padding="12,9"><Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="90"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><FontIcon Glyph="&#xE8B7;" Foreground="{ThemeResource ForgeTextSecondaryBrush}"/><TextBlock Grid.Column="1" Text="Store"/><Ellipse x:Name="StoreDot" Grid.Column="2" Width="8" Height="8" Fill="{ThemeResource ForgeSuccessBrush}" VerticalAlignment="Center"/><TextBlock x:Name="StoreHealth" Grid.Column="3" Margin="8,0,0,0" Text="Waiting for a sample" TextTrimming="CharacterEllipsis"/><FontIcon Grid.Column="4" Glyph="&#xE76C;" Foreground="{ThemeResource ForgeTextTertiaryBrush}"/></Grid></Border>
+         <Border Style="{ThemeResource ForgeInsetStyle}" Padding="12,9"><StackPanel Spacing="7"><TextBlock Text="ComfyUI media automation" FontWeight="SemiBold"/><TextBlock x:Name="RigComfyReadiness" Text="Awaiting effective configuration" Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap" MaxHeight="100"/><Button Content="Probe readiness" Click="ComfyProbeClicked" HorizontalAlignment="Left"/></StackPanel></Border>
         </StackPanel>
        </Border>
        <Border x:Name="RigHistoryCard" Grid.Column="1" Style="{ThemeResource ForgeCardStyle}" MinHeight="250">
@@ -576,6 +577,24 @@
       <ComboBoxItem Content="Warning"/><ComboBoxItem Content="Error"/><ComboBoxItem Content="Critical"/>
      </ComboBox>
      </StackPanel></Border></Expander>
+     <Border Style="{ThemeResource ForgeCardStyle}"><StackPanel Spacing="12">
+      <TextBlock Text="ComfyUI automation" Style="{ThemeResource ForgeSectionTitleStyle}"/>
+      <TextBlock Text="Describe an image or video in LM Studio. Forge prepares ComfyUI, renders a preview, and waits for your chat approval before rendering the final result." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
+      <ToggleSwitch x:Name="SettingsComfyEnabled" Header="Enable local ComfyUI automation" OffContent="Disabled" OnContent="Enabled"/>
+      <ToggleSwitch x:Name="SettingsComfyAutomaticSetup" Header="Automatically prepare models and custom nodes" OffContent="Manual setup" OnContent="Automatic setup"/>
+      <TextBox x:Name="SettingsComfyInstallation" Header="ComfyUI installation folder" PlaceholderText="Blank uses detected portable installation"/>
+      <TextBox x:Name="SettingsComfyModelStorage" Header="Model storage folder" PlaceholderText="Blank uses the installation's model folder"/>
+      <TextBox x:Name="SettingsComfyEndpoint" Header="ComfyUI loopback endpoint" PlaceholderText="http://127.0.0.1:8188"/>
+      <Grid ColumnSpacing="16" RowSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+       <NumberBox x:Name="SettingsComfyDownloadBudget" Header="Download budget per preparation (bytes)" Minimum="1" Maximum="10000000000000" SpinButtonPlacementMode="Compact"/>
+       <NumberBox x:Name="SettingsComfySpaceReserve" Grid.Column="1" Header="Free space reserve (bytes)" Minimum="0" Maximum="10000000000000" SpinButtonPlacementMode="Compact"/>
+       <NumberBox x:Name="SettingsComfyTimeout" Grid.Row="1" Header="Generation timeout (seconds)" Minimum="1" Maximum="7200" SpinButtonPlacementMode="Compact"/>
+       <ComboBox x:Name="SettingsComfyQuality" Grid.Row="1" Grid.Column="1" Header="Default quality" HorizontalAlignment="Stretch"><ComboBoxItem Content="Balanced"/><ComboBoxItem Content="Higher quality"/><ComboBoxItem Content="Fast preview"/></ComboBox>
+      </Grid>
+      <TextBlock Text="500 GB download budget and 50 GB reserve are defaults. Existing models are reused. Save and read back applies these settings; probing uses the effective saved settings." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap"/>
+      <Button x:Name="ComfyProbeButton" Content="Probe ComfyUI readiness" Click="ComfyProbeClicked" HorizontalAlignment="Left"/>
+      <TextBlock x:Name="SettingsComfyState" Text="Disabled by default; awaiting Manager readback." Style="{ThemeResource ForgeCaptionStyle}" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" IsTextSelectionEnabled="True"/>
+     </StackPanel></Border>
      <Expander Header="LM Studio provider controls" IsExpanded="False" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"><Border Style="{ThemeResource ForgeCardStyle}" HorizontalAlignment="Stretch"><StackPanel Spacing="14" HorizontalAlignment="Stretch">
      <Grid ColumnSpacing="16" RowSpacing="12">
       <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>

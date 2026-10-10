@@ -1,6 +1,12 @@
 # Product status
 
-## Current 1.3.28 release
+## Current 1.3.29 source
+
+Forge Conductor **1.3.29 / Windows package 1.3.29.0** adds local ComfyUI automation for images and video. Describe the result in LM Studio; the model discovers nodes and models, constructs the workflow, starts or prepares the selected local installation, renders a preview, and uses a subsequent saved operator approval to execute the sealed final plan. Eleven general ComfyUI tools plus `desktop_scroll` and `desktop_drag` bring Primary and Fallback to **125 tools**. The six existing image tools, five CLU tools, and ten specialist playbooks remain.
+
+The [automation guide](COMFYUI-AUTOMATION.md) describes workflow, preparation, approval, recovery and artifact contracts. The [host report](COMFYUI_HOST_QUALIFICATION.md) separates actual image/video inference and failures from fixtures and operator acceptance. Versioned build, package, install and publication results belong to [release verification](validation/RELEASE-1.3.29.md). Previous measurements below retain their recorded artifact identities.
+
+## Previous 1.3.28 release
 
 Forge Conductor **1.3.28 / Windows package 1.3.28.0** corrects packet-request instructions, explicit terminal recovery and current connector presence. Handoff and repair prompts ask for only the outer `packet_json` argument, with every packet field inside its encoded JSON object; direct-field calls and refusal of conflicting outer fields remain supported. The advisory output target never takes priority over actual facts, exact values, constraints or paths. The Manager filters the current presence projection through the existing 25-second heartbeat window before enforcing its bound, while full-history reads and refusal of an oversized current collection remain intact. All 112 Primary/Fallback tool names, five CLU tools and ten specialist playbooks remain; the only catalog amendment is the `session_handoff` packet_json description.
 
@@ -24,7 +30,7 @@ The installed, unpublished **1.3.26 / Windows package 1.3.26.0** artifact at sou
 
 The selected Qwen recovery capture contained **24 messages**. Two actual Primary calls returned saved context and status reporting **1.3.26 / 112 tools**; the response reached `eosFound`. Manager remained `recovery_pending` at inherited checkpoint revision **14**: `WaitingPacket`, no packet or successor, no effect, and false packet-request acknowledgement, while delivery acknowledgement and context recovery remained true from the older cycle. The current source begins a new packet-request cycle without clearing those two flags. Fresh native readback did not satisfy the existing successor-and-packet recovery eligibility. Automatic New chat/Send and successor continuation were not established, and no 1.3.26 release was published. The subsequent 1.3.27 changes and their checks have separate inputs. The independently retained native process handles recorded all three predecessor connector CLIs and bridge processes exiting with code `1` while Manager PID `35288` remained alive. This is separate from the normal code `0` isolated processes and does not prove automatic handoff. Selected native five-group and native image-provider scopes were not qualified by these captures.
 
-See [release notes](releases/1.3.28.md), [current verification](validation/HOST-CAPABILITIES-1.3.28.md) and [retained 1.3.24 scopes](validation/HOST-CAPABILITIES-1.3.24.md).
+See [release notes](releases/1.3.28.md), [1.3.28 verification](validation/HOST-CAPABILITIES-1.3.28.md) and [retained 1.3.24 scopes](validation/HOST-CAPABILITIES-1.3.24.md).
 
 ## Superseded 1.3.24 installed investigation
 
@@ -44,7 +50,7 @@ The superseded installed 1.3.22 candidate at source `9178abdf12998af56df4860a56b
 
 See [retained 1.3.22 measurements](validation/HOST-CAPABILITIES-1.3.22.md).
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.28 release.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.29 release.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -64,7 +70,7 @@ Stock LM Studio MCP image metadata remains distinct from model image input and i
 
 
 
-The current source version is 1.3.28 / Windows package identity 1.3.28.0, with 112 Primary/Fallback tools, ten specialist playbooks and five CLU tools. Native CMake/CTest jobs, paged desktop accessibility reads and optional higher-resolution bounded previews extend dedicated web, native Office, desktop/browser, image analysis, independent workers and schedules. Owner-selected host/workspace filesystem modes and existing contracts remain. Current build, signed-install, catalog and native measurements are recorded in the 1.3.28 verification record; isolated provider checks retain their own scope. See [capabilities](HOST-CAPABILITIES.md), [CMake/CTest](CMAKE-CTEST.md), [implementation notes](releases/1.3.28.md) and [measured verification](validation/HOST-CAPABILITIES-1.3.28.md).
+The current source version is 1.3.29 / Windows package identity 1.3.29.0, with 125 Primary/Fallback tools, ten specialist playbooks and five CLU tools. General ComfyUI workflows, durable preparation and approved final rendering extend the existing native capabilities. Current source and package checks are recorded in [release verification](validation/RELEASE-1.3.29.md); productive inference is reported separately in [host qualification](COMFYUI_HOST_QUALIFICATION.md).
 
 The historical 1.3.19 source, installed and current-chat results are recorded above. The installed, unpublished [1.3.18 investigation](validation/HOST-CAPABILITIES-1.3.18.md) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact.
 
@@ -90,11 +96,12 @@ The installed 1.3.11 Release suite passed 153/153; signed installation, all thre
 | Auto Continuity | The 1.3.28 implementation uses a Manager-lifetime observer and authorized Primary observations. Actual native messages/effects, packet retrieval and a following Forge result gate completion; installed qualification is recorded separately for the current artifact. |
 | Telemetry layout | Real WinUI observer with injected Manager measured zero Rig position transitions across 16 polls; injected CPU values kept updating. |
 | Packet view | Saved packet list and detail, refresh, delete selected packet, and clear all packets. |
-| Settings | Load/save/readback/revert/test/restart controls remain; record selection plus delete buttons replaces the old scope-maintenance scheme. |
+| Settings | ComfyUI automation configuration and Rig readiness are added. Load/save/readback/revert/test/restart controls remain; record selection plus delete buttons replaces the old scope-maintenance scheme. |
 | MCP | The same Primary, Fallback, and CLU integrations; exact 180-second deadline; no fourth plugin or new Forge credential. |
 | Shell/process jobs | Primary/Fallback lifecycle, live named logs, bounded waits and verified adoption; 65,536-byte UTF-8 PowerShell scripts, maximum job lifetime 3,600 seconds, two active jobs, sixteen results in memory and thirty-two durable jobs per project. All cwd routes validate locally before Manager dispatch. Manager-backed work survives MCP reconnect; owner shutdown terminates active work. |
 | CMake/CTest jobs | Explicit initialized build tree; test-only or sequential build/test under one shared deadline; actual phase outcomes, nullable validated JUnit counts, UTF-8 failure paging and report seals through existing durable jobs/log/wait/kill tools. The source suite and measured native acceptance passed. |
-| Desktop/image | Accessibility offset paging with fresh-tree indices, 32 KiB text and 64 KiB native JSON bounds; `preview_max_dimension` 128–2,048, default 256, adaptive 512 KiB base64 bound with actual dimensions; exact filled rectangle pixel dimensions. The source suite and measured native acceptance passed. |
+| ComfyUI automation | Eleven tools cover local discovery, typed workflow operations, preflight, preparation, lifecycle, approved rendering and durable recovery. See [contracts](COMFYUI-AUTOMATION.md). |
+| Desktop/image | Scroll and drag join existing input operations. Accessibility offset paging with fresh-tree indices, 32 KiB text and 64 KiB native JSON bounds; `preview_max_dimension` 128–2,048, default 256, adaptive 512 KiB base64 bound with actual dimensions; exact filled rectangle pixel dimensions. The source suite and measured native acceptance passed. |
 | Review/evidence | Separate read-only reviewer contexts, optional supplied-text mode, file/inline opening sources and 1–3,600-second per-turn receive waits; full SHA-256-verified receipts, sixteen concurrent reviewers and a 256 KiB report cap. Completed receipts are retained by run ID. Exact verification pins, activated external roots retained through recovery, and a durable capture chain preserve observed evidence. |
 | Context/readback | Latest-provider-generation telemetry retains sample provenance/unknowns; status distinguishes current packet retrieval through `context_get` from packet storage and job memory attachment. |
 | Agents | Ten specialist playbooks and baseline agent-session tools remain callable. |

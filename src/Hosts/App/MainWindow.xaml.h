@@ -39,6 +39,7 @@ struct MainWindow : MainWindowT<MainWindow> {
     void ProviderModelSelectionChanged(Windows::Foundation::IInspectable const&,
         Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);
     void SettingsLoadClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+    void ComfyProbeClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SettingsSaveClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SettingsRevertClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
     void SettingsTestClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -135,6 +136,8 @@ private:
         ReadSettingsForm(std::string& error);
     void ApplyProviderForm(const ::ForgeConductor::Domain::ManagerSettings& settings);
     void ApplySettingsForm(const ::ForgeConductor::Domain::ManagerSettings& settings);
+    winrt::fire_and_forget RefreshComfyStatus();
+    bool comfyProbeBusy_{};
     void ApplyTelemetryPresentation(
         const ::ForgeConductor::Domain::ManagerTelemetrySnapshot& snapshot);
     void ApplyDisconnectedTelemetry(std::string_view reason);

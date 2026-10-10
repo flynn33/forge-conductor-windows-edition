@@ -48,6 +48,8 @@ constexpr std::size_t MaximumMcpTextContentBytes = 96U * 1024U;
 constexpr std::size_t MaximumBoundedReadResponseBytes = 32U * 1024U;
 constexpr std::size_t MaximumStatusInstructionPackages = 100U;
 constexpr std::size_t MaximumBootstrapInstructionPackages = 16U;
+constexpr std::size_t MaximumComfyJobPayloadBytes = 128U * 1024U;
+constexpr std::size_t MaximumComfyPosterBase64Bytes = 32U * 1024U;
 constexpr std::int64_t DefaultReadWindowLines = 200;
 
 [[nodiscard]] bool hasLeadingFillerMarker(const std::string_view text)
@@ -215,6 +217,68 @@ template <typename T, typename U>
         return std::nullopt;
     }
     return value->get<bool>();
+}
+
+[[nodiscard]] Domain::Result<Json> promoteComfyJobPreview(Json payload)
+{
+    if (!payload.is_object()) return failure<Json>(Domain::ErrorCodes::MalformedMessage,
+        "The ComfyUI job result must be an object.");
+    if (payload.dump().size() > MaximumComfyJobPayloadBytes)
+        return failure<Json>(Domain::ErrorCodes::PayloadTooLarge,
+            "The ComfyUI job result exceeds its bounded delivery size.");
+    if (!strictBoolean(payload, "ok").value_or(false) ||
+        (payload.contains("publication_suppressed") && !strictBoolean(payload, "publication_suppressed")) ||
+        strictBoolean(payload, "publication_suppressed").value_or(false) ||
+        payload.contains("image_base64") ||
+        (payload.contains("error") && !payload.at("error").is_null()))
+        return Domain::Result<Json>::success(std::move(payload));
+    for (const auto group : {"artifacts", "preview_artifacts"}) {
+        const auto* artifacts = member(payload, group);
+        if (!artifacts || !artifacts->is_array()) continue;
+        for (std::size_t index{}; index < artifacts->size(); ++index) {
+            const auto& artifact = artifacts->at(index);
+            if (!artifact.is_object()) continue;
+            const auto* metadata = member(artifact, "metadata");
+            const auto* preview = member(artifact, "preview");
+            const auto artifactSeal = strictString(artifact, "sha256");
+            if (!metadata || !metadata->is_object() ||
+                !strictBoolean(*metadata, "decoded").value_or(false) ||
+                !artifactSeal || !Domain::Sha256Digest::parse(*artifactSeal) ||
+                !preview || !preview->is_object()) continue;
+            const auto mime = strictString(*preview, "mime_type");
+            const auto encoded = strictString(*preview, "base64");
+            const auto seal = strictString(*preview, "sha256");
+            const auto width = strictInteger(*preview, "width"), height = strictInteger(*preview, "height");
+            if (!mime || *mime != "image/png" || !seal || !Domain::Sha256Digest::parse(*seal) ||
+                !width || !height || *width < 1 || *height < 1 || *width > 2048 || *height > 2048 ||
+                !encoded || encoded->empty() || encoded->size() > MaximumComfyPosterBase64Bytes ||
+                encoded->size() % 4U != 0U || !encoded->starts_with("iVBORw0KGgo") ||
+                encoded->find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=") != std::string::npos) continue;
+            const auto padding = encoded->ends_with("==") ? 2U : encoded->ends_with("=") ? 1U : 0U;
+            const auto firstPadding = encoded->find('=');
+            if (firstPadding != std::string::npos && firstPadding != encoded->size() - padding) continue;
+            auto promoted = payload;
+            promoted["image_base64"] = *encoded; promoted["image_mime_type"] = *mime;
+            promoted["preview_width"] = *width; promoted["preview_height"] = *height;
+            promoted["preview_png_sha256"] = *seal;
+            for (const auto repeatedGroup : {"artifacts", "preview_artifacts"}) {
+                auto repeated = promoted.find(repeatedGroup);
+                if (repeated == promoted.end() || !repeated->is_array()) continue;
+                for (auto& item : *repeated) {
+                    if (!item.is_object() || strictString(item, "sha256") != artifactSeal) continue;
+                    auto thumbnail = item.find("preview");
+                    if (thumbnail == item.end() || !thumbnail->is_object() ||
+                        strictString(*thumbnail, "sha256") != seal || strictString(*thumbnail, "base64") != encoded) continue;
+                    thumbnail->erase("base64"); (*thumbnail)["delivered_as_image_content"] = true;
+                }
+            }
+            // Keep the provider's public job bound even when promotion adds
+            // metadata. A full receipt stays available if the poster cannot fit.
+            if (promoted.dump().size() <= MaximumComfyJobPayloadBytes)
+                return Domain::Result<Json>::success(std::move(promoted));
+        }
+    }
+    return Domain::Result<Json>::success(std::move(payload));
 }
 
 [[nodiscard]] Domain::Result<std::vector<std::string>> strictStrings(
@@ -2344,11 +2408,38 @@ public:
                 "desktop_list/read/capture/click/type/key and browser_open. image_write draws shapes and text. "
                 "image_analyze starts a read-only interpretation of an existing image; reviewer_status reads that analysis result. "
                 "Drawing and analysis do not start generative image jobs. Image previews may be displayed without supplying pixels to the chat model. "
-                "image_provider_status checks the explicitly configured optional ComfyUI provider. "
-                "For generation use image_generate; for source variation or masked editing use image_edit. "
+                "comfy_status inspects full local ComfyUI automation. Discover node/model/workflow inventories with comfy_catalog; "
+                "import or patch graphs with comfy_workflow, preflight with comfy_validate, and prepare dependencies with comfy_prepare. "
+                "When comfy_status reports configuration.enabled=true, route every new image or video creation request through comfy_run, including ordinary images. "
+                "After comfy_control, do not switch to legacy image_generate. First discover installed starter plans with comfy_catalog kind=templates, "
+                "import their returned preview and final workflow paths with comfy_workflow action=import, and retain the executable graphs returned by action=export. "
+                "Before choosing a creation workflow, read comfy_status for effective limits and configuration.quality_preference. "
+                "When the operator omits quality, honor that configured default; prefer Wan 2.2 5B for balanced video. "
+                "Start from installed models and catalog templates, choosing other quality workflows only from actual contracts and measured resources. "
+                "Never apply a universal resolution, frame-count or sampling rewrite to unknown graphs. "
+                "When video duration is omitted, propose about five seconds. Derive draft and final settings from actual node contracts and measured resources. "
+                "For final video delivery, choose playable MP4 with H.264 from the discovered output node contracts unless the operator requests a supported alternative format or codec. "
+                "Preserve a supported requested alternative and save the selected format in the proposed final graph before preview approval; a later format change requires a new preview and approval. "
+                "Do not apply a universal output-format rewrite to unknown graphs. "
+                "Use comfy_run stage=preview with media_kind=image|video|mixed and explicit preview/final graphs; "
+                "every literal file input marked image_upload, audio_upload or video_upload by its actual node schema requires an explicit authorized inputs binding in both graphs; source and private provider-copy bytes are sealed. "
+                "a motion preview must decode as video, GIF, APNG or animated WebP with positive duration and at least two frames; every intended motion output node must have its own decoded playable artifact. Poll comfy_job_status until awaiting_preview_approval. "
+                "For an image preview, call image_read with the verified preview image artifact.path to display its larger bounded image before requesting approval; the job-status thumbnail alone is insufficient. "
+                "Successful decoding verifies readable media, not the requested subject or motion quality. "
+                "Before describing video content or quality, call image_analyze with the path of the published artifact whose role is sampled_video_contact_sheet, then poll reviewer_status for actual findings. "
+                "Report unavailable contact sheets and review failures with their actual errors; limit visual claims to reviewed sampled frames and do not claim unverified motion quality or repeat the prompt as observed content. "
+                "For a verified video preview or final artifact with provider_view_url, call browser_open with that exact URL while ComfyUI is running, then use desktop_read on the observed browser window to check its actual address. Launch acceptance alone does not verify page loading or playback. Report actual browser-launch or observation failures. Present the URL as a copyable reference and the complete artifacts[].path in a copyable fenced block; LM Studio 0.4.26+4's ordinary Markdown link path rejects loopback URLs. Never abbreviate file paths. Retain the sampled-frame preview. "
+                "If requires_new_preview is true, apply the operator's requested revisions to new preview/final graphs and run a new preview before requesting approval. "
+                "Present the actual local preview artifacts and approval_reply_choices (approved, yes, render final) to the operator, "
+                "then wait for a later native user message approving it before stage=final with plan_id only. "
+                "The saved preview-result evidence must precede the approval; a model-provided approval flag cannot approve generation. "
+                "Image and video creation through this automation feature must use the managed comfy_run approval path; do not submit directly through shell, HTTP or browser queue controls. "
+                "Poll or recover jobs with comfy_job_list/status/cancel/resume. Desktop scroll and drag support observed UI adjustments. "
+                "image_provider_status checks the explicitly configured optional ComfyUI image provider. "
+                "Use legacy image_generate or image_edit only when the operator separately requests those SD1 or masked-editing contracts, or ComfyUI automation is disabled. "
                 "Poll image_job_status for the generated artifact, cancel with image_job_cancel, "
                 "or reattach to the exact existing provider job with image_job_resume without generation replay. "
-                "Generative artwork and cloud accounts require connected providers. "
+                "Cloud media services require their connected providers. "
                 "agent_spawn/poll/cancel run independent scoped tasks, and schedule_create/list/run_now/cancel persist scheduled work. "
                 "The connector starts or attaches to its matching Manager; inspect durable_manager availability and startup_error. "
                 "Filesystem mode is selected by the owner; host mode grants available local volumes under ordinary Windows permissions "
@@ -2748,6 +2839,81 @@ private:
             if (!result) return propagate<Json>(std::move(result));
             return Domain::Result<Json>::success(Json::parse(result.value()));
         }
+        if (name.starts_with("comfy_")) {
+            if (dependencies_.durableToolBroker) {
+                auto brokerArguments = arguments;
+                const auto canonicalize = [&](Json& value, const char* field, Domain::FileAccess access) -> Domain::Result<void> {
+                    const auto found = value.find(field);
+                    if (found == value.end()) return Domain::Result<void>::success();
+                    const auto& path = found->get_ref<const std::string&>();
+                    if (!isAbsoluteToolPath(path)) return failure<void>(Domain::ErrorCodes::InvalidRequest,
+                        "ComfyUI paths must be absolute.");
+                    auto authorized = authorizePath(dependencies_.workspaceAuthority, authority, path, access,
+                        access != Domain::FileAccess::Read, context, &observation, ContinuityPathRole::Path);
+                    if (!authorized) return propagate<void>(std::move(authorized));
+                    value[field] = authorized.value().canonicalPath().value();
+                    return Domain::Result<void>::success();
+                };
+                if (name == "comfy_workflow") {
+                    if(arguments.at("action")=="import" && brokerArguments.contains("path")) {
+                        if(!isAbsoluteToolPath(brokerArguments.at("path").get_ref<const std::string&>()))
+                            return failure<Json>(Domain::ErrorCodes::InvalidRequest,"ComfyUI paths must be absolute.");
+                        // The native provider owns authorization for its fixed installed
+                        // workflow catalogs as well as ordinary project files.
+                    } else {
+                        auto checked = canonicalize(brokerArguments,"path",arguments.at("action")=="export"?Domain::FileAccess::Write:Domain::FileAccess::Read);
+                        if (!checked) return propagate<Json>(std::move(checked));
+                    }
+                }
+                if (name == "comfy_run") {
+                    if (brokerArguments.contains("output_directory")) {
+                        const auto directory = brokerArguments.at("output_directory").get<std::string>();
+                        Json outputs{{"preview",directory + "/preview"},{"final",directory + "/final"}};
+                        auto checked = canonicalize(outputs,"preview",Domain::FileAccess::Create);
+                        if (!checked) return propagate<Json>(std::move(checked));
+                        checked = canonicalize(outputs,"final",Domain::FileAccess::Create);
+                        if (!checked) return propagate<Json>(std::move(checked));
+                        const auto preview = outputs.at("preview").get<std::string>();
+                        brokerArguments["output_directory"] = preview.substr(0U,preview.find_last_of("/\\") + 1U);
+                    }
+                    if (brokerArguments.contains("inputs")) for (auto& input : brokerArguments["inputs"]) {
+                        auto checked = canonicalize(input, "path", Domain::FileAccess::Read);
+                        if (!checked) return propagate<Json>(std::move(checked));
+                    }
+                }
+                const auto accessName = [](Domain::FileAccess access) {
+                    switch (access) {
+                    case Domain::FileAccess::Read: return "read";
+                    case Domain::FileAccess::Write: return "write";
+                    case Domain::FileAccess::Create: return "create";
+                    case Domain::FileAccess::Delete: return "delete";
+                    case Domain::FileAccess::Execute: return "execute";
+                    }
+                    return "unknown";
+                };
+                Json roots = Json::array(), grants = Json::array(), denials = Json::array();
+                for (const auto& root : authority.trustedRoots()) roots.push_back(root.value());
+                for (auto access : authority.grants()) grants.push_back(accessName(access));
+                for (auto access : authority.denials()) denials.push_back(accessName(access));
+                brokerArguments["_forge_comfy_scope"] = Json{{"project_id", authority.projectId().value()},
+                    {"caller_id", authority.callerId().value()}, {"generation", authority.generation()},
+                    {"trusted_roots", std::move(roots)}, {"grants", std::move(grants)},
+                    {"denials", std::move(denials)}, {"shell_enabled", authority.shellEnabled()}};
+                auto result = dependencies_.durableToolBroker(name, brokerArguments.dump(), authority.projectId(), context);
+                if (!result) return propagate<Json>(std::move(result));
+                auto payload = Json::parse(result.value()); payload["broker"] = "persistent_manager";
+                if (name == "comfy_run" || name == "comfy_job_status" || name == "comfy_job_resume" || name == "comfy_job_cancel")
+                    return promoteComfyJobPreview(std::move(payload));
+                return Domain::Result<Json>::success(std::move(payload));
+            }
+            if (!dependencies_.comfyUi) return failure<Json>(Domain::ErrorCodes::HostCapabilityUnavailable,
+                "ComfyUI automation requires the durable Manager and configured local installation.");
+            auto result = dependencies_.comfyUi->execute(name, arguments.dump(), authority, context);
+            if (!result) return propagate<Json>(std::move(result));
+            if (name == "comfy_run" || name == "comfy_job_status" || name == "comfy_job_resume" || name == "comfy_job_cancel")
+                return promoteComfyJobPreview(Json::parse(result.value()));
+            return Domain::Result<Json>::success(Json::parse(result.value()));
+        }
         if (name == "image_provider_status" || name == "image_generate" || name == "image_edit" ||
             name == "image_job_status" || name == "image_job_cancel" || name == "image_job_resume") {
             if (dependencies_.durableToolBroker) {
@@ -2814,6 +2980,7 @@ private:
                     {"desktop_accessibility_capture_input", dependencies_.desktopArtifacts != nullptr},
                     {"native_image_drawing_and_vision_preview", dependencies_.desktopArtifacts != nullptr},
                     {"independent_image_analysis", dependencies_.desktopArtifacts != nullptr && independentReview},
+                    {"comfyui_workflow_automation", dependencies_.comfyUi != nullptr || static_cast<bool>(dependencies_.durableToolBroker)},
                     {"optional_generative_image_provider_adapter", dependencies_.imageProvider != nullptr ||
                         static_cast<bool>(dependencies_.durableToolBroker)},
                     {"pdf_creation", true}, {"shell_and_process_execution", authority.shellEnabled()},

@@ -833,6 +833,28 @@ template <typename Duration>
     return encoded;
 }
 
+[[nodiscard]] Json comfyConfigJson(const Domain::ComfyUiConfig& config)
+{
+    return Json{{"enabled", config.enabled}, {"automatic_setup", config.automaticSetup},
+        {"installation_path", config.installationPath}, {"model_storage_path", config.modelStoragePath},
+        {"endpoint", config.endpoint}, {"download_budget_bytes", config.downloadBudgetBytes},
+        {"free_space_reserve_bytes", config.freeSpaceReserveBytes},
+        {"generation_timeout_seconds", config.generationTimeoutSeconds}, {"quality_preference", config.qualityPreference}};
+}
+
+[[nodiscard]] Domain::ComfyUiConfig parseComfyConfig(const Json& value)
+{
+    requireExactFields(value, {"enabled", "automatic_setup", "installation_path", "model_storage_path",
+        "endpoint", "download_budget_bytes", "free_space_reserve_bytes", "generation_timeout_seconds", "quality_preference"}, "ComfyUI configuration");
+    Domain::ComfyUiConfig config{booleanMember(value, "enabled"), booleanMember(value, "automatic_setup"),
+        stringMember(value, "installation_path"), stringMember(value, "model_storage_path"), stringMember(value, "endpoint"),
+        uint64Member(value, "download_budget_bytes"), uint64Member(value, "free_space_reserve_bytes"),
+        uint32Member(value, "generation_timeout_seconds"), stringMember(value, "quality_preference")};
+    auto valid = Domain::validateComfyUiConfig(config);
+    if (!valid) reject(valid.error().code, valid.error().message);
+    return config;
+}
+
 [[nodiscard]] Json settingsJson(const Domain::ManagerSettings& settings)
 {
     validateSettings(settings);
@@ -856,6 +878,7 @@ template <typename Duration>
     value["shell_timeout_seconds"] = settings.shellTimeout.count();
     value["shell_enabled"] = settings.shellEnabled;
     value["filesystem_access"] = Domain::wireName(settings.fileSystemAccess);
+    value["comfy_ui"] = comfyConfigJson(settings.comfyUi);
     value["watchdog_interval_seconds"] = settings.watchdogInterval.count();
     return value;
 }
@@ -882,9 +905,10 @@ template <typename Duration>
          "shell_enabled",
          "shell_timeout_seconds",
          "watchdog_interval_seconds"},
-        "Manager settings", {"filesystem_access"});
+        "Manager settings", {"filesystem_access", "comfy_ui"});
 
     Domain::ManagerSettings settings;
+    if (value.contains("comfy_ui")) settings.comfyUi = parseComfyConfig(member(value, "comfy_ui"));
     settings.dashboardHost = stringMember(value, "dashboard_host");
     settings.dashboardPort = uint16Member(value, "dashboard_port");
     settings.dashboardRefreshInterval = secondsFrom(
@@ -963,6 +987,7 @@ template <typename Duration>
     if (patch.shellEnabled) value["shell_enabled"] = *patch.shellEnabled;
     value["filesystem_access"] = nullptr;
     if (patch.fileSystemAccess) value["filesystem_access"] = Domain::wireName(*patch.fileSystemAccess);
+    value["comfy_ui"] = patch.comfyUi ? comfyConfigJson(*patch.comfyUi) : Json(nullptr);
     value["watchdog_interval_seconds"] =
         optionalDuration(patch.watchdogInterval);
     return value;
@@ -1000,9 +1025,11 @@ template <typename Value, typename Parser>
          "shell_enabled",
          "shell_timeout_seconds",
          "watchdog_interval_seconds"},
-        "Manager settings patch", {"filesystem_access"});
+        "Manager settings patch", {"filesystem_access", "comfy_ui"});
 
     Domain::ManagerSettingsPatch patch;
+    if (value.contains("comfy_ui") && !member(value, "comfy_ui").is_null())
+        patch.comfyUi = parseComfyConfig(member(value, "comfy_ui"));
     patch.dashboardHost = optionalField<std::string>(
         value,
         "dashboard_host",

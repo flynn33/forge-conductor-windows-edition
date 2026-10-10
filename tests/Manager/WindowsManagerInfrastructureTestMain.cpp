@@ -15,6 +15,7 @@ void registerTaskSchedulerDurationCodecTests(TestRegistry& tests);
 void registerWindowsManagerStartupComHandlerTests(TestRegistry& tests);
 void registerWindowsManagerStartupComRaiiTests(TestRegistry& tests);
 void registerWindowsManagerStartupServiceTests(TestRegistry& tests);
+void registerWindowsManagerBootstrapCommandTests(TestRegistry& tests);
 
 } // namespace ForgeConductor::Tests
 
@@ -31,6 +32,7 @@ int main()
     ForgeConductor::Tests::registerWindowsManagerStartupComHandlerTests(tests);
     ForgeConductor::Tests::registerWindowsManagerStartupComRaiiTests(tests);
     ForgeConductor::Tests::registerWindowsManagerStartupServiceTests(tests);
+    ForgeConductor::Tests::registerWindowsManagerBootstrapCommandTests(tests);
 
     std::size_t passed = 0U;
     for (const auto& [name, run] : tests) {

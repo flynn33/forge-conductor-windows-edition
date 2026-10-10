@@ -1,5 +1,7 @@
 # Release verification
 
+The focused ComfyUI label runs native service, backend, package-resolution and starter-workflow coverage. Run it after Product All with `./scripts/test.ps1 -Configuration Release -Architecture x64 -Parallel 4 -Label T-COMFY`; release acceptance still uses the complete suite below. VS Code provides **Forge: Build Release x64**, **Forge: Test Release x64**, and **Forge: Test ComfyUI Release x64** tasks. The Release build explicitly includes the app, backend and staged resources.
+
 Forge Conductor uses native unit, integration, protocol, persistence, presentation, packaging-contract, and simulated lifecycle coverage. Release acceptance is based on a complete x64 Release build and the entire configured CTest matrix, not a reduced smoke subset. The test entry point first builds the configured test graph so fresh and incremental runners cannot execute stale fixture binaries.
 
 ## Required release checks
@@ -24,9 +26,9 @@ Production publication replaces `-DevelopmentSigning` with an approved PFX and p
 - Simulated lifecycle tests use disposable roots and copied fixtures. Tests and packaging must never mutate the operator's live `%LOCALAPPDATA%\Forge Conductor` store.
 - Provider-dependent productive inference is reported separately when LM Studio and a loaded model are available; provider absence must produce an actionable disconnected state rather than fabricated success.
 
-## Current 1.3.28 qualification boundary
+## Current 1.3.29 qualification boundary
 
-The release defines 112 tools. Current Product All, the entire configured CTest graph, static gates, package persistence, signed-package/installed payload matches, installed 112/112/5 catalogs and native LM Studio image-provider measurements are recorded separately. Read [the verification record](validation/HOST-CAPABILITIES-1.3.28.md) before making a qualification claim.
+The source defines 125 Primary/Fallback tools and 177 configured Release CTest entries. Current versioned Product All, complete Release, static gates, package persistence, signing, installed payload and publication checks are recorded in [release verification](validation/RELEASE-1.3.29.md). The [ComfyUI host report](COMFYUI_HOST_QUALIFICATION.md) records actual productive inference and operator acceptance separately. Earlier measured test counts remain historical.
 
 The isolated ten-target provider suite and six-case real ComfyUI native smoke are separate measured checks. Tests cover authority narrowing, durable exact-ID recovery without replay, cancellation publication suppression, bounded retention/cache control identity, UUID normalization, WinHTTP boundaries and alpha-aware mask composition. The smoke is manual, excluded from the default build and never a CTest entry. It does not establish Manager IPC, Qwen delivery, semantic editing or a real process/network failure. See [the provider contract](IMAGE-PROVIDER.md).
 

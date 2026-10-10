@@ -22,6 +22,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <cwctype>
+#include <iomanip>
 #include <limits>
 #include <optional>
 #include <sstream>
@@ -139,6 +140,14 @@ void clearSavedText(const wchar_t* const valueName) noexcept
         begin = end + 1U;
     }
     return tags;
+}
+
+[[nodiscard]] std::uint64_t comfyByteValue(const Microsoft::UI::Xaml::Controls::NumberBox& control)
+{
+    const auto value = control.Value();
+    if (!std::isfinite(value) || value < 0.0 || value > 10'000'000'000'000.0 || std::floor(value) != value)
+        throw std::invalid_argument{"ComfyUI byte limits must be whole numbers within 0 through 10 TB."};
+    return static_cast<std::uint64_t>(value);
 }
 
 void applyMetric(
@@ -1800,6 +1809,18 @@ MainWindow::ReadSettingsForm(std::string& error)
         settings.shellTimeout = std::chrono::seconds{
             numberValue(SettingsShellTimeout(), "Shell timeout")};
         settings.shellEnabled = SettingsShellEnabled().IsOn();
+        auto& comfy = settings.comfyUi;
+        comfy.enabled = SettingsComfyEnabled().IsOn();
+        comfy.automaticSetup = SettingsComfyAutomaticSetup().IsOn();
+        comfy.installationPath = winrt::to_string(SettingsComfyInstallation().Text());
+        comfy.modelStoragePath = winrt::to_string(SettingsComfyModelStorage().Text());
+        comfy.endpoint = winrt::to_string(SettingsComfyEndpoint().Text());
+        comfy.downloadBudgetBytes = comfyByteValue(SettingsComfyDownloadBudget());
+        comfy.freeSpaceReserveBytes = comfyByteValue(SettingsComfySpaceReserve());
+        comfy.generationTimeoutSeconds = numberValue(SettingsComfyTimeout(), "ComfyUI generation timeout");
+        const auto quality = SettingsComfyQuality().SelectedIndex();
+        if (quality < 0 || quality > 2) throw std::invalid_argument{"Select the default ComfyUI quality."};
+        comfy.qualityPreference = quality == 0 ? "balanced" : quality == 1 ? "quality" : "preview";
         const auto accessIndex = SettingsFileSystemAccess().SelectedIndex();
         if (accessIndex < 0 || accessIndex > 1) throw std::invalid_argument{"Select a filesystem access mode."};
         settings.fileSystemAccess = accessIndex == 1
@@ -1845,6 +1866,19 @@ void MainWindow::ApplySettingsForm(
     SettingsSessionTtl().Value(static_cast<double>(settings.sessionIdleTtl.count()));
     SettingsShellTimeout().Value(static_cast<double>(settings.shellTimeout.count()));
     SettingsShellEnabled().IsOn(settings.shellEnabled);
+    const auto& comfy = settings.comfyUi;
+    SettingsComfyEnabled().IsOn(comfy.enabled);
+    SettingsComfyAutomaticSetup().IsOn(comfy.automaticSetup);
+    SettingsComfyInstallation().Text(winrt::to_hstring(comfy.installationPath));
+    SettingsComfyModelStorage().Text(winrt::to_hstring(comfy.modelStoragePath));
+    SettingsComfyEndpoint().Text(winrt::to_hstring(comfy.endpoint));
+    SettingsComfyDownloadBudget().Value(static_cast<double>(comfy.downloadBudgetBytes));
+    SettingsComfySpaceReserve().Value(static_cast<double>(comfy.freeSpaceReserveBytes));
+    SettingsComfyTimeout().Value(comfy.generationTimeoutSeconds);
+    SettingsComfyQuality().SelectedIndex(comfy.qualityPreference == "quality" ? 1 : comfy.qualityPreference == "preview" ? 2 : 0);
+    const auto comfyState = comfy.enabled ? "Configured · " + comfy.endpoint + " · readiness not probed" : std::string{"ComfyUI automation disabled"};
+    SettingsComfyState().Text(winrt::to_hstring(comfyState));
+    RigComfyReadiness().Text(winrt::to_hstring(comfyState));
     SettingsFileSystemAccess().SelectedIndex(
         settings.fileSystemAccess == ::ForgeConductor::Domain::FileSystemAccessMode::Host ? 1 : 0);
     SettingsLogLevel().SelectedIndex(static_cast<std::int32_t>(settings.logLevel));
@@ -3618,6 +3652,55 @@ winrt::fire_and_forget MainWindow::RefreshContinuityPackets(std::string action, 
     }
 }
 
+void MainWindow::ComfyProbeClicked(Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
+{
+    RefreshComfyStatus();
+}
+
+winrt::fire_and_forget MainWindow::RefreshComfyStatus()
+{
+    const auto lifetime = get_strong();
+    if (comfyProbeBusy_ || !connection_ || cancellation_.stop_requested()) co_return;
+    if (selectedProjectId_.empty()) {
+        SettingsComfyState().Text(L"Select an authorized project before probing ComfyUI.");
+        RigComfyReadiness().Text(SettingsComfyState().Text());
+        co_return;
+    }
+    const auto project = selectedProjectId_;
+    const auto effectiveConfig = providerSettings_ ? providerSettings_->comfyUi : ::ForgeConductor::Domain::ComfyUiConfig{};
+    comfyProbeBusy_ = true;
+    ComfyProbeButton().IsEnabled(false);
+    SettingsComfyState().Text(L"Probing effective ComfyUI settings…");
+    winrt::apartment_context ui;
+    ::ForgeConductor::Hosts::App::ToolOutcomeView view;
+    try {
+        co_await winrt::resume_background();
+        view = connection_->invokeTool(project, "comfy_status", "{}", cancellation_.get_token());
+    } catch (const std::exception& error) { view.message = error.what(); }
+    catch (...) { view.message = "ComfyUI readiness probe failed."; }
+    try { co_await ui; } catch (...) { co_return; }
+    comfyProbeBusy_ = false;
+    ComfyProbeButton().IsEnabled(true);
+    if (project != selectedProjectId_ || !providerSettings_ || providerSettings_->comfyUi != effectiveConfig) co_return;
+    auto state = view.message;
+    if (view.snapshot) {
+        try {
+            auto payload = nlohmann::json::parse(view.snapshot->canonicalPayload);
+            if (payload.contains("content") && payload["content"].is_array()) {
+                for (const auto& item : payload["content"]) {
+                    if (item.value("type", std::string{}) == "text") {
+                        payload = nlohmann::json::parse(item.at("text").get<std::string>());
+                        break;
+                    }
+                }
+            }
+            state = payload.contains("configured") ? ::ForgeConductor::Hosts::App::comfyReadinessText(payload) : view.message;
+        } catch (...) { state = view.message + " ComfyUI readiness details could not be read."; }
+    }
+    SettingsComfyState().Text(winrt::to_hstring(state));
+    RigComfyReadiness().Text(winrt::to_hstring(state));
+}
+
 winrt::fire_and_forget MainWindow::RunAction(const Action action)
 {
     auto lifetime = get_strong();
@@ -4075,6 +4158,7 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
             break;
         case Action::SettingsSave: {
             ::ForgeConductor::Domain::ManagerSettingsPatch patch;
+            patch.comfyUi = submitted->comfyUi;
             patch.dashboardHost = submitted->dashboardHost;
             patch.dashboardPort = submitted->dashboardPort;
             patch.dashboardRefreshInterval = submitted->dashboardRefreshInterval;
@@ -4418,6 +4502,10 @@ winrt::fire_and_forget MainWindow::RunAction(const Action action)
                 providerSettings_ = loaded.settings;
                 if (!providerEdited) ApplyProviderForm(*providerSettings_);
                 if (!settingsEdited) ApplySettingsForm(*providerSettings_);
+                const auto& comfy = loaded.settings.comfyUi;
+                const auto comfyState = comfy.enabled ? "Configured · " + comfy.endpoint + " · readiness not probed" : std::string{"ComfyUI automation disabled"};
+                SettingsComfyState().Text(winrt::to_hstring(comfyState));
+                RigComfyReadiness().Text(winrt::to_hstring(comfyState));
                 SettingsHeroReadback().Text(providerEdited || settingsEdited
                     ? L"Effective Manager readback · pending edits preserved"
                     : L"Effective Manager readback · verified");

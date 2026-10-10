@@ -1,5 +1,13 @@
 # Troubleshooting
 
+## ComfyUI automation in 1.3.29
+
+Use the saved Settings configuration and `comfy_status` to distinguish an enabled feature, detected installation, reachable endpoint and verified owned runtime. `comfy_validate` reports structural/inventory preflight; actual custom-node submission or execution errors appear in `comfy_job_status`. Preparation job status and its manifest identify missing or unsupported dependencies, transfer budget/reserve failures, package conflicts, rollback and unreconciled changes. Do not describe a started preparation as completed setup.
+
+After reconnect or Manager restart, find the original project-owned job with `comfy_job_list` and read its exact state. Use `comfy_job_resume` to reconcile its recorded prompt; a lost acknowledgement is not a reason to create a replacement render. A changed graph, input, dependency or preview file requires a new preview. If the operator already approved a verified preview delivered in the current chat, final recovery verifies that saved delivery and the original conversation rather than asking for another reply in the older chat. `verified` acknowledges delivery without approving final rendering.
+
+Deliver the returned absolute artifact path and sampled contact preview. On the qualified LM Studio 0.4.26+4 host, normal chat links reject loopback URLs: use the existing `browser_open` with the exact `provider_view_url` and inspect the observed browser address. Launch acceptance alone is not proof of loading or playback. Media decode and sampled visual review are separate from operator quality acceptance. See [ComfyUI Automation](ComfyUI-Automation) and the [host report](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/COMFYUI_HOST_QUALIFICATION.md).
+
 ## Repeated view pulse in 1.3.5
 
 The retained Manager diagnostic became visible in the shared page after the Actions frame was removed. Periodic telemetry changed it between one line and several lines, moving the content below it. Version 1.3.6 restores collapsed visibility and skips transient connecting text during observation refreshes while keeping metric polling active. The isolated WinUI regression observer measured no position changes after the fix; installed-screen observation was not completed because the native-control driver failed before initialization with `MODULE_NOT_FOUND`. See [Release 1.3.6](Release-1.3.6).
@@ -36,7 +44,7 @@ Choose a policy repository folder to bind it immediately. Use **Inspect findings
 
 Manager lifetime does not grant saved authority or confirm an uncertain UI effect. Current project/provider/route validation, the OS-held single-writer lease and selected-native evidence still gate control dispatch. An empty or unrelated third chat does not establish the successor. Explicit route migration requires a fresh authorized Primary callback, matching actual native packet/recovery evidence and exact preservation of the old encrypted checkpoint. Uncertain New chat or Send is reconciled without automatic replay. Completion requires the actual handed message, successor `context_get` and a following successful Forge tool result. Installed 1.3.28 automatic delivery passed the source-bound reserve-pressure scope recorded in the 1.3.28 verification record.
 
-In the superseded 1.3.22 run, the retained checkpoint reached an uncertain New chat effect and the selected new conversation had zero messages. The three CLI and bridge parents exited with code 1; the captured exit codes do not identify their exit cause. Do not classify that empty chat as delivered or complete. Current 1.3.28 installed Manager-lifetime observations retain a separate verification record.
+In the superseded 1.3.22 run, the retained checkpoint reached an uncertain New chat effect and the selected new conversation had zero messages. The three CLI and bridge parents exited with code 1; the captured exit codes do not identify their exit cause. Do not classify that empty chat as delivered or complete. Prior 1.3.28 installed Manager-lifetime observations retain a separate verification record.
 
 A saved packet or local connection ID alone is not native successor proof. Inspect the selected native conversation state and continuity status. The product must verify the exact handed message and enabled integrations in a new native chat, then packet retrieval and a following Forge result. CLU is governance and cannot repair chat creation by itself.
 
@@ -48,7 +56,7 @@ Auto Continuity was verified with a reserve-triggered pause, not physical contex
 
 If the primary MCP worker was evicted during handoff, durable packet records may still exist but automatic recovery of the interrupted UI phase is not implemented. Do not describe that state as completed. Physical exhaustion and already-running agent reattachment were not exercised by the 1.3.5 reserve-pressure verification.
 
-### Current 1.3.28 Manager observer — current recovery measurements
+### Retained 1.3.28 Manager observer — recorded recovery measurements
 
 The source now checkpoints the native phase, exact packet revision, conversation identities and New chat/Send receipts. Inspect `get_forge_status.visible_chat_continuity.state` and `handoff_recovery` for `recovery_pending`, its recorded phase, reason, packet ID, predecessor/successor IDs and `automatic_replay: false`. That state retains unfinished work; it is not a completed rollover.
 

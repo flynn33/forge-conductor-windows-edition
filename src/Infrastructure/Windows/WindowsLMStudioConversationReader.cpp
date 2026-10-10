@@ -262,7 +262,8 @@ std::vector<std::string> nativeTextBodies(const Json& blocks)
 }
 
 void observeNativeContent(
-    const Json& version, LMStudioConversationObservation& observation)
+    const Json& version, LMStudioConversationObservation& observation,
+    const std::size_t messageIndex, const std::size_t selectedVersion)
 {
     struct RequestEvidence final {
         std::string name;
@@ -284,7 +285,7 @@ void observeNativeContent(
             if (user && type == "text" && part.contains("text") && part["text"].is_string()) {
                 userText += part["text"].get<std::string>();
             }
-            if (!part.contains("callId") || !part["callId"].is_number()) {
+            if (user || !part.contains("callId") || !part["callId"].is_number()) {
                 continue;
             }
             const auto callId = part["callId"].dump();
@@ -311,7 +312,7 @@ void observeNativeContent(
                 LMStudioNativeToolResult result{
                     name, part["content"].get<std::string>(),
                     request->second.pluginIdentifier,
-                    resultRequestId.empty() ? request->second.requestId : resultRequestId, {}};
+                    resultRequestId.empty() ? request->second.requestId : resultRequestId, {}, messageIndex, selectedVersion};
                 const auto blocks = Json::parse(result.content, nullptr, false);
                 result.textBodies = nativeTextBodies(blocks);
                 observation.nativeToolResults.push_back(std::move(result));
@@ -330,6 +331,10 @@ void observeNativeContent(
         }
     }
     if (user) {
+        const bool forgeGenerated = userText.starts_with("Auto Continuity:") ||
+            userText.starts_with("Auto Continuity cannot") ||
+            userText.starts_with("Resume this Forge project from its model-written continuity packet.");
+        observation.userMessageEvidence.push_back({userText, messageIndex, selectedVersion, forgeGenerated});
         observation.userMessages.push_back(std::move(userText));
     }
 }
@@ -442,9 +447,10 @@ void observeConversation(
     // The reverse scan above validates every selected version and finds the
     // latest provider usage. Native delivery and tool evidence must retain
     // chronological message order, including the forward step order within it.
+    std::size_t nativeMessageIndex{};
     for (const auto& message : messages) {
         const auto selected = message.at("currentlySelected").get<std::size_t>();
-        observeNativeContent(message.at("versions").at(selected), observation);
+        observeNativeContent(message.at("versions").at(selected), observation, nativeMessageIndex++, selected);
     }
     if (!foundUsage && document.contains("lastUsedModel") &&
         document["lastUsedModel"].is_object() &&
@@ -455,11 +461,10 @@ void observeConversation(
     }
 }
 
-} // namespace
-
 Domain::Result<std::optional<LMStudioConversationObservation>>
-WindowsLMStudioConversationReader::read(
+readConversationImpl(
     const Domain::PathText& lmStudioRoot,
+    const std::optional<std::string_view> requestedConversation,
     const Domain::OperationContext& context) noexcept
 {
     try {
@@ -472,17 +477,25 @@ WindowsLMStudioConversationReader::read(
                 Domain::ErrorCodes::RecordNotFound, "LM Studio root is unavailable.", true));
         }
         const auto configPath = root / L".internal" / L"conversation-config.json";
-        const auto config = readJson(configPath, context);
-        if (!config) {
-            return Domain::Result<Observation>::success(std::nullopt);
+        std::string selected;
+        if (requestedConversation) selected = *requestedConversation;
+        else {
+            const auto config = readJson(configPath, context);
+            if (!config) return Domain::Result<Observation>::success(std::nullopt);
+            selected = selectedChat(*config);
         }
-        const auto selected = selectedChat(*config);
         if (selected.empty()) {
+            if (requestedConversation) return Domain::Result<Observation>::failure(Domain::makeError(
+                Domain::ErrorCodes::InvalidRequest, "A saved LM Studio conversation identifier is required."));
             return Domain::Result<Observation>::success(std::nullopt);
         }
+        if (selected.size() > Domain::PathText::MaximumBytes || !Domain::isValidUtf8(selected) ||
+            selected.find_first_of("\0\r\n", 0U, 3U) != std::string::npos)
+            return Domain::Result<Observation>::failure(Domain::makeError(
+                Domain::ErrorCodes::InvalidRequest, "LM Studio conversation identifier is not a bounded UTF-8 path."));
         const auto relative = nativePath(selected);
         const auto repository = std::filesystem::weakly_canonical(root / L"conversations", error);
-        if (error || relative.is_absolute() || relative.has_root_path()) {
+        if (error || relative.is_absolute() || relative.has_root_path() || selected.find(':') != std::string::npos) {
             return Domain::Result<Observation>::failure(Domain::makeError(
                 Domain::ErrorCodes::InvalidRequest,
                 "LM Studio selectedConversation must name a relative conversation file."));
@@ -504,11 +517,13 @@ WindowsLMStudioConversationReader::read(
         observation.conversationPath = pathText(conversation);
         observation.projectIdentifier = projectIdentifier(root, context);
         observeConversation(*document, observation);
-        const auto currentConfig = readJson(configPath, context);
-        if (!currentConfig || selectedChat(*currentConfig) != selected) {
-            return Domain::Result<Observation>::failure(Domain::makeError(
-                Domain::ErrorCodes::Conflict,
-                "LM Studio changed the selected conversation during its read.", true));
+        if (!requestedConversation) {
+            const auto currentConfig = readJson(configPath, context);
+            if (!currentConfig || selectedChat(*currentConfig) != selected) {
+                return Domain::Result<Observation>::failure(Domain::makeError(
+                    Domain::ErrorCodes::Conflict,
+                    "LM Studio changed the selected conversation during its read.", true));
+            }
         }
         check(context);
         return Domain::Result<Observation>::success(std::move(observation));
@@ -526,6 +541,24 @@ WindowsLMStudioConversationReader::read(
         return Domain::Result<Observation>::failure(Domain::makeError(
             Domain::ErrorCodes::InternalFailure, "LM Studio conversation read failed.", true));
     }
+}
+
+} // namespace
+
+Domain::Result<std::optional<LMStudioConversationObservation>>
+WindowsLMStudioConversationReader::read(
+    const Domain::PathText& lmStudioRoot,
+    const Domain::OperationContext& context) noexcept
+{
+    return readConversationImpl(lmStudioRoot, std::nullopt, context);
+}
+
+Domain::Result<std::optional<LMStudioConversationObservation>>
+WindowsLMStudioConversationReader::readConversation(
+    const Domain::PathText& lmStudioRoot, const std::string_view conversationId,
+    const Domain::OperationContext& context) noexcept
+{
+    return readConversationImpl(lmStudioRoot, conversationId, context);
 }
 
 } // namespace ForgeConductor::Infrastructure::Windows

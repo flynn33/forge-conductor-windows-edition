@@ -409,7 +409,8 @@ void runMatrix(const Json& fixture)
     }
     const std::vector<std::string> hostCapabilityExtensions{
         "agent_cancel", "agent_poll", "agent_spawn", "browser_open",
-        "desktop_capture", "desktop_click", "desktop_key", "desktop_list", "desktop_read", "desktop_type",
+        "comfy_catalog", "comfy_control", "comfy_job_cancel", "comfy_job_list", "comfy_job_resume", "comfy_job_status", "comfy_prepare", "comfy_run", "comfy_status", "comfy_validate", "comfy_workflow",
+        "desktop_capture", "desktop_click", "desktop_drag", "desktop_key", "desktop_list", "desktop_read", "desktop_scroll", "desktop_type",
         "document_write", "host_capabilities", "http_request", "image_analyze", "image_edit", "image_generate", "image_job_cancel", "image_job_resume", "image_job_status", "image_provider_status", "image_read", "image_write", "presentation_write",
         "schedule_cancel", "schedule_create", "schedule_list", "schedule_run_now", "spreadsheet_write", "web_fetch", "web_search"};
     require(fixture.at("lineage").at("windows_host_extensions")

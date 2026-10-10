@@ -244,6 +244,7 @@ class RouterFake final : public Contracts::IToolRouter {
 public:
     enum class Mode {
         Image,
+        ComfyImage,
         InvalidImage,
         InvalidImageType,
         InvalidImageMimeType,
@@ -311,7 +312,7 @@ public:
                         "The scripted router observed cancellation."));
             }
             std::string payload{R"({"value":7,"ok":true})"};
-            if (mode == Mode::Image || mode == Mode::InvalidImage || mode == Mode::InvalidImageType ||
+            if (mode == Mode::Image || mode == Mode::ComfyImage || mode == Mode::InvalidImage || mode == Mode::InvalidImageType ||
                 mode == Mode::InvalidImageMimeType || mode == Mode::MissingImageMimeType || mode == Mode::OversizedImage) {
                 auto preview = Json{{"ok", true}, {"path", "C:\\workspace\\image.png"},
                     {"image_mime_type", "image/png"}, {"preview_width", 1}, {"preview_height", 1},
@@ -322,6 +323,17 @@ public:
                 if (mode == Mode::InvalidImageMimeType) preview["image_mime_type"] = 17;
                 if (mode == Mode::MissingImageMimeType) preview.erase("image_mime_type");
                 if (mode == Mode::OversizedImage) preview["image_base64"] = std::string(512U * 1024U + 4U, 'A');
+                if (mode == Mode::ComfyImage) {
+                    preview["job_id"] = "90000000-0000-4000-8000-000000000009";
+                    preview["state"] = "awaiting_preview_approval";
+                    preview["requires_operator_approval"] = true;
+                    preview["approval_reply_choices"] = Json::array({"approved", "yes", "render final"});
+                    preview["receipt_path"] = "C:\\workspace\\comfy-receipt.json";
+                    preview["artifacts"] = Json::array({{{"node_id", "12"}, {"path", "C:\\workspace\\draft.mp4"},
+                        {"media_type", "video/mp4"}, {"sha256", std::string(64U, 'a')},
+                        {"preview", {{"mime_type", "image/png"}, {"sha256", std::string(64U, 'b')},
+                            {"width", 1}, {"height", 1}, {"delivered_as_image_content", true}}}}});
+                }
                 payload = preview.dump();
             } else if (mode == Mode::LargeSuccess) {
                 payload = Json{{"ok", true}, {"stdout", escapedToolText()}}.dump();
@@ -672,7 +684,7 @@ void testInitializeNegotiationAndRoles(Contracts::IToolCatalog& catalog)
         const auto response = parse(session.output.front());
         REQUIRE(response.at("result").at("instructions").get<std::string>().find(
                     "Project folder: D:\\workspace") != std::string::npos);
-        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.3.28");
+        REQUIRE(response.at("result").at("serverInfo").at("version") == "1.3.29");
         REQUIRE(response.at("result").at("serverInfo").at("name") ==
             (role == Domain::McpRole::Primary
                  ? "forge-conductor"
@@ -1043,15 +1055,16 @@ void testLargeToolTextFragments(Contracts::IToolCatalog& catalog)
 
 void testNativeImageContent(Contracts::IToolCatalog& catalog)
 {
-    for (const auto mode : {RouterFake::Mode::Image, RouterFake::Mode::InvalidImage,
+    for (const auto mode : {RouterFake::Mode::Image, RouterFake::Mode::ComfyImage, RouterFake::Mode::InvalidImage,
                            RouterFake::Mode::InvalidImageType, RouterFake::Mode::InvalidImageMimeType,
                            RouterFake::Mode::MissingImageMimeType, RouterFake::Mode::OversizedImage}) {
         RouterFake router{{mode}};
         ResolverFake resolver;
         SequenceUuidGenerator uuids;
         auto session = serve(catalog, router, resolver, uuids, Domain::McpRole::Primary,
-            {Inbound::json(request(1, "tools/call", Json{{"arguments", Json::object()},
-                {"name", "agent_list"}})), Inbound::json(request(2, "ping"))}, 2U);
+            {Inbound::json(request(1, "tools/call", Json{{"arguments", mode == RouterFake::Mode::ComfyImage
+                    ? Json{{"job_id", "90000000-0000-4000-8000-000000000009"}} : Json::object()},
+                {"name", mode == RouterFake::Mode::ComfyImage ? "comfy_job_status" : "agent_list"}})), Inbound::json(request(2, "ping"))}, 2U);
         REQUIRE(session.result.hasValue());
         REQUIRE(session.output.size() == 2U);
         Json response;
@@ -1062,7 +1075,7 @@ void testNativeImageContent(Contracts::IToolCatalog& catalog)
             if (frame.at("id") == 2) { REQUIRE(frame.at("result").is_object()); ping = true; }
         }
         REQUIRE(ping && response.is_object());
-        if (mode != RouterFake::Mode::Image) {
+        if (mode != RouterFake::Mode::Image && mode != RouterFake::Mode::ComfyImage) {
             REQUIRE(response.at("isError") == true);
             REQUIRE(response.at("structuredContent").at("code") == std::string{Domain::ErrorCodes::InternalFailure});
             REQUIRE(response.at("content").size() == 1U);
@@ -1078,6 +1091,14 @@ void testNativeImageContent(Contracts::IToolCatalog& catalog)
             REQUIRE(response.at("content").at(1).at("type") == "image");
             REQUIRE(response.at("content").at(1).at("mimeType") == "image/png");
             REQUIRE(response.at("content").at(1).at("data").get<std::string>().starts_with("iVBORw0KGgo"));
+            if (mode == RouterFake::Mode::ComfyImage) {
+                REQUIRE(metadata.at("state") == "awaiting_preview_approval" && metadata.at("requires_operator_approval") == true);
+                REQUIRE(metadata.at("approval_reply_choices") == Json::array({"approved", "yes", "render final"}));
+                REQUIRE(metadata.at("receipt_path") == "C:\\workspace\\comfy-receipt.json");
+                REQUIRE(metadata.at("artifacts").at(0).at("sha256") == std::string(64U, 'a'));
+                REQUIRE(metadata.at("artifacts").at(0).at("preview").at("sha256") == std::string(64U, 'b'));
+                REQUIRE(!metadata.at("artifacts").at(0).at("preview").contains("base64"));
+            }
         }
     }
 }

@@ -34,6 +34,8 @@
         "${workspaceFolder}\\scripts\\build.ps1",
         "-Configuration",
         "Release",
+        "-Product",
+        "All",
         "-Architecture",
         "x64",
         "-Parallel",
@@ -43,6 +45,46 @@
       "problemMatcher": [
         "$msCompile"
       ]
+    },
+    {
+      "label": "Forge: Test Release x64",
+      "type": "shell",
+      "command": "pwsh.exe",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}\\scripts\\test.ps1",
+        "-Configuration",
+        "Release",
+        "-Architecture",
+        "x64",
+        "-Parallel",
+        "${input:parallelJobs}"
+      ],
+      "dependsOn": "Forge: Build Release x64",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Forge: Test ComfyUI Release x64",
+      "type": "shell",
+      "command": "pwsh.exe",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}\\scripts\\test.ps1",
+        "-Configuration",
+        "Release",
+        "-Architecture",
+        "x64",
+        "-Parallel",
+        "${input:parallelJobs}",
+        "-Label",
+        "T-COMFY"
+      ],
+      "dependsOn": "Forge: Build Release x64",
+      "group": "test",
+      "problemMatcher": []
     },
     {
       "label": "Forge: Test Debug x64",

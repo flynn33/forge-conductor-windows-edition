@@ -3,12 +3,14 @@
 
 #include "ForgeConductor/Domain/ProductIdentity.h"
 #include "ForgeConductor/Infrastructure/Windows/WindowsDashboardUriActivationCommand.h"
+#include "ForgeConductor/Infrastructure/Windows/WindowsManagerBootstrapCommand.h"
 
 #include <iostream>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <nlohmann/json.hpp>
 
 namespace ForgeConductor::Hosts::Cli {
 namespace {
@@ -28,6 +30,20 @@ public:
         }
 
         const auto command = arguments.front();
+        if (command == "--internal-start-manager") {
+            if (arguments.size() != 1U) {
+                std::cout << "{\"ok\":false,\"code\":\"invalid_request\"}\n";
+                return 2;
+            }
+            Infrastructure::Windows::WindowsManagerBootstrapCommand bootstrap;
+            const auto started = bootstrap.run(std::cin);
+            if (!started) {
+                std::cout << nlohmann::json{{"ok", false}, {"code", started.error().code}}.dump() << '\n';
+                return 1;
+            }
+            std::cout << "{\"ok\":true}\n";
+            return 0;
+        }
         if (command == "--internal-open-dashboard-uri") {
             if (arguments.size() != 1U) {
                 std::cerr << "Invalid internal dashboard activation request.\n";

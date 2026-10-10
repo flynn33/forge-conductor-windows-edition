@@ -1,4 +1,4 @@
-# Host workflows in 1.3.28
+# Host workflows in 1.3.29
 
 ## Optional image generation and editing
 
@@ -9,7 +9,7 @@ The initial sd1 profile is disabled by default and requires an explicit owner-co
 The isolated direct-native six-case ComfyUI smoke passed with 128/256-pixel outputs and 2/4/6 steps, including exact 8,192-pixel outside-mask preservation and controlled response-loss recovery. The 1.3.28 verification record reports measured Manager IPC and LM Studio workflows; semantic instruction following and full host model quality remain separate, unverified claims.
 
 
-The measurement block below is historical 1.3.19 qualification; it does not qualify the current 1.3.28 release.
+The measurement block below is historical 1.3.19 qualification; it does not qualify the current 1.3.29 release.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -17,7 +17,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-The current 1.3.28 source catalog defines 112 Primary/Fallback tools, adding `cmake_test_run` and `cmake_test_status` while retaining all previous tools, five CLU governance tools and ten specialist playbooks. Current build, signed-install, catalog and native measurements are recorded in the 1.3.28 verification record; isolated provider checks retain their own scope. Call `host_capabilities` before deciding that a category is unavailable: it reports actual tool names, filesystem mode, Manager-backed capabilities, and external connection requirements. `get_forge_status` also reports the selected project's directory and detailed active authority. The full catalog remains available through the existing MCP protocol.
+The current 1.3.29 source catalog defines 125 Primary/Fallback tools, five CLU governance tools and ten specialist playbooks. Eleven general ComfyUI tools and desktop scroll/drag extend the prior catalog; see [ComfyUI automation](COMFYUI-AUTOMATION.md). Call `host_capabilities` for actual names, Manager capabilities and external prerequisites. The [release verification](validation/RELEASE-1.3.29.md) and [host report](COMFYUI_HOST_QUALIFICATION.md) distinguish source/package checks, productive inference and operator acceptance.
 
 Rig's corrected display shows the native conversation observed by the App and the Manager's enabled/disabled project/provider preference, distinguishing a read from a save. The preference does not establish live rollover availability. Inspect `visible_chat_continuity` in Primary MCP's `get_forge_status` for the native worker's actual state; its `available` flag becomes true after a successor conversation and handed message are verified. The 1.3.19 App includes this correction from the earlier candidate; final installed/readback and current-chat results are recorded in the versioned verification record. Earlier tests and package evidence retain their recorded source identities.
 
@@ -135,4 +135,4 @@ Manager reports meaningful transitions through its local notification callback, 
 
 ## Verification and remaining external requirements
 
-Current 1.3.28 source, package, installed and native measurements are recorded in [the verification record](validation/HOST-CAPABILITIES-1.3.28.md). Published 1.3.21 evidence retains its original scope. See the historical [1.3.19 release notes](releases/1.3.19.md) and [verification](validation/HOST-CAPABILITIES-1.3.19.md) for that artifact's executed checks and exact scope. A listed tool, accepted input, queued schedule, opened browser or submitted input is not proof that the user's final task completed. Inspect actual receipts, output, observed UI and error state. Generative image models, cloud accounts and their credentials remain configured external services; the dedicated native workflows above do not remove existing shell/process or integration routes.
+Current source/package verification belongs to [the 1.3.29 record](validation/RELEASE-1.3.29.md), and actual local media inference belongs to [the ComfyUI host report](COMFYUI_HOST_QUALIFICATION.md). Historical [1.3.28](validation/HOST-CAPABILITIES-1.3.28.md), [1.3.21](validation/HOST-CAPABILITIES-1.3.21.md) and [1.3.19](validation/HOST-CAPABILITIES-1.3.19.md) evidence retains its original scope. A listed tool, accepted input, opened browser or submitted generation is not proof of final task completion; inspect actual receipts, artifacts and observed errors.

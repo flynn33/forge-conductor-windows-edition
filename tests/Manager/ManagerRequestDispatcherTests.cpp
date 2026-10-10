@@ -984,6 +984,125 @@ void testImageScopeBrokerUsesFreshProjectAuthorityAcrossReconnects()
         "Fresh image scope restored revoked authority from serialized metadata.");
 }
 
+void testComfyScopeBrokerUsesFreshProjectAuthorityAcrossReconnects()
+{
+    using Json = nlohmann::json;
+    auto clock = std::make_shared<FakeClock>();
+    auto controller = std::make_shared<FakeController>();
+    const auto project = Domain::ProjectId::parse(uuidText(960U)).value();
+    const auto otherProject = Domain::ProjectId::parse(uuidText(961U)).value();
+    const auto first = Domain::PathText::create("D:\\ComfyUIFirst").value();
+    const auto second = Domain::PathText::create("D:\\ComfyUISecond").value();
+    TestFakes::DeterministicWorkspaceAuthority issuer{
+        Domain::AuthorityId::parse(uuidText(962U)).value(), Domain::ClientId::parse("forge-conductor-manager").value(),
+        {first, second}, Domain::FileAccess::Write,
+        {Domain::FileAccess::Read, Domain::FileAccess::Write, Domain::FileAccess::Create}, {}, false, 7U};
+    FakeNativeCheckToolRouter router;
+    Manager::ManagerTelemetrySources sources;
+    sources.projectWorkspaceAuthority = &issuer; sources.toolRouter = &router;
+    Manager::ManagerRequestDispatcher dispatcher{controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+    unsigned sequence = 963U;
+    const auto invoke = [&](std::string_view tool, Json input) {
+        return dispatcher.dispatch(request(*clock, sequence++, Manager::ManagerToolInvokeRequest{project, std::string{tool}, input.dump()}));
+    };
+    Json scope{{"project_id", project.value()}, {"caller_id", uuidText(964U)}, {"generation", 1U},
+        {"trusted_roots", Json::array({first.value()})}, {"grants", Json::array({"read", "write", "create"})},
+        {"denials", Json::array()}, {"shell_enabled", false}};
+    for (const auto tool : {"comfy_status", "comfy_catalog", "comfy_workflow", "comfy_validate", "comfy_prepare", "comfy_control", "comfy_run", "comfy_job_status", "comfy_job_list", "comfy_job_cancel", "comfy_job_resume"}) {
+        const auto response = invoke(tool, Json{{"marker", "preserve public args"}, {"_forge_comfy_scope", scope}});
+        require(responseValue<Manager::ManagerToolOutcomeSnapshot>(response) != nullptr,
+            "ComfyUI provider tool did not reach its durable broker.");
+        require(router.lastProject == project && router.lastRoots == std::vector<Domain::PathText>{first} &&
+            router.lastGeneration == 8U && router.lastCaller == "forge-conductor-manager" && !router.lastShell,
+            "ComfyUI provenance replaced the Manager principal or widened current authority.");
+        const auto arguments = Json::parse(router.lastArguments);
+        require(!arguments.contains("_forge_comfy_scope") && arguments.at("marker") == "preserve public args",
+            "Private ComfyUI scope leaked into public tool schema admission.");
+    }
+    const auto beforeStatus=router.calls;
+    require(responseValue<Manager::ManagerToolOutcomeSnapshot>(invoke("forge_status",Json::object()))!=nullptr &&
+        router.calls==beforeStatus+1U && router.lastProject==project && router.lastRoots==std::vector<Domain::PathText>{first,second} &&
+        router.lastGeneration==7U && router.lastCaller=="forge-conductor-manager" && router.lastArguments=="{}",
+        "Read-only App status did not receive fresh Manager-owned project roots.");
+    for(const auto* unsupported:{"get_forge_status","fs_read","fs_write"})
+        requireError(invoke(unsupported,Json::object()),Domain::ErrorCodes::InvalidRequest,"Unrelated desktop read/write route remains unavailable");
+    require(router.calls==beforeStatus+1U,"Read-only status admission widened unrelated desktop tool execution.");
+    auto reconnected = scope; reconnected["caller_id"] = uuidText(965U); reconnected["generation"] = 50U;
+    require(responseValue<Manager::ManagerToolOutcomeSnapshot>(invoke("comfy_job_status", Json{{"_forge_comfy_scope", reconnected}})) != nullptr &&
+        router.lastCaller == "forge-conductor-manager" && router.lastGeneration == 8U,
+        "A new CLI birth changed stable project ownership or used serialized generation as authority.");
+    auto readOnly = scope; readOnly["grants"] = Json::array({"read", "write", "create", "execute"});
+    readOnly["denials"] = Json::array({"write", "create", "execute"}); readOnly["shell_enabled"] = true;
+    require(responseValue<Manager::ManagerToolOutcomeSnapshot>(invoke("comfy_job_status", Json{{"_forge_comfy_scope", readOnly}})) != nullptr &&
+        router.lastGrants == std::vector<Domain::FileAccess>{Domain::FileAccess::Read} &&
+        router.lastIntent == Domain::FileAccess::Read && !router.lastShell,
+        "Inherited ComfyUI denials restored effect grants or shell access.");
+    auto widened = scope; widened["trusted_roots"] = Json::array({first.value(), second.value(), "Z:\\Unconfigured"});
+    widened["grants"] = Json::array({"read", "write", "create", "delete", "execute"}); widened["shell_enabled"] = true;
+    require(responseValue<Manager::ManagerToolOutcomeSnapshot>(invoke("comfy_job_resume", Json{{"_forge_comfy_scope", widened}})) != nullptr &&
+        router.lastRoots == std::vector<Domain::PathText>{first, second} &&
+        router.lastGrants == std::vector<Domain::FileAccess>({Domain::FileAccess::Read, Domain::FileAccess::Write, Domain::FileAccess::Create}) &&
+        !router.lastShell,
+        "ComfyUI envelope widened the current issuer's roots, grants or shell permission.");
+    const auto invalid = [&](Json metadata, std::string_view code) {
+        const auto calls = router.calls;
+        requireError(invoke("comfy_job_status", Json{{"_forge_comfy_scope", std::move(metadata)}}), code, "Invalid ComfyUI scope");
+        require(router.calls == calls, "Invalid ComfyUI metadata reached the native router.");
+    };
+    auto bad = scope; bad["project_id"] = otherProject.value(); invalid(bad, Domain::ErrorCodes::ProjectScopeMismatch);
+    bad = scope; bad["project_id"] = "invalid"; invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["caller_id"] = ""; invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["generation"] = 0U; invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["generation"] = "1"; invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["trusted_roots"] = Json::array({"Z:\\Unconfigured"}); invalid(bad, Domain::ErrorCodes::Unauthorized);
+    bad = scope; bad["trusted_roots"] = Json::array({first.value(), first.value()}); invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["grants"] = Json::array({"read", "read"}); invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["grants"] = Json::array({"admin"}); invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    bad = scope; bad["denials"] = Json::array({"read", "write", "create"}); invalid(bad, Domain::ErrorCodes::Unauthorized);
+    bad = scope; bad["unknown"] = true; invalid(bad, Domain::ErrorCodes::InvalidRequest);
+    const auto calls = router.calls;
+    requireError(invoke("comfy_job_status", Json::object()), Domain::ErrorCodes::InvalidRequest, "ComfyUI invocation without fresh scope");
+    requireError(invoke("process_poll", Json{{"_forge_comfy_scope", scope}}), Domain::ErrorCodes::InvalidRequest, "ComfyUI scope on unrelated tool");
+    requireError(invoke("comfy_job_status", Json{{"_forge_comfy_scope", scope}, {"_forge_worker_scope", Json::object()}}),
+        Domain::ErrorCodes::InvalidRequest, "Mixed scope envelopes");
+    const auto duplicate = std::string{"{\"_forge_comfy_scope\":"} + scope.dump() + ",\"_forge_comfy_scope\":" + scope.dump() + "}";
+    requireError(dispatcher.dispatch(request(*clock, sequence++, Manager::ManagerToolInvokeRequest{project, "comfy_job_status", duplicate})),
+        Domain::ErrorCodes::InvalidRequest, "Duplicate ComfyUI scope");
+    require(router.calls == calls, "Rejected ComfyUI metadata reached the native router.");
+    const std::vector<Domain::FileAccess> revoked{Domain::FileAccess::Write, Domain::FileAccess::Create};
+    TestFakes::DeterministicWorkspaceAuthority restrictedIssuer{
+        Domain::AuthorityId::parse(uuidText(966U)).value(), Domain::ClientId::parse("forge-conductor-manager").value(),
+        {first}, Domain::FileAccess::Read, {Domain::FileAccess::Read}, revoked, false, 10U};
+    sources.projectWorkspaceAuthority = &restrictedIssuer;
+    Manager::ManagerRequestDispatcher restricted{controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+    const auto result = restricted.dispatch(request(*clock, sequence++,
+        Manager::ManagerToolInvokeRequest{project, "comfy_job_resume", Json{{"_forge_comfy_scope", widened}}.dump()}));
+    require(responseValue<Manager::ManagerToolOutcomeSnapshot>(result) != nullptr &&
+        router.lastRoots == std::vector<Domain::PathText>{first} && router.lastGrants == std::vector<Domain::FileAccess>{Domain::FileAccess::Read} &&
+        router.lastDenials == revoked && router.lastIntent == Domain::FileAccess::Read && router.lastGeneration == 11U,
+        "Fresh ComfyUI scope restored revoked authority from serialized metadata.");
+
+    TestFakes::DeterministicWorkspaceAuthority executingIssuer{
+        Domain::AuthorityId::parse(uuidText(967U)).value(), Domain::ClientId::parse("forge-conductor-manager").value(),
+        {first}, Domain::FileAccess::Read,
+        {Domain::FileAccess::Read, Domain::FileAccess::Write, Domain::FileAccess::Create, Domain::FileAccess::Execute}, {}, true, 12U};
+    sources.projectWorkspaceAuthority = &executingIssuer;
+    Manager::ManagerRequestDispatcher executing{controller, clock, Manager::ManagerTransportLimits{}, {}, sources};
+    auto executableScope = scope; executableScope["grants"] = Json::array({"read", "write", "create", "execute"});
+    executableScope["shell_enabled"] = true;
+    const auto prepare = executing.dispatch(request(*clock, sequence++, Manager::ManagerToolInvokeRequest{
+        project, "comfy_prepare", Json{{"_forge_comfy_scope", executableScope}}.dump()}));
+    require(responseValue<Manager::ManagerToolOutcomeSnapshot>(prepare) != nullptr && router.lastShell &&
+        std::find(router.lastGrants.begin(), router.lastGrants.end(), Domain::FileAccess::Execute) != router.lastGrants.end(),
+        "ComfyUI dependency preparation lost its explicitly inherited current execution authority.");
+    executableScope["denials"] = Json::array({"execute"});
+    const auto deniedExecution = executing.dispatch(request(*clock, sequence++, Manager::ManagerToolInvokeRequest{
+        project, "comfy_control", Json{{"_forge_comfy_scope", executableScope}}.dump()}));
+    require(responseValue<Manager::ManagerToolOutcomeSnapshot>(deniedExecution) != nullptr && !router.lastShell &&
+        std::find(router.lastGrants.begin(), router.lastGrants.end(), Domain::FileAccess::Execute) == router.lastGrants.end(),
+        "ComfyUI lifecycle restored execution after the caller denied it.");
+}
+
 void testTelemetryCannotReadRemovedManagedRuns()
 {
     auto clock = std::make_shared<FakeClock>();
@@ -2962,6 +3081,7 @@ int main()
         testToolsSnapshotReadsLiveSettingsAndPropagatesFailure();
         testWorkerScopeBrokerPreservesOnlyCurrentCallerGrants();
         testImageScopeBrokerUsesFreshProjectAuthorityAcrossReconnects();
+        testComfyScopeBrokerUsesFreshProjectAuthorityAcrossReconnects();
         testManagedRunEndpointsAreRemoved();
         testAutomaticContinuityPreferenceIsProjectProviderScopedAndDurable();
         testRunHistoryIsBoundToSelectedProject();

@@ -547,6 +547,10 @@ public:
     }
     Json identity() const { return Json{{"window_id", reinterpret_cast<std::uintptr_t>(window_)}, {"pid", ::GetCurrentProcessId()}}; }
     unsigned delayedAccessibilityRequests() const { return delayedAccessibilityRequests_.load(); }
+    long wheelDelta() const { return wheelDelta_.load(); }
+    unsigned pointerDowns() const { return pointerDowns_.load(); }
+    unsigned pointerUps() const { return pointerUps_.load(); }
+    unsigned dragMoves() const { return dragMoves_.load(); }
     bool isForeground() const { return ::GetForegroundWindow() == window_; }
     HWND focusedControl() const {
         GUITHREADINFO information{};
@@ -556,7 +560,25 @@ public:
         return information.hwndFocus;
     }
     bool inputReady() const { return isForeground() && focusedControl() == edit_; }
-    void requestActivation() const { static_cast<void>(::SetForegroundWindow(window_)); }
+    bool requestActivation() const { return ::SetForegroundWindow(window_) != FALSE; }
+    Json inputEvidence(const bool activationAccepted) const {
+        const auto foreground = ::GetForegroundWindow();
+        DWORD foregroundPid{};
+        ::GetWindowThreadProcessId(foreground, &foregroundPid);
+        const auto thread = ::GetWindowThreadProcessId(window_, nullptr);
+        GUITHREADINFO information{};
+        information.cbSize = sizeof(information);
+        const auto observed = ::GetGUIThreadInfo(thread, &information) != FALSE;
+        const auto observationError = observed ? 0U : ::GetLastError();
+        return Json{{"activation_returned_nonzero", activationAccepted},
+            {"expected_window", reinterpret_cast<std::uintptr_t>(window_)},
+            {"expected_edit", reinterpret_cast<std::uintptr_t>(edit_)},
+            {"foreground_window", reinterpret_cast<std::uintptr_t>(foreground)},
+            {"foreground_pid", foregroundPid}, {"owned_gui_thread_id", thread},
+            {"gui_info_observed", observed}, {"gui_info_error", observationError},
+            {"active_window", reinterpret_cast<std::uintptr_t>(information.hwndActive)},
+            {"focused_control", reinterpret_cast<std::uintptr_t>(information.hwndFocus)}};
+    }
     std::wstring observedText() const {
         std::array<wchar_t, 256> text{};
         DWORD_PTR copied{};
@@ -569,6 +591,13 @@ private:
         if (message == WM_NCCREATE) {
             const auto creation = reinterpret_cast<const CREATESTRUCTW*>(lparam);
             ::SetWindowLongPtrW(window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(creation->lpCreateParams));
+        }
+        const auto inputFixture = reinterpret_cast<OwnedWindow*>(::GetWindowLongPtrW(window, GWLP_USERDATA));
+        if (inputFixture) {
+            if (message == WM_MOUSEWHEEL) { inputFixture->wheelDelta_ += GET_WHEEL_DELTA_WPARAM(wparam); return 0; }
+            if (message == WM_LBUTTONDOWN) ++inputFixture->pointerDowns_;
+            if (message == WM_LBUTTONUP) ++inputFixture->pointerUps_;
+            if (message == WM_MOUSEMOVE && (wparam & MK_LBUTTON) != 0U) ++inputFixture->dragMoves_;
         }
         if (message == WM_GETOBJECT) {
             const auto fixture = reinterpret_cast<OwnedWindow*>(::GetWindowLongPtrW(window, GWLP_USERDATA));
@@ -643,6 +672,10 @@ private:
     bool repeatAccessibilityDelay_{};
     bool hideAfterAccessibilityDelay_{};
     std::atomic<unsigned> delayedAccessibilityRequests_{};
+    std::atomic<long> wheelDelta_{};
+    std::atomic<unsigned> pointerDowns_{};
+    std::atomic<unsigned> pointerUps_{};
+    std::atomic<unsigned> dragMoves_{};
     std::jthread worker_;
 };
 void ownedWindowAccessibilityRecoversTransientConnectionTimeout() {
@@ -885,6 +918,31 @@ void ownedWindowAccessibilityByteBoundPaging(const bool escapedLabels) {
     require(longNames == 40U && lateText && boundedBeforeLimit && ::GetForegroundWindow() == foreground,
         "Byte-bounded paging did not retrieve every escaped label and late Unicode value without activation.");
 }
+void ownedWindowPointerValidationAndAuthority() {
+    Fixture fixture;
+    OwnedWindow owned;
+    const auto identity = owned.identity();
+    const auto initialForeground = ::GetForegroundWindow();
+    auto scroll = identity; scroll.update(Json{{"x", 220}, {"y", 110}, {"delta", 0}});
+    requireError(fixture.invoke("desktop_scroll", scroll), Domain::ErrorCodes::InvalidRequest, "Zero wheel delta was accepted.");
+    scroll["delta"] = 12001;
+    requireError(fixture.invoke("desktop_scroll", scroll), Domain::ErrorCodes::InvalidRequest, "Oversized wheel delta was accepted.");
+    scroll["delta"] = 120; scroll["x"] = -1;
+    requireError(fixture.invoke("desktop_scroll", scroll), Domain::ErrorCodes::InvalidRequest, "Negative wheel position was accepted.");
+    auto drag = identity; drag.update(Json{{"start_x", 220}, {"start_y", 110}, {"end_x", 270}, {"end_y", 125}, {"duration_ms", 5001}});
+    requireError(fixture.invoke("desktop_drag", drag), Domain::ErrorCodes::InvalidRequest, "Oversized drag duration was accepted.");
+    drag["duration_ms"] = 49;
+    requireError(fixture.invoke("desktop_drag", drag), Domain::ErrorCodes::InvalidRequest, "Undersized drag duration was accepted.");
+    drag["duration_ms"] = 100; drag["end_x"] = 999999;
+    requireError(fixture.invoke("desktop_drag", drag), Domain::ErrorCodes::InvalidRequest, "Drag beyond the observed window was accepted.");
+    require(::GetForegroundWindow() == initialForeground, "Invalid pointer input activated a window before validation.");
+    scroll["x"] = 220; drag["end_x"] = 270;
+    fixture.reset(Domain::FileAccess::Read, {Domain::FileAccess::Read}, false);
+    requireError(fixture.invoke("desktop_scroll", scroll), Domain::ErrorCodes::Unauthorized, "Read-only scope sent a wheel event.");
+    requireError(fixture.invoke("desktop_drag", drag), Domain::ErrorCodes::Unauthorized, "Read-only scope sent a drag event.");
+    require(owned.pointerDowns() == 0U && owned.pointerUps() == 0U && owned.wheelDelta() == 0,
+        "Rejected pointer requests sent input to the owned window.");
+}
 void ownedWindowInputReadAndCapture(const bool waitForExternalForeground = false) {
     Fixture fixture;
     OwnedWindow owned;
@@ -909,11 +967,12 @@ void ownedWindowInputReadAndCapture(const bool waitForExternalForeground = false
             std::this_thread::sleep_for(20ms);
         require(owned.inputReady(), "The owned window and edit control did not receive external foreground/focus within 120 seconds; no input was sent.");
     } else {
-        owned.requestActivation();
+        const auto activationAccepted = owned.requestActivation();
         const auto until = std::chrono::steady_clock::now() + 3s;
         while (!owned.inputReady() && std::chrono::steady_clock::now() < until)
             std::this_thread::sleep_for(20ms);
-        require(owned.inputReady(), "Windows did not activate/focus the owned edit fixture; no input was sent.");
+        require(owned.inputReady(), "Windows did not activate/focus the owned edit fixture; no input was sent. " +
+            owned.inputEvidence(activationAccepted).dump());
     }
     const auto accepted = fixture.execute("desktop_type", type);
     const std::wstring expected{L"Unicode \u03a9\u20ac"};
@@ -929,6 +988,32 @@ void ownedWindowInputReadAndCapture(const bool waitForExternalForeground = false
     fixture.execute("desktop_key", key);
     auto click = identity; click["x"] = 30; click["y"] = 50;
     fixture.execute("desktop_click", click);
+    auto scroll = identity; scroll.update(Json{{"x", 220}, {"y", 110}, {"delta", -240}});
+    const auto scrolled = fixture.execute("desktop_scroll", scroll);
+    const auto pointerWait = std::chrono::steady_clock::now() + 3s;
+    while (owned.wheelDelta() != -240 && std::chrono::steady_clock::now() < pointerWait) std::this_thread::sleep_for(10ms);
+    require(scrolled.at("requires_observation") == true && owned.wheelDelta() == -240,
+        "Scroll wheel input did not reach the owned window.");
+    auto drag = identity; drag.update(Json{{"start_x", 220}, {"start_y", 110}, {"end_x", 270}, {"end_y", 125}, {"duration_ms", 100}});
+    const auto dragged = fixture.execute("desktop_drag", drag);
+    const auto dragWait = std::chrono::steady_clock::now() + 3s;
+    while (owned.pointerUps() == 0U && std::chrono::steady_clock::now() < dragWait) std::this_thread::sleep_for(10ms);
+    require(dragged.at("requires_observation") == true && owned.pointerDowns() == 1U && owned.pointerUps() == 1U && owned.dragMoves() > 0U,
+        "Drag movement and balanced button press/release did not reach the owned window.");
+    TestContext dragCancellation;
+    std::jthread canceller{[&](std::stop_token stop) {
+        const auto untilDown = std::chrono::steady_clock::now() + 3s;
+        while (!stop.stop_requested() && owned.pointerDowns() < 2U && std::chrono::steady_clock::now() < untilDown)
+            std::this_thread::sleep_for(2ms);
+        dragCancellation.cancellation.request_stop();
+    }};
+    drag["duration_ms"] = 1000;
+    requireError(fixture.service->execute("desktop_drag", drag.dump(), *fixture.authority, dragCancellation.active()),
+        Domain::ErrorCodes::Cancelled, "Drag did not observe cancellation after its button press.");
+    const auto releaseWait = std::chrono::steady_clock::now() + 3s;
+    while (owned.pointerUps() < 2U && std::chrono::steady_clock::now() < releaseWait) std::this_thread::sleep_for(10ms);
+    require(owned.pointerDowns() == 2U && owned.pointerUps() == 2U,
+        "Cancelling a partial drag left the owned window's mouse button pressed.");
     auto readRequest = identity; readRequest["limit"] = 10;
     const auto observed = fixture.execute("desktop_read", readRequest);
     require(observed.at("ok") == true, "Owned window accessibility read failed.");
@@ -968,6 +1053,7 @@ int main(int argc, char** argv) {
         ownedWindowAccessibilityPermanentConnectionTimeoutRemainsBounded(); std::cout << "PASS owned-window-accessibility-permanent-connection-timeout\n";
         ownedWindowAccessibilityTimeoutPreservesDeadlineAndCancellation(); std::cout << "PASS owned-window-accessibility-timeout-deadline-cancellation\n";
         ownedWindowAccessibilityTimeoutRevalidatesVisibleIdentity(); std::cout << "PASS owned-window-accessibility-timeout-visible-identity\n";
+        ownedWindowPointerValidationAndAuthority(); std::cout << "PASS owned-window-pointer-validation-authority\n";
         if (argc == 2 && (std::string_view{argv[1]} == "--owned-window-input" ||
                 std::string_view{argv[1]} == "--owned-window-input-wait")) {
             ownedWindowInputReadAndCapture(std::string_view{argv[1]} == "--owned-window-input-wait");

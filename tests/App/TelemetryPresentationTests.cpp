@@ -188,6 +188,64 @@ void testProjectSelectionRequiresAnAuthoritativeMatch()
             "independent Alpha profile view-state scope");
 }
 
+void testComfyStatusProbeIsReadOnlyAndReportsOwnedReadiness()
+{
+    using Json = nlohmann::json;
+    const auto project = Domain::ProjectId::parse("11111111-1111-4111-8111-111111111111").value();
+    const auto other = Domain::ProjectId::parse("22222222-2222-4222-8222-222222222222").value();
+    const auto managerStatus=[&](Json roots,std::string folder="C:\\Project",std::string mode="workspace") {
+        return Json{{"ok",true},{"workspace",{{"project_id",project.value()},{"binding_source","registered_project"},{"project_root",folder}}},
+            {"workspace_authority",{{"active_roots",std::move(roots)},{"filesystem_access",mode}}}};
+    };
+    for (const auto& observed : {managerStatus(Json::array({"C:\\Project","D:\\OtherProject"})),
+        managerStatus(Json::array({"C:\\","D:\\"}),"C:\\Project","host"),
+        managerStatus(Json::array({"C:\\"}),"\\\\server\\share\\Project","host")}) {
+        const auto arguments = App::comfyStatusProbeArguments(project,observed);
+        require(arguments.hasValue(),"registered Comfy status scope");
+        const auto envelope = Json::parse(arguments.value());
+        require(envelope.size()==1U && envelope.contains("_forge_comfy_scope"),"probe only supplies the private Comfy envelope");
+        const auto& scope = envelope.at("_forge_comfy_scope");
+        require(scope.size()==7U && scope.at("project_id")==project.value() && scope.at("caller_id")=="forge-conductor-app" &&
+            scope.at("generation").is_number_unsigned() && scope.at("generation")==1U,"probe project and provenance evidence");
+        require(scope.at("grants")==Json::array({"read"}) && scope.at("denials")==Json::array({"write","create","delete","execute"}) &&
+            scope.at("shell_enabled")==false,"probe cannot request write, creation, deletion or execution");
+        require(scope.at("trusted_roots")==observed.at("workspace_authority").at("active_roots"),
+            "probe preserves exact Manager-issued active roots in Workspace, Host, or Host with a UNC project");
+    }
+    const auto valid=managerStatus(Json::array({"C:\\Project"}));
+    const auto foreign=App::comfyStatusProbeArguments(other,valid);
+    require(!foreign && foreign.error().code==Domain::ErrorCodes::ProjectScopeMismatch,"foreign status cannot scope another project");
+    for (const auto& roots : {Json::array(),Json::object(),Json::array({42}),Json::array({"relative"}),
+        Json::array({"C:\\Project","C:\\Project"}),Json(Json::array_t(33U,Json("C:\\Project"))),Json::array({std::string(32769U,'x')})}) {
+        require(!App::comfyStatusProbeArguments(project,managerStatus(roots)),"malformed, duplicate, excessive or relative active roots cannot create probe scope");
+    }
+    for (const auto* broken : {"failed","missing_workspace","missing_authority","foreign_binding","missing_project","missing_roots","oversized"}) {
+        auto malformed=valid;
+        if(std::string_view{broken}=="failed")malformed["ok"]=false;
+        else if(std::string_view{broken}=="missing_workspace")malformed.erase("workspace");
+        else if(std::string_view{broken}=="missing_authority")malformed.erase("workspace_authority");
+        else if(std::string_view{broken}=="foreign_binding")malformed["workspace"]["binding_source"]="recovered_prompt";
+        else if(std::string_view{broken}=="missing_project")malformed["workspace"].erase("project_id");
+        else if(std::string_view{broken}=="missing_roots")malformed["workspace_authority"].erase("active_roots");
+        else malformed["padding"]=std::string(1024U*1024U,'x');
+        require(!App::comfyStatusProbeArguments(project,malformed),"malformed or failed Manager status cannot authorize a readiness probe");
+    }
+
+    require(App::comfyReadinessText({{"configured",false}})=="ComfyUI automation disabled","disabled readiness");
+    Json status{{"configured",true},{"available",true},{"managed",false},{"endpoint","http://127.0.0.1:8188"},
+        {"ownership_error",{{"message","Runtime seal differs."}}},{"queue",{{"queue_running_count",2U},{"queue_pending_count",3U}}},
+        {"system_stats",{{"devices",Json::array({{{"name","RTX 4090"},{"vram_free",2147483648ULL}}})}}}};
+    const auto unowned=App::comfyReadinessText(status);
+    require(unowned.find("Managed rendering is unavailable")!=std::string::npos && unowned.find("ComfyUI is ready")==std::string::npos &&
+        unowned.find("Runtime seal differs.")!=std::string::npos,"reachable foreign runtime is not advertised as ready and its actual ownership error remains visible");
+    require(unowned.find("Queue: 2 running, 3 waiting")!=std::string::npos && unowned.find("GPU: RTX 4090")!=std::string::npos &&
+        unowned.find("2.0 GiB")!=std::string::npos,"readiness retains queue and measured GPU evidence");
+    status["managed"]=true;status.erase("ownership_error");
+    require(App::comfyReadinessText(status).find("Forge verified its managed runtime")!=std::string::npos,"only managed endpoint is declared ready");
+    status["available"]=false;
+    require(App::comfyReadinessText(status).find("ComfyUI is offline")!=std::string::npos,"offline runtime remains explicit");
+}
+
 } // namespace
 
 int main()
@@ -195,7 +253,8 @@ int main()
     try {
         testPresentationPreservesTelemetryMeaning();
         testProjectSelectionRequiresAnAuthoritativeMatch();
-        std::cout << "Telemetry presentation tests passed: 2 groups\n";
+        testComfyStatusProbeIsReadOnlyAndReportsOwnedReadiness();
+        std::cout << "Telemetry presentation tests passed: 3 groups\n";
         return 0;
     } catch (const std::exception& error) {
         std::cerr << "Telemetry presentation tests failed: " << error.what()

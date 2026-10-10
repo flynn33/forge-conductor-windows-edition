@@ -252,6 +252,26 @@ void resourceAndConfigurationBoundaries()
     Domain::AppConfigPatch invalidMode;
     invalidMode.fileSystemAccess = static_cast<Domain::FileSystemAccessMode>(99);
     REQUIRE(!Domain::applyConfigPatch(config, invalidMode));
+    REQUIRE(!config.comfyUi.enabled && config.comfyUi.automaticSetup);
+    REQUIRE(config.comfyUi.downloadBudgetBytes == 500'000'000'000ULL);
+    Domain::AppConfigPatch comfyPatch;
+    comfyPatch.comfyUi = Domain::ComfyUiConfig{};
+    comfyPatch.comfyUi->enabled = true;
+    comfyPatch.comfyUi->installationPath = R"(D:\ComfyUI portable)";
+    const auto comfyUpdated = take(Domain::applyConfigPatch(config, comfyPatch));
+    REQUIRE(comfyUpdated.comfyUi == *comfyPatch.comfyUi);
+    REQUIRE(comfyUpdated.imageProvider == config.imageProvider);
+    for (const auto seconds : {0U, 7201U}) {
+        comfyPatch.comfyUi->generationTimeoutSeconds = seconds;
+        REQUIRE(!Domain::applyConfigPatch(config, comfyPatch));
+    }
+    comfyPatch.comfyUi->generationTimeoutSeconds = 1'800U;
+    for (const auto* invalidPath : {"relative", "A:relative", R"(\\server\)", R"(\\\share)", R"(\\server\\share)"}) {
+        comfyPatch.comfyUi->installationPath = invalidPath;
+        REQUIRE(!Domain::applyConfigPatch(config, comfyPatch));
+    }
+    comfyPatch.comfyUi->installationPath = R"(\\server\share\ComfyUI)";
+    REQUIRE(Domain::applyConfigPatch(config, comfyPatch));
 }
 
 void agentAndLegacyMemoryParity()

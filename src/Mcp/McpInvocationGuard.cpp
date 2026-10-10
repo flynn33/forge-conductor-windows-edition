@@ -454,7 +454,8 @@ public:
                 request.toolName == "process_poll" || request.toolName == "process_wait" ||
                 request.toolName == "process_read_log" || request.toolName == "process_list" ||
                 request.toolName == "reviewer_status" || request.toolName == "cmake_test_status" ||
-                request.toolName == "image_job_status";
+                request.toolName == "image_job_status" || request.toolName == "comfy_job_status" ||
+                request.toolName == "comfy_job_list";
             const bool progressTool = isProgressTool(request.toolName);
             const bool legacyContinuityPolicy =
                 usesLegacyContinuityPolicy(request);

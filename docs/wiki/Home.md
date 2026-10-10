@@ -1,6 +1,6 @@
 <p align="center"><img src="images/mark-conductor.jpg" width="132" alt="Forge Conductor mark"></p>
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.28 implementation.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.29 implementation.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -24,7 +24,7 @@ Stock LM Studio MCP image metadata remains distinct from model image input and i
 
 A native Windows 11 workspace and MCP server for project work with local models in LM Studio.
 
-The current source version **1.3.28** provides **112 tools** in Primary/Fallback: the original 80 plus 32 additions, with ten specialist playbooks and five CLU tools retained. Six optional image-provider routes join native CMake/CTest jobs, paged accessibility reads, bounded previews, web, DOCX/XLSX/PPTX creation, visible desktop/browser operations, PNG drawing/image analysis, independent workers and persistent schedules. Existing project identities, policy, telemetry, native design and three LM Studio integrations remain. Current source, package and selected native measurements are recorded in the 1.3.28 verification record. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. See [1.3.28 source notes](Release-1.3.28).
+The current source version **1.3.29** provides **125 tools** in Primary/Fallback, with ten specialist playbooks and five CLU tools retained. Eleven general ComfyUI tools and desktop scroll/drag join the previous 112 tools. Describe an image or video in LM Studio; the model discovers the installed nodes and models, builds a workflow, prepares dependencies, renders a preview, and uses the operator's saved chat approval for the proposed final. Settings adds a ComfyUI automation card and Rig shows readiness. Native CMake/CTest, web, Office documents, desktop/browser operations, PNG drawing/image analysis, independent workers, schedules and the three existing LM Studio integrations remain. See [ComfyUI automation](ComfyUI-Automation), [1.3.29 release notes](Release-1.3.29) and the [versioned verification record](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/validation/RELEASE-1.3.29.md). Prior [1.3.28 measurements](Release-1.3.28) retain their original artifact identity.
 
 Historical published 1.3.19 qualification is recorded above. The installed, unpublished [1.3.18 investigation](Release-1.3.18) passed its local 162-entry suite and exact four-payload/profile upgrade checks, but its Windows CI failed one timeout-message assertion (161/162). Eleven current-chat native calls succeeded; the complete nine-case acceptance and the first managed-recovery final-format check did not qualify the release. These observations remain bound to their original artifact.
 
@@ -38,8 +38,10 @@ The installed, unpublished [1.3.17 investigation](Release-1.3.17) passed its exa
 | [CLU Governance](Setup-and-Governance) | Policy repositories, model notifications, findings and corrections |
 | [Continuity](Continuity) | Recovery, native rollover path, and durability limits |
 | [Windows Workflow Capabilities](Windows-workflow-capabilities) | Dedicated tool contracts, actual receipts and external connection requirements |
-| [Tool Catalog](Tool-Catalog) | All 112 Primary/Fallback tool names and retained CLU scope |
-| [1.3.28 implementation](Release-1.3.28) | Current source contracts and artifact measurements |
+| [Tool Catalog](Tool-Catalog) | All 125 Primary/Fallback tool names and retained CLU scope |
+| [ComfyUI Automation](ComfyUI-Automation) | Local workflow preparation, previews, chat approval, rendering and verified artifacts |
+| [1.3.29 implementation](Release-1.3.29) | Current source contracts and separately recorded verification |
+| [Published 1.3.28 qualification](Release-1.3.28) | Retained earlier source, package and native measurements |
 | [Published 1.3.21 qualification](Release-1.3.21) | Historical source, package and native-model measurements |
 | [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md) | Optional ComfyUI configuration, jobs, cancellation and explicit recovery |
 | [CMake/CTest source guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/CMAKE-CTEST.md) | Initialized-tree jobs, outcomes, failure paging, logs and recovery |
@@ -64,7 +66,7 @@ The historical in-process limitation above applies to those named artifacts. The
 ## 1.3.28 continuity
 Manager lifetime does not grant saved authority or confirm an uncertain UI effect. Current project/provider/route validation, the OS-held single-writer lease and selected-native evidence still gate control dispatch. An empty or unrelated third chat does not establish the successor. Explicit route migration requires a fresh authorized Primary callback, matching actual native packet/recovery evidence and exact preservation of the old encrypted checkpoint. Uncertain New chat or Send is reconciled without automatic replay. Completion requires the actual handed message, successor `context_get` and a following successful Forge tool result. Installed 1.3.28 automatic delivery passed the source-bound reserve-pressure scope recorded in the 1.3.28 verification record.
 
-The [superseded 1.3.22 investigation](Release-1.3.22) passed its exact final source and signed-install checks, but an uncertain New chat was followed by an empty selected chat and no automatic packet delivery. Those receipts retain their original identity and remain distinct from current 1.3.28 measurements.
+The [superseded 1.3.22 investigation](Release-1.3.22) passed its exact final source and signed-install checks, but an uncertain New chat was followed by an empty selected chat and no automatic packet delivery. Those receipts retain their original identity and remain distinct from the recorded 1.3.28 measurements.
 
 ## Retained 1.3.24 installed scopes
 

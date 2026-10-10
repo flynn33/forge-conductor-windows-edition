@@ -59,6 +59,14 @@ namespace {
         name == "image_job_status" || name == "image_job_cancel" || name == "image_job_resume";
 }
 
+[[nodiscard]] bool comfyScopeTool(const std::string_view name) noexcept
+{
+    return name == "comfy_status" || name == "comfy_catalog" || name == "comfy_workflow" ||
+        name == "comfy_validate" || name == "comfy_prepare" || name == "comfy_control" ||
+        name == "comfy_run" || name == "comfy_job_status" || name == "comfy_job_list" ||
+        name == "comfy_job_cancel" || name == "comfy_job_resume";
+}
+
 struct WorkerToolCall final {
     std::string arguments;
     Contracts::WorkspaceAuthority authority;
@@ -86,22 +94,26 @@ struct WorkerToolCall final {
         auto arguments = Json::parse(request.canonicalArguments, callback);
         if (!arguments.is_object()) throw std::invalid_argument{"Broker arguments must be an object."};
         const bool imageScope = imageScopeTool(request.toolName);
-        const char* const scopeField = imageScope ? "_forge_image_scope" : "_forge_worker_scope";
-        if (arguments.contains(imageScope ? "_forge_worker_scope" : "_forge_image_scope"))
+        const bool comfyScope = comfyScopeTool(request.toolName);
+        const bool resourceScope = imageScope || comfyScope;
+        const char* const scopeField = comfyScope ? "_forge_comfy_scope" : imageScope ? "_forge_image_scope" : "_forge_worker_scope";
+        if ((arguments.contains("_forge_worker_scope") && resourceScope) ||
+            (arguments.contains("_forge_image_scope") && !imageScope) ||
+            (arguments.contains("_forge_comfy_scope") && !comfyScope))
             throw std::invalid_argument{"Broker scope is not valid for this tool."};
         const auto found = arguments.find(scopeField);
         if (found == arguments.end()) {
-            if (imageScope) throw std::invalid_argument{"Image jobs require fresh inherited scope."};
+            if (resourceScope) throw std::invalid_argument{"Image jobs require fresh inherited scope."};
             return Domain::Result<WorkerToolCall>::success({request.canonicalArguments, baseline});
         }
-        if (!imageScope && !workerScopeTool(request.toolName)) throw std::invalid_argument{"Worker scope is not valid for this tool."};
+        if (!resourceScope && !workerScopeTool(request.toolName)) throw std::invalid_argument{"Worker scope is not valid for this tool."};
         const auto& scope = *found;
-        if (!scope.is_object() || scope.size() != (imageScope ? 7U : 4U) || !scope.contains("trusted_roots") ||
+        if (!scope.is_object() || scope.size() != (resourceScope ? 7U : 4U) || !scope.contains("trusted_roots") ||
             !scope.contains("grants") || !scope.contains("denials") || !scope.contains("shell_enabled") ||
             !scope.at("shell_enabled").is_boolean() || !scope.at("trusted_roots").is_array() ||
             scope.at("trusted_roots").empty() || scope.at("trusted_roots").size() > 32U)
             throw std::invalid_argument{"Worker scope fields or root bounds are invalid."};
-        if (imageScope) {
+        if (resourceScope) {
             if (!scope.contains("project_id") || !scope.at("project_id").is_string() ||
                 !scope.contains("caller_id") || !scope.at("caller_id").is_string() ||
                 !scope.contains("generation") || !scope.at("generation").is_number_unsigned() ||
@@ -3698,8 +3710,10 @@ private:
                     std::is_same_v<Payload, ManagerToolInvokeRequest>) {
                     // This current-user authenticated pipe is the durable job
                     // broker. General desktop tool execution remains disabled.
-                    const bool brokered = workerScopeTool(payload.toolName)
+                    const bool brokered = payload.toolName == "forge_status"
+                        || workerScopeTool(payload.toolName)
                         || imageScopeTool(payload.toolName)
+                        || comfyScopeTool(payload.toolName)
                         || payload.toolName == "cmake_test_run"
                         || payload.toolName == "cmake_test_status"
                         || payload.toolName == "workspace_authority_bind"

@@ -1,32 +1,33 @@
 {
   "document_schema_version": 1,
   "title": "Forge Conductor capabilities for models in LM Studio",
-  "product_version": "1.3.28",
-  "package_version": "1.3.28.0",
-  "inspected_source_commit": "eb071505f00d0b890ca12240cbfdbcc7594516e4",
-  "inventory_date": "2026-10-09",
+  "product_version": "1.3.29",
+  "package_version": "1.3.29.0",
+  "inspected_source_commit": null,
+  "historical_inventory_source_commit": "eb071505f00d0b890ca12240cbfdbcc7594516e4",
+  "inventory_date": "2026-10-10",
   "scope": "Complete model-facing native catalog and access guide for the inspected Windows implementation. Runtime configuration and qualification are stated separately.",
   "companion_markdown": "LM-STUDIO-MODEL-CAPABILITIES.md",
   "catalog_summary": {
-    "distinct_tool_count": 112,
-    "capability_group_count": 27,
+    "distinct_tool_count": 125,
+    "capability_group_count": 28,
     "specialist_playbook_count": 10,
     "role_counts": {
-      "Primary": 112,
-      "Fallback": 112,
+      "Primary": 125,
+      "Fallback": 125,
       "CLU": 5
     },
     "effect_counts": {
-      "Write": 61,
-      "Read": 51
+      "Write": 69,
+      "Read": 56
     },
-    "project_required_count": 90,
+    "project_required_count": 103,
     "shell_required_count": 5,
     "schema_object_counts": {
-      "closed": 77,
+      "closed": 90,
       "openExplicit": 11,
       "additionalPropertiesUnspecified": 24,
-      "oneOf": 2
+      "oneOf": 3
     },
     "wire_descriptor_fields": [
       "name",
@@ -40,7 +41,7 @@
     {
       "role": "Primary",
       "registration": "forge-conductor",
-      "tool_count": 112,
+      "tool_count": 125,
       "tool_names": [
         "agent_cancel",
         "agent_context",
@@ -59,6 +60,17 @@
         "clu.resolve",
         "cmake_test_run",
         "cmake_test_status",
+        "comfy_catalog",
+        "comfy_control",
+        "comfy_job_cancel",
+        "comfy_job_list",
+        "comfy_job_resume",
+        "comfy_job_status",
+        "comfy_prepare",
+        "comfy_run",
+        "comfy_status",
+        "comfy_validate",
+        "comfy_workflow",
         "context_get",
         "context_list",
         "continuity.acknowledge_handoff",
@@ -70,9 +82,11 @@
         "continuity.status",
         "desktop_capture",
         "desktop_click",
+        "desktop_drag",
         "desktop_key",
         "desktop_list",
         "desktop_read",
+        "desktop_scroll",
         "desktop_type",
         "document_write",
         "evidence_digest",
@@ -161,7 +175,7 @@
     {
       "role": "Fallback",
       "registration": "forge-conductor-fallback",
-      "tool_count": 112,
+      "tool_count": 125,
       "tool_names": [
         "agent_cancel",
         "agent_context",
@@ -180,6 +194,17 @@
         "clu.resolve",
         "cmake_test_run",
         "cmake_test_status",
+        "comfy_catalog",
+        "comfy_control",
+        "comfy_job_cancel",
+        "comfy_job_list",
+        "comfy_job_resume",
+        "comfy_job_status",
+        "comfy_prepare",
+        "comfy_run",
+        "comfy_status",
+        "comfy_validate",
+        "comfy_workflow",
         "context_get",
         "context_list",
         "continuity.acknowledge_handoff",
@@ -191,9 +216,11 @@
         "continuity.status",
         "desktop_capture",
         "desktop_click",
+        "desktop_drag",
         "desktop_key",
         "desktop_list",
         "desktop_read",
+        "desktop_scroll",
         "desktop_type",
         "document_write",
         "evidence_digest",
@@ -1059,9 +1086,11 @@
         "browser_open",
         "desktop_capture",
         "desktop_click",
+        "desktop_drag",
         "desktop_key",
         "desktop_list",
         "desktop_read",
+        "desktop_scroll",
         "desktop_type"
       ],
       "model_access_steps": [
@@ -1334,6 +1363,40 @@
       "references": [
         "src/Mcp/McpToolCatalog.cpp",
         "docs/HOST-CAPABILITIES.md"
+      ]
+    },
+    {
+      "id": "ComfyUiToolPack",
+      "title": "Local ComfyUI workflow automation",
+      "tool_names": [
+        "comfy_catalog",
+        "comfy_control",
+        "comfy_job_cancel",
+        "comfy_job_list",
+        "comfy_job_resume",
+        "comfy_job_status",
+        "comfy_prepare",
+        "comfy_run",
+        "comfy_status",
+        "comfy_validate",
+        "comfy_workflow"
+      ],
+      "model_access_steps": [
+        "Inspect comfy_status and page comfy_catalog for installed node, model and workflow evidence.",
+        "Use comfy_workflow and comfy_validate to import, patch and preflight graphs; use comfy_prepare within saved setup limits.",
+        "Run stage=preview with both preview/final graphs, authorized inputs and an output directory; poll comfy_job_status and show actual artifacts.",
+        "After a later native user message approves that exact preview, run stage=final with only plan_id and stage.",
+        "Use comfy_job_list/status/cancel/resume after reconnect; never resubmit ambiguous generation."
+      ],
+      "contracts_and_prerequisites": [
+        "Manager owns durable job state and intersects fresh current project authority. Custom-node execution and dependency installation require configured source/resource/execute limits.",
+        "Native saved conversation evidence supplies preview approval; model-authored approval flags are rejected.",
+        "Existing image_generate/image_edit and their SD1 receipts remain compatible."
+      ],
+      "references": [
+        "docs/COMFYUI-AUTOMATION.md",
+        "src/Mcp/McpToolCatalog.cpp",
+        "src/NativeTools/Windows/WindowsComfyUiService.cpp"
       ]
     }
   ],
@@ -2803,6 +2866,674 @@
       }
     },
     {
+      "access": {
+        "method": "tools/call",
+        "registration_roles": [
+          "Primary",
+          "Fallback"
+        ],
+        "catalog_state": "Available",
+        "catalog_state_is_runtime_readiness": false,
+        "independent_worker_policy_eligible": false,
+        "read_only_worker_policy_eligible": false,
+        "reviewer_tools_mode_effect_eligible": true,
+        "capability_group": "ComfyUiToolPack",
+        "catalog_effect": "Read",
+        "requires_bound_project": true,
+        "requires_shell_policy": false,
+        "arguments_schema_ref": "#/tools/17/inputSchema"
+      },
+      "source": {
+        "path": "src/Mcp/McpToolCatalog.cpp",
+        "symbol": "SourceDescriptors",
+        "line": 60
+      },
+      "name": "comfy_catalog",
+      "description": "Discover paged installed ComfyUI node contracts, model choices, workflow files or templates. For kind=models, omit category to list model folders, then set category to an exact returned folder such as checkpoints to list installed choices; name remains a compatible folder alias. For kind=nodes, name selects an exact class and category filters its schema category. Use discovered model names in graph widgets, including models outside the installation's default folders. For kind=templates, starters includes absolute preview_file and final_file paths for direct comfy_workflow import. Follow next_offset while has_more and use filter to narrow files or names. Observed inventory does not prove a workflow can execute.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "filter": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "nodes",
+              "models",
+              "workflows",
+              "templates"
+            ],
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "offset": {
+            "maximum": 100000,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "access": {
+        "method": "tools/call",
+        "registration_roles": [
+          "Primary",
+          "Fallback"
+        ],
+        "catalog_state": "Available",
+        "catalog_state_is_runtime_readiness": false,
+        "independent_worker_policy_eligible": false,
+        "read_only_worker_policy_eligible": false,
+        "reviewer_tools_mode_effect_eligible": false,
+        "capability_group": "ComfyUiToolPack",
+        "catalog_effect": "Write",
+        "requires_bound_project": true,
+        "requires_shell_policy": false,
+        "arguments_schema_ref": "#/tools/18/inputSchema"
+      },
+      "source": {
+        "path": "src/Mcp/McpToolCatalog.cpp",
+        "symbol": "SourceDescriptors",
+        "line": 61
+      },
+      "name": "comfy_control",
+      "description": "Start, stop or restart the configured Forge-owned ComfyUI server. Shared or unverified processes are not stopped. Poll returned job IDs for actual lifecycle results.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "start",
+              "stop",
+              "restart"
+            ],
+            "type": "string"
+          },
+          "timeout_sec": {
+            "maximum": 7200,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "access": {
+        "method": "tools/call",
+        "registration_roles": [
+          "Primary",
+          "Fallback"
+        ],
+        "catalog_state": "Available",
+        "catalog_state_is_runtime_readiness": false,
+        "independent_worker_policy_eligible": false,
+        "read_only_worker_policy_eligible": false,
+        "reviewer_tools_mode_effect_eligible": false,
+        "capability_group": "ComfyUiToolPack",
+        "catalog_effect": "Write",
+        "requires_bound_project": true,
+        "requires_shell_policy": false,
+        "arguments_schema_ref": "#/tools/19/inputSchema"
+      },
+      "source": {
+        "path": "src/Mcp/McpToolCatalog.cpp",
+        "symbol": "SourceDescriptors",
+        "line": 62
+      },
+      "name": "comfy_job_cancel",
+      "description": "Request cancellation of one project-owned ComfyUI job and suppress local publication. Shared-provider active work may continue; poll status for observed cancellation facts.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 36
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "access": {
+        "method": "tools/call",
+        "registration_roles": [
+          "Primary",
+          "Fallback"
+        ],
+        "catalog_state": "Available",
+        "catalog_state_is_runtime_readiness": false,
+        "independent_worker_policy_eligible": false,
+        "read_only_worker_policy_eligible": false,
+        "reviewer_tools_mode_effect_eligible": true,
+        "capability_group": "ComfyUiToolPack",
+        "catalog_effect": "Read",
+        "requires_bound_project": true,
+        "requires_shell_policy": false,
+        "arguments_schema_ref": "#/tools/20/inputSchema"
+      },
+      "source": {
+        "path": "src/Mcp/McpToolCatalog.cpp",
+        "symbol": "SourceDescriptors",
+        "line": 63
+      },
+      "name": "comfy_job_list",
+      "description": "Discover paged project-owned running and retained ComfyUI jobs and durable receipts after reconnect.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "access": {
+        "method": "tools/call",
+        "registration_roles": [
+          "Primary",
+          "Fallback"
+        ],
+        "catalog_state": "Available",
+        "catalog_state_is_runtime_readiness": false,
+        "independent_worker_policy_eligible": false,
+        "read_only_worker_policy_eligible": false,
+        "reviewer_tools_mode_effect_eligible": false,
+        "capability_group": "ComfyUiToolPack",
+        "catalog_effect": "Write",
+        "requires_bound_project": true,
+        "requires_shell_policy": false,
+        "arguments_schema_ref": "#/tools/21/inputSchema"
+      },
+      "source": {
+        "path": "src/Mcp/McpToolCatalog.cpp",
+        "symbol": "SourceDescriptors",
+        "line": 64
+      },
+      "name": "comfy_job_resume",
+      "description": "Reattach fresh authority to the exact existing ComfyUI job. Reconcile observed setup phases or provider results without resubmitting ambiguous generation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 36
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "access": {
+        "method": "tools/call",
+        "registration_roles": [
+          "Primary",
+          "Fallback"
+        ],
+        "catalog_state": "Available",
+        "catalog_state_is_runtime_readiness": false,
+        "independent_worker_policy_eligible": false,
+        "read_only_worker_policy_eligible": false,
+        "reviewer_tools_mode_effect_eligible": true,
+        "capability_group": "ComfyUiToolPack",
+        "catalog_effect": "Read",
+        "requires_bound_project": true,
+        "requires_shell_policy": false,
+        "arguments_schema_ref": "#/tools/22/inputSchema"
+      },
+      "source": {
+        "path": "src/Mcp/McpToolCatalog.cpp",
+        "symbol": "SourceDescriptors",
+        "line": 65
+      },
+      "name": "comfy_job_status",
+      "description": "Read a project-owned ComfyUI setup, lifecycle or generation job across reconnects with actual state, errors and published artifact metadata. Optional wait_sec is at most 60 seconds.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "job_id": {
+            "type": "string",
+            "maxLength": 36,
+            "minLength": 36
+          },
+          "wait_sec": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 60,
+            "default": 0
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "access": {
+        "method": "tools/call",
+        "registration_roles": [
+          "Primary",
+          "Fallback"
+        ],
+        "catalog_state": "Available",
+        "catalog_state_is_runtime_readiness": false,
+        "independent_worker_policy_eligible": false,
+        "read_only_worker_policy_eligible": false,
+        "reviewer_tools_mode_effect_eligible": false,
+        "capability_group": "ComfyUiToolPack",
+        "catalog_effect": "Write",
+        "requires_bound_project": true,
+        "requires_shell_policy": false,
+        "arguments_schema_ref": "#/tools/23/inputSchema"
+      },
+      "source": {
+        "path": "src/Mcp/McpToolCatalog.cpp",
+        "symbol": "SourceDescriptors",
+        "line": 66
+      },
+      "name": "comfy_prepare",
+      "description": "Start Manager-owned ComfyUI dependency preparation within configured download, source, disk and installation limits. Poll comfy_job_status for actual readiness, phase outcomes and errors.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "dependencies": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "timeout_sec": {
+            "maximum": 7200,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "workflow": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [],
+        "type": "object"
+      }
+    },
+    {
+      "access": {
+        "method": "tools/call",
+        "registration_roles": [
+          "Primary",
+          "Fallback"
+        ],
+        "catalog_state": "Available",
+        "catalog_state_is_runtime_readiness": false,
+        "independent_worker_policy_eligible": false,
+        "read_only_worker_policy_eligible": false,
+        "reviewer_tools_mode_effect_eligible": false,
+        "capability_group": "ComfyUiToolPack",
+        "catalog_effect": "Write",
+        "requires_bound_project": true,
+        "requires_shell_policy": false,
+        "arguments_schema_ref": "#/tools/24/inputSchema"
+      },
+      "source": {
+        "path": "src/Mcp/McpToolCatalog.cpp",
+        "symbol": "SourceDescriptors",
+        "line": 67
+      },
+      "name": "comfy_run",
+      "description": "Use this managed path for every new image or video request when ComfyUI automation is enabled, including ordinary images. Discover starter paths with comfy_catalog, import and revise them with comfy_workflow, then use the returned executable workflow objects as preview_workflow and final_workflow. API links are two-element arrays [source_node_id, output_index], never omitted or replaced with output names. The optional inputs array binds only local image/audio/video source files to upload widgets using absolute paths; checkpoint/model names stay in the graphs and are not source bindings. Optional expected_outputs, preview_expected_outputs and final_expected_outputs contain output node IDs such as node 25; stage-specific lists override expected_outputs, and an empty effective list infers graph output nodes. Set file names in output node inputs. Read comfy_status for effective limits and configuration.quality_preference; honor that default when quality is omitted. When video duration is omitted, propose a motion draft of about five seconds. Choose playable MP4 with H.264 for final video using discovered output node contracts unless the operator requests a supported alternative format or codec. Preserve that supported alternative and save the format in the final graph before preview approval; a later format change requires a new preview and approval. Do not apply a universal output-format rewrite to unknown graphs. Start stage=preview with both graphs and an absolute output_directory. For an image preview, call image_read with the verified preview image artifact.path to display its larger bounded image before requesting approval; the job-status thumbnail alone is insufficient. Successful decoding verifies readable media, not the requested subject or motion quality. Before describing video content or quality, call image_analyze with the path of the published artifact whose role is sampled_video_contact_sheet, then poll reviewer_status for actual findings. Report unavailable contact sheets and review failures with their actual errors; limit visual claims to reviewed sampled frames and do not claim unverified motion quality or repeat the prompt as observed content. For a verified video preview or final artifact with provider_view_url, call browser_open with that exact URL while ComfyUI is running, then use desktop_read on the observed browser window to check its actual address. Launch acceptance alone does not verify page loading or playback. Report actual browser-launch or observation failures. Present the URL as a copyable reference and the complete artifacts[].path in a copyable fenced block; LM Studio 0.4.26+4's ordinary Markdown link path rejects loopback URLs. Never abbreviate file paths. Retain the sampled-frame preview. Poll comfy_job_status, present its actual preview and approval_reply_choices, and wait for a later native user approval before stage=final with plan_id only. Never use image_generate, direct HTTP, shell or browser queue submission for these requests. Uncertain submissions are never replayed.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "properties": {
+              "stage": {
+                "const": "preview"
+              }
+            },
+            "required": [
+              "stage",
+              "media_kind",
+              "preview_workflow",
+              "final_workflow",
+              "output_directory"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "plan_id": {
+                "maxLength": 36,
+                "minLength": 36,
+                "type": "string"
+              },
+              "stage": {
+                "const": "final"
+              }
+            },
+            "required": [
+              "stage",
+              "plan_id"
+            ],
+            "type": "object"
+          }
+        ],
+        "properties": {
+          "expected_outputs": {
+            "items": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "type": "array",
+            "description": "Exact output node IDs used for both stages when a stage-specific list is absent. For example, [\"25\"] selects graph node 25. Omit or use [] to infer all graph nodes whose discovered schema marks them as output nodes. Set file names in the output node inputs.",
+            "examples": [
+              [
+                "25"
+              ]
+            ]
+          },
+          "final_expected_outputs": {
+            "items": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "type": "array",
+            "description": "Exact output node IDs in final_workflow, overriding expected_outputs for the final render. For example, [\"25\"] selects final graph node 25. Omit this field to use expected_outputs; an empty effective list infers all final output nodes. Set file names in the output node inputs.",
+            "examples": [
+              [
+                "25"
+              ]
+            ]
+          },
+          "final_workflow": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "inputs": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "input": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "node_id": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "path": {
+                  "maxLength": 32768,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "node_id",
+                "path"
+              ],
+              "type": "object"
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "media_kind": {
+            "enum": [
+              "image",
+              "video",
+              "mixed"
+            ],
+            "type": "string"
+          },
+          "output_directory": {
+            "maxLength": 32768,
+            "type": "string"
+          },
+          "plan_id": {
+            "maxLength": 36,
+            "minLength": 36,
+            "type": "string"
+          },
+          "preview_expected_outputs": {
+            "items": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "type": "array",
+            "description": "Exact output node IDs in preview_workflow, overriding expected_outputs for the preview. For example, [\"25\"] selects preview graph node 25. Omit this field to use expected_outputs; an empty effective list infers all preview output nodes. Set file names in the output node inputs.",
+            "examples": [
+              [
+                "25"
+              ]
+            ]
+          },
+          "preview_workflow": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "stage": {
+            "enum": [
+              "preview",
+              "final"
+            ],
+            "type": "string"
+          },
+          "timeout_sec": {
+            "maximum": 7200,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stage"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "access": {
+        "method": "tools/call",
+        "registration_roles": [
+          "Primary",
+          "Fallback"
+        ],
+        "catalog_state": "Available",
+        "catalog_state_is_runtime_readiness": false,
+        "independent_worker_policy_eligible": false,
+        "read_only_worker_policy_eligible": false,
+        "reviewer_tools_mode_effect_eligible": true,
+        "capability_group": "ComfyUiToolPack",
+        "catalog_effect": "Read",
+        "requires_bound_project": true,
+        "requires_shell_policy": false,
+        "arguments_schema_ref": "#/tools/25/inputSchema"
+      },
+      "source": {
+        "path": "src/Mcp/McpToolCatalog.cpp",
+        "symbol": "SourceDescriptors",
+        "line": 68
+      },
+      "name": "comfy_status",
+      "description": "Read ComfyUI automation configuration, installation, readiness, GPU observations and setup limits without starting the server. When configuration.enabled is true, every new image or video request must use comfy_run with a saved preview/final plan and native preview approval. Start an unavailable provider with comfy_control or automatic setup, then discover node contracts and starter workflows with comfy_catalog; do not switch to legacy image_generate after starting ComfyUI.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      }
+    },
+    {
+      "access": {
+        "method": "tools/call",
+        "registration_roles": [
+          "Primary",
+          "Fallback"
+        ],
+        "catalog_state": "Available",
+        "catalog_state_is_runtime_readiness": false,
+        "independent_worker_policy_eligible": false,
+        "read_only_worker_policy_eligible": false,
+        "reviewer_tools_mode_effect_eligible": true,
+        "capability_group": "ComfyUiToolPack",
+        "catalog_effect": "Read",
+        "requires_bound_project": true,
+        "requires_shell_policy": false,
+        "arguments_schema_ref": "#/tools/26/inputSchema"
+      },
+      "source": {
+        "path": "src/Mcp/McpToolCatalog.cpp",
+        "symbol": "SourceDescriptors",
+        "line": 69
+      },
+      "name": "comfy_validate",
+      "description": "Preflight an arbitrary executable ComfyUI graph against installed node contracts and expected output nodes without enqueueing generation. expected_outputs contains graph output node IDs such as node 25; omit it to infer output nodes. Set file names in output node inputs. Provider validation at actual submission remains authoritative.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_outputs": {
+            "items": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "type": "array",
+            "description": "Exact output node IDs in workflow. For example, [\"25\"] selects graph node 25. Omit or use [] to infer all graph nodes whose discovered schema marks them as output nodes. Set file names in the output node inputs.",
+            "examples": [
+              [
+                "25"
+              ]
+            ]
+          },
+          "workflow": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "workflow"
+        ],
+        "type": "object"
+      }
+    },
+    {
+      "access": {
+        "method": "tools/call",
+        "registration_roles": [
+          "Primary",
+          "Fallback"
+        ],
+        "catalog_state": "Available",
+        "catalog_state_is_runtime_readiness": false,
+        "independent_worker_policy_eligible": false,
+        "read_only_worker_policy_eligible": false,
+        "reviewer_tools_mode_effect_eligible": false,
+        "capability_group": "ComfyUiToolPack",
+        "catalog_effect": "Write",
+        "requires_bound_project": true,
+        "requires_shell_policy": false,
+        "arguments_schema_ref": "#/tools/27/inputSchema"
+      },
+      "source": {
+        "path": "src/Mcp/McpToolCatalog.cpp",
+        "symbol": "SourceDescriptors",
+        "line": 70
+      },
+      "name": "comfy_workflow",
+      "description": "Import a discovered template or local workflow through its absolute path, inspect it, revise node inputs with typed patches, or export it. The returned workflow is executable API JSON for comfy_validate and comfy_run; preserve its node connections as [source_node_id, output_index] arrays. Use typed modify patches for prompts, selected installed models and draft/final settings rather than reconstructing a graph from memory. UI imports retain ui_workflow and use the installed frontend serializer. File paths require current project authority; conversion errors remain explicit. These operations do not submit generation.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "import",
+              "inspect",
+              "modify",
+              "export"
+            ]
+          },
+          "workflow": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "path": {
+            "type": "string",
+            "maxLength": 32768
+          },
+          "patches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "node_id": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "input": {
+                  "type": "string",
+                  "maxLength": 128
+                },
+                "value": {}
+              },
+              "required": [
+                "node_id",
+                "input",
+                "value"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 256
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
       "name": "context_get",
       "description": "Load latest (or id) handoff packet — call first in every new chat bootstrap.",
       "inputSchema": {
@@ -2831,7 +3562,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/17/inputSchema",
+        "arguments_schema_ref": "#/tools/28/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -2840,7 +3571,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 60,
+        "line": 71,
         "symbol": "SourceDescriptors"
       }
     },
@@ -2866,7 +3597,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/18/inputSchema",
+        "arguments_schema_ref": "#/tools/29/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -2875,7 +3606,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 61,
+        "line": 72,
         "symbol": "SourceDescriptors"
       }
     },
@@ -2919,7 +3650,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/19/inputSchema",
+        "arguments_schema_ref": "#/tools/30/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -2928,7 +3659,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 62,
+        "line": 73,
         "symbol": "SourceDescriptors"
       }
     },
@@ -3077,7 +3808,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/20/inputSchema",
+        "arguments_schema_ref": "#/tools/31/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -3086,7 +3817,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 63,
+        "line": 74,
         "symbol": "SourceDescriptors"
       }
     },
@@ -3115,7 +3846,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/21/inputSchema",
+        "arguments_schema_ref": "#/tools/32/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -3124,7 +3855,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 64,
+        "line": 75,
         "symbol": "SourceDescriptors"
       }
     },
@@ -3273,7 +4004,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/22/inputSchema",
+        "arguments_schema_ref": "#/tools/33/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -3282,7 +4013,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 65,
+        "line": 76,
         "symbol": "SourceDescriptors"
       }
     },
@@ -3431,7 +4162,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/23/inputSchema",
+        "arguments_schema_ref": "#/tools/34/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -3440,7 +4171,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 66,
+        "line": 77,
         "symbol": "SourceDescriptors"
       }
     },
@@ -3473,7 +4204,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/24/inputSchema",
+        "arguments_schema_ref": "#/tools/35/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -3482,7 +4213,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 67,
+        "line": 78,
         "symbol": "SourceDescriptors"
       }
     },
@@ -3511,7 +4242,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/25/inputSchema",
+        "arguments_schema_ref": "#/tools/36/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -3520,7 +4251,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 68,
+        "line": 79,
         "symbol": "SourceDescriptors"
       }
     },
@@ -3568,7 +4299,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/26/inputSchema",
+        "arguments_schema_ref": "#/tools/37/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -3577,7 +4308,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 69,
+        "line": 80,
         "symbol": "SourceDescriptors"
       }
     },
@@ -3633,7 +4364,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/27/inputSchema",
+        "arguments_schema_ref": "#/tools/38/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -3642,8 +4373,84 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 70,
+        "line": 81,
         "symbol": "SourceDescriptors"
+      }
+    },
+    {
+      "access": {
+        "method": "tools/call",
+        "registration_roles": [
+          "Primary",
+          "Fallback"
+        ],
+        "catalog_state": "Available",
+        "catalog_state_is_runtime_readiness": false,
+        "independent_worker_policy_eligible": false,
+        "read_only_worker_policy_eligible": false,
+        "reviewer_tools_mode_effect_eligible": false,
+        "capability_group": "DesktopToolPack",
+        "catalog_effect": "Write",
+        "requires_bound_project": true,
+        "requires_shell_policy": false,
+        "arguments_schema_ref": "#/tools/39/inputSchema"
+      },
+      "source": {
+        "path": "src/Mcp/McpToolCatalog.cpp",
+        "symbol": "SourceDescriptors",
+        "line": 82
+      },
+      "name": "desktop_drag",
+      "description": "Drag the left mouse button between window-relative points in an exact listed visible window/PID. Optional duration_ms is 50..5000 (default 500). Requires task authorization; observe the resulting UI.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "window_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9223372036854775807
+          },
+          "pid": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "start_x": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8192
+          },
+          "start_y": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8192
+          },
+          "end_x": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8192
+          },
+          "end_y": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8192
+          },
+          "duration_ms": {
+            "type": "integer",
+            "minimum": 50,
+            "maximum": 5000,
+            "default": 500
+          }
+        },
+        "required": [
+          "window_id",
+          "pid",
+          "start_x",
+          "start_y",
+          "end_x",
+          "end_y"
+        ],
+        "additionalProperties": false
       }
     },
     {
@@ -3693,7 +4500,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/28/inputSchema",
+        "arguments_schema_ref": "#/tools/40/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -3702,7 +4509,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 71,
+        "line": 83,
         "symbol": "SourceDescriptors"
       }
     },
@@ -3731,7 +4538,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/29/inputSchema",
+        "arguments_schema_ref": "#/tools/41/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -3740,7 +4547,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 72,
+        "line": 84,
         "symbol": "SourceDescriptors"
       }
     },
@@ -3787,7 +4594,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/30/inputSchema",
+        "arguments_schema_ref": "#/tools/42/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -3796,8 +4603,72 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 73,
+        "line": 85,
         "symbol": "SourceDescriptors"
+      }
+    },
+    {
+      "access": {
+        "method": "tools/call",
+        "registration_roles": [
+          "Primary",
+          "Fallback"
+        ],
+        "catalog_state": "Available",
+        "catalog_state_is_runtime_readiness": false,
+        "independent_worker_policy_eligible": false,
+        "read_only_worker_policy_eligible": false,
+        "reviewer_tools_mode_effect_eligible": false,
+        "capability_group": "DesktopToolPack",
+        "catalog_effect": "Write",
+        "requires_bound_project": true,
+        "requires_shell_policy": false,
+        "arguments_schema_ref": "#/tools/43/inputSchema"
+      },
+      "source": {
+        "path": "src/Mcp/McpToolCatalog.cpp",
+        "symbol": "SourceDescriptors",
+        "line": 86
+      },
+      "name": "desktop_scroll",
+      "description": "Scroll at a window-relative point in an exact listed visible window/PID using signed wheel delta. Requires task authorization and foreground activation; observe the resulting UI.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "window_id": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9223372036854775807
+          },
+          "pid": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4294967295
+          },
+          "x": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8192
+          },
+          "y": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 8192
+          },
+          "delta": {
+            "type": "integer",
+            "minimum": -12000,
+            "maximum": 12000
+          }
+        },
+        "required": [
+          "window_id",
+          "pid",
+          "x",
+          "y",
+          "delta"
+        ],
+        "additionalProperties": false
       }
     },
     {
@@ -3838,7 +4709,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/31/inputSchema",
+        "arguments_schema_ref": "#/tools/44/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -3847,7 +4718,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 74,
+        "line": 87,
         "symbol": "SourceDescriptors"
       }
     },
@@ -3890,7 +4761,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/32/inputSchema",
+        "arguments_schema_ref": "#/tools/45/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -3899,7 +4770,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 75,
+        "line": 88,
         "symbol": "SourceDescriptors"
       }
     },
@@ -3932,7 +4803,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/33/inputSchema",
+        "arguments_schema_ref": "#/tools/46/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -3941,7 +4812,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 76,
+        "line": 89,
         "symbol": "SourceDescriptors"
       }
     },
@@ -3977,7 +4848,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/34/inputSchema",
+        "arguments_schema_ref": "#/tools/47/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -3986,7 +4857,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 77,
+        "line": 90,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4008,7 +4879,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/35/inputSchema",
+        "arguments_schema_ref": "#/tools/48/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4017,7 +4888,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 78,
+        "line": 91,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4045,7 +4916,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/36/inputSchema",
+        "arguments_schema_ref": "#/tools/49/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4054,7 +4925,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 79,
+        "line": 92,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4091,7 +4962,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/37/inputSchema",
+        "arguments_schema_ref": "#/tools/50/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4100,7 +4971,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 80,
+        "line": 93,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4130,7 +5001,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/38/inputSchema",
+        "arguments_schema_ref": "#/tools/51/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4139,7 +5010,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 81,
+        "line": 94,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4165,7 +5036,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/39/inputSchema",
+        "arguments_schema_ref": "#/tools/52/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4174,7 +5045,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 82,
+        "line": 95,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4202,7 +5073,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/40/inputSchema",
+        "arguments_schema_ref": "#/tools/53/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4211,7 +5082,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 83,
+        "line": 96,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4253,7 +5124,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/41/inputSchema",
+        "arguments_schema_ref": "#/tools/54/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4262,7 +5133,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 84,
+        "line": 97,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4306,7 +5177,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/42/inputSchema",
+        "arguments_schema_ref": "#/tools/55/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4315,7 +5186,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 85,
+        "line": 98,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4347,7 +5218,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/43/inputSchema",
+        "arguments_schema_ref": "#/tools/56/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4356,7 +5227,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 86,
+        "line": 99,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4378,7 +5249,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/44/inputSchema",
+        "arguments_schema_ref": "#/tools/57/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4387,7 +5258,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 87,
+        "line": 100,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4409,7 +5280,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/45/inputSchema",
+        "arguments_schema_ref": "#/tools/58/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4418,7 +5289,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 88,
+        "line": 101,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4440,7 +5311,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/46/inputSchema",
+        "arguments_schema_ref": "#/tools/59/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4449,7 +5320,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 89,
+        "line": 102,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4471,7 +5342,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/47/inputSchema",
+        "arguments_schema_ref": "#/tools/60/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4480,7 +5351,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 90,
+        "line": 103,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4502,7 +5373,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/48/inputSchema",
+        "arguments_schema_ref": "#/tools/61/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4511,7 +5382,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 91,
+        "line": 104,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4533,7 +5404,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/49/inputSchema",
+        "arguments_schema_ref": "#/tools/62/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4542,7 +5413,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 92,
+        "line": 105,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4602,7 +5473,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/50/inputSchema",
+        "arguments_schema_ref": "#/tools/63/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4611,7 +5482,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 93,
+        "line": 106,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4634,7 +5505,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/51/inputSchema",
+        "arguments_schema_ref": "#/tools/64/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4643,7 +5514,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 94,
+        "line": 107,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4706,7 +5577,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/52/inputSchema",
+        "arguments_schema_ref": "#/tools/65/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4715,7 +5586,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 95,
+        "line": 108,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4769,7 +5640,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/53/inputSchema",
+        "arguments_schema_ref": "#/tools/66/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -4778,7 +5649,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 96,
+        "line": 109,
         "symbol": "SourceDescriptors"
       }
     },
@@ -4878,7 +5749,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/54/inputSchema",
+        "arguments_schema_ref": "#/tools/67/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4887,13 +5758,13 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 97,
+        "line": 110,
         "symbol": "SourceDescriptors"
       }
     },
     {
       "name": "image_generate",
-      "description": "Start a Manager-owned image generation using the explicitly configured optional ComfyUI provider. Requires an absolute authorized output path, prompt, seed, width and height. Returns a job ID; image_job_status reports actual provider state and published preview. Provider is disabled by default; no model installation or server startup.",
+      "description": "Legacy SD1 generation for explicitly requested legacy image-provider work. When ComfyUI automation is enabled, use comfy_run for every new image or video request, including ordinary images and previews; this legacy tool does not implement the managed preview approval plan. Existing contract: absolute output path, prompt, seed, width and height; returns a Manager-owned job ID for image_job_status. No model installation or server startup.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -4976,7 +5847,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/55/inputSchema",
+        "arguments_schema_ref": "#/tools/68/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -4985,7 +5856,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 98,
+        "line": 111,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5016,7 +5887,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/56/inputSchema",
+        "arguments_schema_ref": "#/tools/69/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5025,7 +5896,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 99,
+        "line": 112,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5056,7 +5927,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/57/inputSchema",
+        "arguments_schema_ref": "#/tools/70/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5065,7 +5936,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 100,
+        "line": 113,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5102,7 +5973,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/58/inputSchema",
+        "arguments_schema_ref": "#/tools/71/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5111,13 +5982,13 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 101,
+        "line": 114,
         "symbol": "SourceDescriptors"
       }
     },
     {
       "name": "image_provider_status",
-      "description": "Inspect the explicitly configured optional ComfyUI endpoint, node contracts and checkpoint inventory without starting the server or loading a model. Reports disabled, unavailable and incompatible providers explicitly; catalog presence alone does not establish generation availability.",
+      "description": "Inspect the separately configured legacy SD1 image provider. For new image or video creation, first read comfy_status; when automation is enabled use comfy_run with preview approval, including ordinary image requests. This status does not inspect generic ComfyUI automation, install models, start ComfyUI or run inference.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {},
@@ -5134,7 +6005,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/59/inputSchema",
+        "arguments_schema_ref": "#/tools/72/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5143,7 +6014,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 102,
+        "line": 115,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5204,7 +6075,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/60/inputSchema",
+        "arguments_schema_ref": "#/tools/73/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5213,7 +6084,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 103,
+        "line": 116,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5334,7 +6205,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/61/inputSchema",
+        "arguments_schema_ref": "#/tools/74/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5343,7 +6214,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 104,
+        "line": 117,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5382,7 +6253,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/62/inputSchema",
+        "arguments_schema_ref": "#/tools/75/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5391,7 +6262,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 105,
+        "line": 118,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5419,7 +6290,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/63/inputSchema",
+        "arguments_schema_ref": "#/tools/76/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5428,7 +6299,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 106,
+        "line": 119,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5456,7 +6327,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/64/inputSchema",
+        "arguments_schema_ref": "#/tools/77/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5465,7 +6336,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 107,
+        "line": 120,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5503,7 +6374,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/65/inputSchema",
+        "arguments_schema_ref": "#/tools/78/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5512,7 +6383,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 108,
+        "line": 121,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5549,7 +6420,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/66/inputSchema",
+        "arguments_schema_ref": "#/tools/79/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5558,7 +6429,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 109,
+        "line": 122,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5600,7 +6471,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/67/inputSchema",
+        "arguments_schema_ref": "#/tools/80/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5609,7 +6480,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 110,
+        "line": 123,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5643,7 +6514,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/68/inputSchema",
+        "arguments_schema_ref": "#/tools/81/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5652,7 +6523,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 111,
+        "line": 124,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5687,7 +6558,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/69/inputSchema",
+        "arguments_schema_ref": "#/tools/82/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5696,7 +6567,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 112,
+        "line": 125,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5757,7 +6628,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/70/inputSchema",
+        "arguments_schema_ref": "#/tools/83/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5766,7 +6637,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 113,
+        "line": 126,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5797,7 +6668,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/71/inputSchema",
+        "arguments_schema_ref": "#/tools/84/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5806,7 +6677,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 114,
+        "line": 127,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5837,7 +6708,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/72/inputSchema",
+        "arguments_schema_ref": "#/tools/85/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5846,7 +6717,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 115,
+        "line": 128,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5901,7 +6772,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": true,
-        "arguments_schema_ref": "#/tools/73/inputSchema",
+        "arguments_schema_ref": "#/tools/86/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5910,7 +6781,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 116,
+        "line": 129,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5933,7 +6804,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/74/inputSchema",
+        "arguments_schema_ref": "#/tools/87/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5942,7 +6813,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 117,
+        "line": 130,
         "symbol": "SourceDescriptors"
       }
     },
@@ -5973,7 +6844,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/75/inputSchema",
+        "arguments_schema_ref": "#/tools/88/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -5982,7 +6853,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 118,
+        "line": 131,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6029,7 +6900,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/76/inputSchema",
+        "arguments_schema_ref": "#/tools/89/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6038,7 +6909,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 119,
+        "line": 132,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6061,7 +6932,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/77/inputSchema",
+        "arguments_schema_ref": "#/tools/90/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6070,7 +6941,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 120,
+        "line": 133,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6106,7 +6977,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/78/inputSchema",
+        "arguments_schema_ref": "#/tools/91/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6115,7 +6986,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 121,
+        "line": 134,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6151,7 +7022,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/79/inputSchema",
+        "arguments_schema_ref": "#/tools/92/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6160,7 +7031,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 122,
+        "line": 135,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6204,7 +7075,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/80/inputSchema",
+        "arguments_schema_ref": "#/tools/93/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6213,7 +7084,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 123,
+        "line": 136,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6257,7 +7128,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/81/inputSchema",
+        "arguments_schema_ref": "#/tools/94/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6266,7 +7137,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 124,
+        "line": 137,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6310,7 +7181,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/82/inputSchema",
+        "arguments_schema_ref": "#/tools/95/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6319,7 +7190,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 125,
+        "line": 138,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6373,7 +7244,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/83/inputSchema",
+        "arguments_schema_ref": "#/tools/96/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6382,7 +7253,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 126,
+        "line": 139,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6462,7 +7333,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/84/inputSchema",
+        "arguments_schema_ref": "#/tools/97/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6471,7 +7342,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 127,
+        "line": 140,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6511,7 +7382,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/85/inputSchema",
+        "arguments_schema_ref": "#/tools/98/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6520,7 +7391,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 128,
+        "line": 141,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6584,7 +7455,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/86/inputSchema",
+        "arguments_schema_ref": "#/tools/99/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6593,7 +7464,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 129,
+        "line": 142,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6625,7 +7496,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/87/inputSchema",
+        "arguments_schema_ref": "#/tools/100/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6634,7 +7505,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 130,
+        "line": 143,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6689,7 +7560,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/88/inputSchema",
+        "arguments_schema_ref": "#/tools/101/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6698,7 +7569,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 131,
+        "line": 144,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6732,7 +7603,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/89/inputSchema",
+        "arguments_schema_ref": "#/tools/102/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6741,7 +7612,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 132,
+        "line": 145,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6764,7 +7635,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/90/inputSchema",
+        "arguments_schema_ref": "#/tools/103/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6773,7 +7644,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 133,
+        "line": 146,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6804,7 +7675,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/91/inputSchema",
+        "arguments_schema_ref": "#/tools/104/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -6813,7 +7684,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 134,
+        "line": 147,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6884,7 +7755,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/92/inputSchema",
+        "arguments_schema_ref": "#/tools/105/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -6893,7 +7764,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 135,
+        "line": 148,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6934,7 +7805,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/93/inputSchema",
+        "arguments_schema_ref": "#/tools/106/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -6943,7 +7814,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 136,
+        "line": 149,
         "symbol": "SourceDescriptors"
       }
     },
@@ -6977,7 +7848,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/94/inputSchema",
+        "arguments_schema_ref": "#/tools/107/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -6986,7 +7857,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 137,
+        "line": 150,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7059,7 +7930,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/95/inputSchema",
+        "arguments_schema_ref": "#/tools/108/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -7068,7 +7939,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 138,
+        "line": 151,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7110,7 +7981,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/96/inputSchema",
+        "arguments_schema_ref": "#/tools/109/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -7119,7 +7990,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 139,
+        "line": 152,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7153,7 +8024,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/97/inputSchema",
+        "arguments_schema_ref": "#/tools/110/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -7162,7 +8033,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 140,
+        "line": 153,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7193,7 +8064,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/98/inputSchema",
+        "arguments_schema_ref": "#/tools/111/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -7202,7 +8073,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 141,
+        "line": 154,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7278,7 +8149,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/99/inputSchema",
+        "arguments_schema_ref": "#/tools/112/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -7287,7 +8158,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 142,
+        "line": 155,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7368,7 +8239,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": false,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/100/inputSchema",
+        "arguments_schema_ref": "#/tools/113/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -7377,7 +8248,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 143,
+        "line": 156,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7415,7 +8286,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": true,
-        "arguments_schema_ref": "#/tools/101/inputSchema",
+        "arguments_schema_ref": "#/tools/114/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -7424,7 +8295,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 144,
+        "line": 157,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7455,7 +8326,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/102/inputSchema",
+        "arguments_schema_ref": "#/tools/115/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -7464,7 +8335,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 145,
+        "line": 158,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7487,7 +8358,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/103/inputSchema",
+        "arguments_schema_ref": "#/tools/116/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -7496,7 +8367,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 146,
+        "line": 159,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7535,7 +8406,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": true,
-        "arguments_schema_ref": "#/tools/104/inputSchema",
+        "arguments_schema_ref": "#/tools/117/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -7544,7 +8415,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 147,
+        "line": 160,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7575,7 +8446,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/105/inputSchema",
+        "arguments_schema_ref": "#/tools/118/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -7584,7 +8455,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 148,
+        "line": 161,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7649,7 +8520,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/106/inputSchema",
+        "arguments_schema_ref": "#/tools/119/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -7658,7 +8529,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 149,
+        "line": 162,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7702,7 +8573,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": true,
-        "arguments_schema_ref": "#/tools/107/inputSchema",
+        "arguments_schema_ref": "#/tools/120/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -7711,7 +8582,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 150,
+        "line": 163,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7740,7 +8611,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/108/inputSchema",
+        "arguments_schema_ref": "#/tools/121/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -7749,7 +8620,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 151,
+        "line": 164,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7789,7 +8660,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/109/inputSchema",
+        "arguments_schema_ref": "#/tools/122/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -7798,7 +8669,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 152,
+        "line": 165,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7838,7 +8709,7 @@
         "catalog_effect": "Read",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/110/inputSchema",
+        "arguments_schema_ref": "#/tools/123/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": true,
@@ -7847,7 +8718,7 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 153,
+        "line": 166,
         "symbol": "SourceDescriptors"
       }
     },
@@ -7876,7 +8747,7 @@
         "catalog_effect": "Write",
         "requires_bound_project": true,
         "requires_shell_policy": false,
-        "arguments_schema_ref": "#/tools/111/inputSchema",
+        "arguments_schema_ref": "#/tools/124/inputSchema",
         "catalog_state": "Available",
         "catalog_state_is_runtime_readiness": false,
         "independent_worker_policy_eligible": false,
@@ -7885,19 +8756,21 @@
       },
       "source": {
         "path": "src/Mcp/McpToolCatalog.cpp",
-        "line": 154,
+        "line": 167,
         "symbol": "SourceDescriptors"
       }
     }
   ],
   "evidence_and_qualification": {
-    "inventory_evidence": "All 112 descriptors copied exactly from the semantic golden fixture and joined by name to current SourceDescriptors metadata; full conditional/nested schemas retained. Listing/role/authority/protocol and specialist sources inspected.",
+    "inventory_evidence": "125 descriptors copied from the current semantic fixture and joined to SourceDescriptors metadata for 1.3.29; exact committed source and versioned package qualification are recorded separately in release verification.",
     "catalog_fixture": {
       "path": "tests/fixtures/Mcp/mcp-tools-semantic-golden.json",
-      "sha256": "8783164b662933394bde49f8fe0f45ba7b1ace5239b5f49f13e852cb39715347"
+      "sha256": "bfaf8164382cbd1f35beb649d9ed2e41c6bb3c1dfc3f9b56040cf1af965d3015"
     },
-    "canonical_descriptor_sha256": "70140d728206e194c3b273f9fb9a42b84b4b01db9495db7c8c88dad1cd22c4d1",
-    "runtime_qualification_reference": "docs/validation/HOST-CAPABILITIES-1.3.28.md",
+    "canonical_descriptor_sha256": "9e19a9e3f145166c4803c49d60f9f05c815acde28e00ecc15e4752a06bb75c9e",
+    "runtime_qualification_reference": "docs/validation/RELEASE-1.3.29.md",
+    "host_inference_reference": "docs/COMFYUI_HOST_QUALIFICATION.md",
+    "historical_runtime_qualification_reference": "docs/validation/HOST-CAPABILITIES-1.3.28.md",
     "qualification_boundary": "This inventory does not execute every tool in the current Qwen conversation or establish that all external providers/accounts are available. Examples are schema-checked illustrations, not live-call receipts. Consult the named versioned verification record for executed scope.",
     "maintenance": "Regenerate/reconcile this pair whenever descriptors, access policy, playbooks or service contracts change; compare exact descriptor equality, role membership and counts.",
     "sources": [
@@ -7916,5 +8789,6 @@
       "docs/CMAKE-CTEST.md",
       "docs/IMAGE-PROVIDER.md"
     ]
-  }
+  },
+  "release_feature": "1.3.29 adds 11 ComfyUI tools and desktop scroll/drag; versioned release verification and productive host inference are separate."
 }

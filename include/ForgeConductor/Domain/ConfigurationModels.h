@@ -93,6 +93,20 @@ struct ImageProviderConfig final {
     bool operator==(const ImageProviderConfig&) const = default;
 };
 
+struct ComfyUiConfig final {
+    bool enabled{};
+    bool automaticSetup{true};
+    std::string installationPath;
+    std::string modelStoragePath;
+    std::string endpoint{"http://127.0.0.1:8188"};
+    std::uint64_t downloadBudgetBytes{500'000'000'000ULL};
+    std::uint64_t freeSpaceReserveBytes{50'000'000'000ULL};
+    std::uint32_t generationTimeoutSeconds{1'800U};
+    std::string qualityPreference{"balanced"};
+
+    bool operator==(const ComfyUiConfig&) const = default;
+};
+
 struct AppConfig final {
     LogLevel logLevel{LogLevel::Info};
     std::vector<PathText> allowedRoots;
@@ -105,6 +119,7 @@ struct AppConfig final {
     LocalModelConfig localModel;
     FileSystemAccessMode fileSystemAccess{FileSystemAccessMode::Workspace};
     ImageProviderConfig imageProvider;
+    ComfyUiConfig comfyUi;
 
     bool operator==(const AppConfig&) const = default;
 };
@@ -135,11 +150,13 @@ struct AppConfigPatch final {
     std::optional<std::uint32_t> estimationSafetyMargin;
     std::optional<FileSystemAccessMode> fileSystemAccess;
     std::optional<ImageProviderConfig> imageProvider;
+    std::optional<ComfyUiConfig> comfyUi;
 };
 
 [[nodiscard]] AppConfig defaultAppConfig();
 [[nodiscard]] Result<void> validateAppConfig(const AppConfig& config);
 [[nodiscard]] Result<void> validateImageProviderConfig(const ImageProviderConfig& config);
+[[nodiscard]] Result<void> validateComfyUiConfig(const ComfyUiConfig& config);
 [[nodiscard]] Result<AppConfig> applyConfigPatch(
     const AppConfig& config,
     const AppConfigPatch& patch);

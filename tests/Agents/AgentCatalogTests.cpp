@@ -222,6 +222,10 @@ void testEmbeddedFallbacksAndResourcesAreEquivalent(
         implement.tools.end());
     REQUIRE(std::find(implement.tools.begin(), implement.tools.end(), "memory_set") !=
         implement.tools.end());
+    REQUIRE(implement.body.find("read `comfy_status` for effective limits") != std::string::npos);
+    REQUIRE(implement.body.find("`configuration.quality_preference` before choosing a workflow") != std::string::npos);
+    REQUIRE(implement.body.find("omits quality, honor that configured default") != std::string::npos);
+    REQUIRE(implement.body.find("a universal resolution, frame-count or sampling rewrite to unknown graphs") != std::string::npos);
 }
 
 void testSourceCompatibleParserAndValidation()

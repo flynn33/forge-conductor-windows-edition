@@ -188,6 +188,13 @@ $requiredPayload = @(
     'Assets/StoreLogo.png','Assets/Square44x44Logo.png',
     'Assets/Square150x150Logo.png','Assets/Wide310x150Logo.png',
     'Resources/Agents/implement.md',
+    'Resources/ComfyUI/starter_manifest.json',
+    'Resources/ComfyUI/sd1_image.preview.api.json',
+    'Resources/ComfyUI/sd1_image.final.api.json',
+    'Resources/ComfyUI/wan22_5b_t2v.preview.api.json',
+    'Resources/ComfyUI/wan22_5b_t2v.final.api.json',
+    'Resources/ComfyUI/wan22_5b_i2v.preview.api.json',
+    'Resources/ComfyUI/wan22_5b_i2v.final.api.json',
     'Resources/ForsettiManifests/ForgeConductorAppModule.json',
     'vcruntime140.dll','msvcp140.dll','THIRD-PARTY-NOTICES.md','AppxManifest.xml')
 foreach ($relative in $requiredPayload) {

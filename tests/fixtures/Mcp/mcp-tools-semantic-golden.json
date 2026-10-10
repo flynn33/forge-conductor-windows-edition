@@ -366,6 +366,432 @@
       "name": "cmake_test_status"
     },
     {
+      "description": "Discover paged installed ComfyUI node contracts, model choices, workflow files or templates. For kind=models, omit category to list model folders, then set category to an exact returned folder such as checkpoints to list installed choices; name remains a compatible folder alias. For kind=nodes, name selects an exact class and category filters its schema category. Use discovered model names in graph widgets, including models outside the installation's default folders. For kind=templates, starters includes absolute preview_file and final_file paths for direct comfy_workflow import. Follow next_offset while has_more and use filter to narrow files or names. Observed inventory does not prove a workflow can execute.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "filter": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "nodes",
+              "models",
+              "workflows",
+              "templates"
+            ],
+            "type": "string"
+          },
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 256,
+            "type": "string"
+          },
+          "offset": {
+            "maximum": 100000,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "type": "object"
+      },
+      "name": "comfy_catalog"
+    },
+    {
+      "description": "Start, stop or restart the configured Forge-owned ComfyUI server. Shared or unverified processes are not stopped. Poll returned job IDs for actual lifecycle results.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "start",
+              "stop",
+              "restart"
+            ],
+            "type": "string"
+          },
+          "timeout_sec": {
+            "maximum": 7200,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "name": "comfy_control"
+    },
+    {
+      "description": "Request cancellation of one project-owned ComfyUI job and suppress local publication. Shared-provider active work may continue; poll status for observed cancellation facts.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 36,
+            "minLength": 36,
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "comfy_job_cancel"
+    },
+    {
+      "description": "Discover paged project-owned running and retained ComfyUI jobs and durable receipts after reconnect.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "maximum": 100,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "offset": {
+            "maximum": 1000000,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "comfy_job_list"
+    },
+    {
+      "description": "Reattach fresh authority to the exact existing ComfyUI job. Reconcile observed setup phases or provider results without resubmitting ambiguous generation.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 36,
+            "minLength": 36,
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "comfy_job_resume"
+    },
+    {
+      "description": "Read a project-owned ComfyUI setup, lifecycle or generation job across reconnects with actual state, errors and published artifact metadata. Optional wait_sec is at most 60 seconds.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "job_id": {
+            "maxLength": 36,
+            "minLength": 36,
+            "type": "string"
+          },
+          "wait_sec": {
+            "default": 0,
+            "maximum": 60,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "type": "object"
+      },
+      "name": "comfy_job_status"
+    },
+    {
+      "description": "Start Manager-owned ComfyUI dependency preparation within configured download, source, disk and installation limits. Poll comfy_job_status for actual readiness, phase outcomes and errors.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "dependencies": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "maxItems": 128,
+            "type": "array"
+          },
+          "timeout_sec": {
+            "maximum": 7200,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "workflow": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [],
+        "type": "object"
+      },
+      "name": "comfy_prepare"
+    },
+    {
+      "description": "Use this managed path for every new image or video request when ComfyUI automation is enabled, including ordinary images. Discover starter paths with comfy_catalog, import and revise them with comfy_workflow, then use the returned executable workflow objects as preview_workflow and final_workflow. API links are two-element arrays [source_node_id, output_index], never omitted or replaced with output names. The optional inputs array binds only local image/audio/video source files to upload widgets using absolute paths; checkpoint/model names stay in the graphs and are not source bindings. Optional expected_outputs, preview_expected_outputs and final_expected_outputs contain output node IDs such as node 25; stage-specific lists override expected_outputs, and an empty effective list infers graph output nodes. Set file names in output node inputs. Read comfy_status for effective limits and configuration.quality_preference; honor that default when quality is omitted. When video duration is omitted, propose a motion draft of about five seconds. Choose playable MP4 with H.264 for final video using discovered output node contracts unless the operator requests a supported alternative format or codec. Preserve that supported alternative and save the format in the final graph before preview approval; a later format change requires a new preview and approval. Do not apply a universal output-format rewrite to unknown graphs. Start stage=preview with both graphs and an absolute output_directory. For an image preview, call image_read with the verified preview image artifact.path to display its larger bounded image before requesting approval; the job-status thumbnail alone is insufficient. Successful decoding verifies readable media, not the requested subject or motion quality. Before describing video content or quality, call image_analyze with the path of the published artifact whose role is sampled_video_contact_sheet, then poll reviewer_status for actual findings. Report unavailable contact sheets and review failures with their actual errors; limit visual claims to reviewed sampled frames and do not claim unverified motion quality or repeat the prompt as observed content. For a verified video preview or final artifact with provider_view_url, call browser_open with that exact URL while ComfyUI is running, then use desktop_read on the observed browser window to check its actual address. Launch acceptance alone does not verify page loading or playback. Report actual browser-launch or observation failures. Present the URL as a copyable reference and the complete artifacts[].path in a copyable fenced block; LM Studio 0.4.26+4's ordinary Markdown link path rejects loopback URLs. Never abbreviate file paths. Retain the sampled-frame preview. Poll comfy_job_status, present its actual preview and approval_reply_choices, and wait for a later native user approval before stage=final with plan_id only. Never use image_generate, direct HTTP, shell or browser queue submission for these requests. Uncertain submissions are never replayed.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "properties": {
+              "stage": {
+                "const": "preview"
+              }
+            },
+            "required": [
+              "stage",
+              "media_kind",
+              "preview_workflow",
+              "final_workflow",
+              "output_directory"
+            ]
+          },
+          {
+            "additionalProperties": false,
+            "properties": {
+              "plan_id": {
+                "maxLength": 36,
+                "minLength": 36,
+                "type": "string"
+              },
+              "stage": {
+                "const": "final"
+              }
+            },
+            "required": [
+              "stage",
+              "plan_id"
+            ],
+            "type": "object"
+          }
+        ],
+        "properties": {
+          "expected_outputs": {
+            "description": "Exact output node IDs used for both stages when a stage-specific list is absent. For example, [\"25\"] selects graph node 25. Omit or use [] to infer all graph nodes whose discovered schema marks them as output nodes. Set file names in the output node inputs.",
+            "examples": [
+              [
+                "25"
+              ]
+            ],
+            "items": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "final_expected_outputs": {
+            "description": "Exact output node IDs in final_workflow, overriding expected_outputs for the final render. For example, [\"25\"] selects final graph node 25. Omit this field to use expected_outputs; an empty effective list infers all final output nodes. Set file names in the output node inputs.",
+            "examples": [
+              [
+                "25"
+              ]
+            ],
+            "items": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "final_workflow": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "inputs": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "input": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "node_id": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "path": {
+                  "maxLength": 32768,
+                  "type": "string"
+                }
+              },
+              "required": [
+                "node_id",
+                "path"
+              ],
+              "type": "object"
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "media_kind": {
+            "enum": [
+              "image",
+              "video",
+              "mixed"
+            ],
+            "type": "string"
+          },
+          "output_directory": {
+            "maxLength": 32768,
+            "type": "string"
+          },
+          "plan_id": {
+            "maxLength": 36,
+            "minLength": 36,
+            "type": "string"
+          },
+          "preview_expected_outputs": {
+            "description": "Exact output node IDs in preview_workflow, overriding expected_outputs for the preview. For example, [\"25\"] selects preview graph node 25. Omit this field to use expected_outputs; an empty effective list infers all preview output nodes. Set file names in the output node inputs.",
+            "examples": [
+              [
+                "25"
+              ]
+            ],
+            "items": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "preview_workflow": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "stage": {
+            "enum": [
+              "preview",
+              "final"
+            ],
+            "type": "string"
+          },
+          "timeout_sec": {
+            "maximum": 7200,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "stage"
+        ],
+        "type": "object"
+      },
+      "name": "comfy_run"
+    },
+    {
+      "description": "Read ComfyUI automation configuration, installation, readiness, GPU observations and setup limits without starting the server. When configuration.enabled is true, every new image or video request must use comfy_run with a saved preview/final plan and native preview approval. Start an unavailable provider with comfy_control or automatic setup, then discover node contracts and starter workflows with comfy_catalog; do not switch to legacy image_generate after starting ComfyUI.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {},
+        "required": [],
+        "type": "object"
+      },
+      "name": "comfy_status"
+    },
+    {
+      "description": "Preflight an arbitrary executable ComfyUI graph against installed node contracts and expected output nodes without enqueueing generation. expected_outputs contains graph output node IDs such as node 25; omit it to infer output nodes. Set file names in output node inputs. Provider validation at actual submission remains authoritative.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_outputs": {
+            "description": "Exact output node IDs in workflow. For example, [\"25\"] selects graph node 25. Omit or use [] to infer all graph nodes whose discovered schema marks them as output nodes. Set file names in the output node inputs.",
+            "examples": [
+              [
+                "25"
+              ]
+            ],
+            "items": {
+              "maxLength": 128,
+              "type": "string"
+            },
+            "maxItems": 64,
+            "type": "array"
+          },
+          "workflow": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "workflow"
+        ],
+        "type": "object"
+      },
+      "name": "comfy_validate"
+    },
+    {
+      "description": "Import a discovered template or local workflow through its absolute path, inspect it, revise node inputs with typed patches, or export it. The returned workflow is executable API JSON for comfy_validate and comfy_run; preserve its node connections as [source_node_id, output_index] arrays. Use typed modify patches for prompts, selected installed models and draft/final settings rather than reconstructing a graph from memory. UI imports retain ui_workflow and use the installed frontend serializer. File paths require current project authority; conversion errors remain explicit. These operations do not submit generation.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "import",
+              "inspect",
+              "modify",
+              "export"
+            ],
+            "type": "string"
+          },
+          "patches": {
+            "items": {
+              "additionalProperties": false,
+              "properties": {
+                "input": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "node_id": {
+                  "maxLength": 128,
+                  "type": "string"
+                },
+                "value": {}
+              },
+              "required": [
+                "node_id",
+                "input",
+                "value"
+              ],
+              "type": "object"
+            },
+            "maxItems": 256,
+            "type": "array"
+          },
+          "path": {
+            "maxLength": 32768,
+            "type": "string"
+          },
+          "workflow": {
+            "additionalProperties": true,
+            "type": "object"
+          }
+        },
+        "required": [
+          "action"
+        ],
+        "type": "object"
+      },
+      "name": "comfy_workflow"
+    },
+    {
       "description": "Load latest (or id) handoff packet — call first in every new chat bootstrap.",
       "inputSchema": {
         "properties": {
@@ -968,6 +1394,60 @@
       "name": "desktop_click"
     },
     {
+      "description": "Drag the left mouse button between window-relative points in an exact listed visible window/PID. Optional duration_ms is 50..5000 (default 500). Requires task authorization; observe the resulting UI.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "duration_ms": {
+            "default": 500,
+            "maximum": 5000,
+            "minimum": 50,
+            "type": "integer"
+          },
+          "end_x": {
+            "maximum": 8192,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "end_y": {
+            "maximum": 8192,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "pid": {
+            "maximum": 4294967295,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "start_x": {
+            "maximum": 8192,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "start_y": {
+            "maximum": 8192,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "window_id": {
+            "maximum": 9223372036854775807,
+            "minimum": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_id",
+          "pid",
+          "start_x",
+          "start_y",
+          "end_x",
+          "end_y"
+        ],
+        "type": "object"
+      },
+      "name": "desktop_drag"
+    },
+    {
       "description": "Submit a named key and optional ctrl/alt/shift modifiers to a listed foreground window/PID. Requires task authorization; observe the resulting UI.",
       "inputSchema": {
         "additionalProperties": false,
@@ -1054,6 +1534,48 @@
         "type": "object"
       },
       "name": "desktop_read"
+    },
+    {
+      "description": "Scroll at a window-relative point in an exact listed visible window/PID using signed wheel delta. Requires task authorization and foreground activation; observe the resulting UI.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "delta": {
+            "maximum": 12000,
+            "minimum": -12000,
+            "type": "integer"
+          },
+          "pid": {
+            "maximum": 4294967295,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "window_id": {
+            "maximum": 9223372036854775807,
+            "minimum": 1,
+            "type": "integer"
+          },
+          "x": {
+            "maximum": 8192,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "y": {
+            "maximum": 8192,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "window_id",
+          "pid",
+          "x",
+          "y",
+          "delta"
+        ],
+        "type": "object"
+      },
+      "name": "desktop_scroll"
     },
     {
       "description": "Submit literal Unicode text to the focused control in an exact listed foreground window/PID. Requires task authorization; observe focus and the resulting UI.",
@@ -1619,7 +2141,7 @@
       "name": "image_edit"
     },
     {
-      "description": "Start a Manager-owned image generation using the explicitly configured optional ComfyUI provider. Requires an absolute authorized output path, prompt, seed, width and height. Returns a job ID; image_job_status reports actual provider state and published preview. Provider is disabled by default; no model installation or server startup.",
+      "description": "Legacy SD1 generation for explicitly requested legacy image-provider work. When ComfyUI automation is enabled, use comfy_run for every new image or video request, including ordinary images and previews; this legacy tool does not implement the managed preview approval plan. Existing contract: absolute output path, prompt, seed, width and height; returns a Manager-owned job ID for image_job_status. No model installation or server startup.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {
@@ -1755,7 +2277,7 @@
       "name": "image_job_status"
     },
     {
-      "description": "Inspect the explicitly configured optional ComfyUI endpoint, node contracts and checkpoint inventory without starting the server or loading a model. Reports disabled, unavailable and incompatible providers explicitly; catalog presence alone does not establish generation availability.",
+      "description": "Inspect the separately configured legacy SD1 image provider. For new image or video creation, first read comfy_status; when automation is enabled use comfy_run with preview approval, including ordinary image requests. This status does not inspect generic ComfyUI automation, install models, start ComfyUI or run inference.",
       "inputSchema": {
         "additionalProperties": false,
         "properties": {},

@@ -1,8 +1,8 @@
 # Tool catalog
 
-For model access instructions and exact arguments, use the [complete LM Studio capability guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/LM-STUDIO-MODEL-CAPABILITIES.md) and [matching JSON catalog](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/LM-STUDIO-MODEL-CAPABILITIES.json). They cover all 112 schemas, owner setup, role/worker restrictions, the ten specialist playbooks and supporting orchestration services. Primary and Fallback each expose all 112 names; CLU exposes five of those same names.
+For model access instructions and exact arguments, use the [complete LM Studio capability guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/LM-STUDIO-MODEL-CAPABILITIES.md) and [matching JSON catalog](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/LM-STUDIO-MODEL-CAPABILITIES.json). They cover all 125 schemas, setup, role/worker restrictions, the ten specialist playbooks and supporting orchestration services. Primary and Fallback each expose all 125 names; CLU exposes five of those same names.
 
-The current 1.3.28 source provides **112 descriptors** in Primary and Fallback: all original 80 plus 32 additions, ten specialist playbooks and five CLU governance tools. Current source, package and selected native measurements are recorded in the 1.3.28 verification record. Historical [published 1.3.21 qualification](Release-1.3.21) identifies its own source and binaries. `host_capabilities` reports advertised dedicated capabilities, tool names and filesystem mode; `get_forge_status` adds selected project/default directory, active roots and current policy. The optional provider's configured/available state comes from `image_provider_status`.
+The current 1.3.29 catalog provides **125 descriptors** in Primary and Fallback: all previous 112, eleven ComfyUI tools and desktop scroll/drag. Ten specialist playbooks and five CLU governance tools remain. `host_capabilities` reports dedicated capabilities, tool names and filesystem mode; `get_forge_status` adds the selected project/default directory and active configuration. General media readiness and limits come from `comfy_status`; `image_provider_status` retains the separate legacy SD1 provider contract. See [ComfyUI Automation](ComfyUI-Automation) and [1.3.29 release notes](Release-1.3.29).
 
 - `agent_cancel`
 - `agent_context`
@@ -21,6 +21,17 @@ The current 1.3.28 source provides **112 descriptors** in Primary and Fallback: 
 - `clu.resolve`
 - `cmake_test_run`
 - `cmake_test_status`
+- `comfy_catalog`
+- `comfy_control`
+- `comfy_job_cancel`
+- `comfy_job_list`
+- `comfy_job_resume`
+- `comfy_job_status`
+- `comfy_prepare`
+- `comfy_run`
+- `comfy_status`
+- `comfy_validate`
+- `comfy_workflow`
 - `context_get`
 - `context_list`
 - `continuity.acknowledge_handoff`
@@ -32,9 +43,11 @@ The current 1.3.28 source provides **112 descriptors** in Primary and Fallback: 
 - `continuity.status`
 - `desktop_capture`
 - `desktop_click`
+- `desktop_drag`
 - `desktop_key`
 - `desktop_list`
 - `desktop_read`
+- `desktop_scroll`
 - `desktop_type`
 - `document_write`
 - `evidence_digest`
@@ -117,4 +130,4 @@ The current 1.3.28 source provides **112 descriptors** in Primary and Fallback: 
 - `web_search`
 - `workspace_authority_bind`
 
-The sorted inventory above comes from `tests/fixtures/Mcp/mcp-tools-semantic-golden.json`. The six new names are `image_edit`, `image_generate`, `image_job_cancel`, `image_job_resume`, `image_job_status` and `image_provider_status`. Existing PNG drawing and independent analysis remain. The optional ComfyUI `sd1` provider is disabled by default and requires an owner-configured loopback endpoint plus an existing compatible checkpoint. `image_provider_status` reads current configuration and core-node/checkpoint inventory; inventory availability does not establish a loaded model or image quality. `image_generate` and `image_edit` return durable jobs. Poll `image_job_status` for actual state, error and publication measurements. `image_job_cancel` suppresses local publication; running remote work may continue. `image_job_resume` requires fresh current authorization and retrieves the existing exact prompt/workflow without a new generation or upload POST. Read-only status cannot resume or publish. Public write-tool admission retains current Write intent/grants; new image destinations additionally require Create and current Read authority. Manager narrows the internal caller scope against current project policy. See [local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md), [Native Tools](Native-Tools), [Windows Workflow Capabilities](Windows-workflow-capabilities) and [1.3.28 source notes](Release-1.3.28). Historical [1.3.21](Release-1.3.21) and [1.3.19](Release-1.3.19) evidence retains its own catalogs and artifacts.
+The sorted inventory above comes from `tests/fixtures/Mcp/mcp-tools-semantic-golden.json`. General ComfyUI preparation, preview/final rendering, saved operator approval, recovery and artifact delivery use the eleven `comfy_*` tools. `comfy_validate` is preflight, and a successful inventory read does not establish execution or visual quality. Desktop scroll/drag use freshly observed window identity and bounded coordinates. Existing PNG drawing, independent image analysis and all six legacy image-provider names remain. Their strict legacy arguments and receipts are separate from general ComfyUI jobs. See [ComfyUI Automation](ComfyUI-Automation), [legacy image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md), [Native Tools](Native-Tools) and [Windows Workflow Capabilities](Windows-workflow-capabilities). Historical releases retain their original catalogs and artifacts.

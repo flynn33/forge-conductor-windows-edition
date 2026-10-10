@@ -1,5 +1,6 @@
 #include "ManagerConnection.h"
 #include "ProjectSetupWorkspace.h"
+#include "TelemetryPresentation.h"
 #include "ForgeConductor/Infrastructure/Windows/DpapiSecureStorage.h"
 #include "ForgeConductor/Infrastructure/Windows/SystemClock.h"
 #include "ForgeConductor/Infrastructure/Windows/LMStudioResponsesTransport.h"
@@ -826,6 +827,22 @@ ToolOutcomeView ManagerConnection::invokeTool(
         auto created = connectManager(alphaProfile_, context, clock);
         if (!created) return {false, created.error().message, std::nullopt};
         auto client = std::move(created).value();
+        if (toolName == "comfy_status") {
+            const auto arguments = nlohmann::json::parse(canonicalArguments, nullptr, false);
+            if (!arguments.is_object() || !arguments.empty()) {
+                client->shutdown();
+                return {false, "ComfyUI readiness accepts an empty argument object only.", std::nullopt};
+            }
+            auto status = client->invokeTool({parsed.value(),"forge_status","{}"},context);
+            if (!status) { client->shutdown(); return {false, status.error().message, std::nullopt}; }
+            if (!status.value().ok || status.value().projectId != parsed.value()) {
+                client->shutdown();
+                return {false,"ComfyUI readiness did not receive successful status for the selected project.",std::nullopt};
+            }
+            auto scoped = comfyStatusProbeArguments(parsed.value(),nlohmann::json::parse(status.value().canonicalPayload,nullptr,false));
+            if (!scoped) { client->shutdown(); return {false, scoped.error().message, std::nullopt}; }
+            canonicalArguments = std::move(scoped).value();
+        }
         auto result = client->invokeTool(
             Manager::ManagerToolInvokeRequest{
                 std::move(parsed).value(),
@@ -986,6 +1003,11 @@ std::string ManagerConnection::saveProviderSettings(
         auto result = client->updateSettings(patch, true, context);
         client->shutdown();
         if (!result) return "Provider settings were not saved: " + result.error().message;
+        if (patch.comfyUi) {
+            return std::string{"Configuration saved. ComfyUI automation is "} +
+                (result.value().settings.comfyUi.enabled ? "enabled" : "disabled") +
+                ". Effective settings are being read back; probe readiness to inspect the provider.";
+        }
         return "Provider settings saved for " +
             result.value().settings.localModelHost + ":" +
             std::to_string(result.value().settings.localModelPort) +

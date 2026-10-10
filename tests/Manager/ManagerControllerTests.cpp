@@ -598,6 +598,8 @@ void lifecycleAndSourceCompatibleStopAreDeterministic()
     fixture.config.sessions.idleTimeToLive = 500s;
     fixture.config.shell.defaultTimeout = 45s;
     fixture.config.logLevel = Domain::LogLevel::Warning;
+    fixture.config.comfyUi = Domain::ComfyUiConfig{true, false, R"(C:\ComfyUI)", R"(D:\Models)",
+        "http://127.0.0.1:8188", 500'000'000'001ULL, 50'000'000'001ULL, 1800U, "balanced"};
     fixture.store = std::make_shared<RecordingConfigurationStore>(fixture.config);
 
     // Reconstruct because injected dependencies are immutable by design.
@@ -628,6 +630,7 @@ void lifecycleAndSourceCompatibleStopAreDeterministic()
             "Manager status did not map the complete application configuration.");
 
     const auto managerSettings = take(controller.settings(fixture.context()));
+    require(managerSettings.comfyUi == fixture.config.comfyUi, "ComfyUI readback did not map the configured values exactly.");
     require(managerSettings.dashboardHost == "::1" &&
                 managerSettings.dashboardPort == 8123U &&
                 managerSettings.dashboardRefreshInterval == 11s &&
@@ -691,8 +694,12 @@ void settingsPersistenceAndRuntimeApplicationAreExact()
     nonbinding.nextResponseReserve = 8'192U;
     nonbinding.handoffReserve = 6'144U;
     nonbinding.estimationSafetyMargin = 3'072U;
+    nonbinding.comfyUi = Domain::ComfyUiConfig{true, true, R"(C:\ComfyUI)", {},
+        "http://127.0.0.1:8188", 750'000'000'000ULL, 60'000'000'000ULL, 3000U, "quality"};
     const auto nonbindingOutcome = take(fixture.controller.updateSettings(
         nonbinding, true, fixture.context()));
+    require(nonbindingOutcome.settings.comfyUi == *nonbinding.comfyUi,
+        "ComfyUI typed Manager patch was not returned from persisted configuration.");
     require(nonbindingOutcome.settings.dashboardRefreshInterval == 13s &&
                 !nonbindingOutcome.settings.autoRestart &&
                 nonbindingOutcome.settings.watchdogInterval == 9s &&
@@ -724,6 +731,8 @@ void settingsPersistenceAndRuntimeApplicationAreExact()
             "Nonbinding settings incorrectly rebound the listener.");
 
     const auto mapped = fixture.store->lastPatch();
+    require(mapped && mapped->comfyUi == nonbinding.comfyUi,
+        "ComfyUI preferences did not reach the owner-persisted application configuration patch.");
     require(mapped.has_value() && !mapped->allowedRoots &&
                 mapped->shellEnabled == false &&
                 mapped->fileSystemAccess == Domain::FileSystemAccessMode::Host &&

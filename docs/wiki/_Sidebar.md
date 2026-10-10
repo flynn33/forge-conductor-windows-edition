@@ -4,7 +4,7 @@
 
 **Forge Conductor**
 
-<sub>Windows · 1.3.28 · measured verification</sub>
+<sub>Windows · 1.3.29 · local media automation</sub>
 
 ---
 
@@ -12,7 +12,8 @@
 * [Home](Home)
 * [Workspace Guide](Guided-Setup)
 * [CLU Governance](Setup-and-Governance)
-* [1.3.28 source and verification scope](Release-1.3.28)
+* [1.3.29 release and verification scope](Release-1.3.29)
+* [Published 1.3.28 qualification](Release-1.3.28)
 * [Superseded, unpublished 1.3.27 installed investigation](Release-1.3.27)
 * [Superseded 1.3.26 installed investigation](Release-1.3.26)
 * [Superseded 1.3.25 installed investigation](Release-1.3.25)
@@ -43,6 +44,7 @@
 * [LM Studio MCP](MCP-Protocol)
 * [Windows Workflow Capabilities](Windows-workflow-capabilities)
 * [Tool Catalog](Tool-Catalog)
+* [ComfyUI Automation](ComfyUI-Automation)
 * [CMake/CTest source guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/CMAKE-CTEST.md)
 * [Local image-provider guide](https://github.com/flynn33/forge-conductor-windows-edition/blob/main/docs/IMAGE-PROVIDER.md)
 * [Native Tools](Native-Tools)

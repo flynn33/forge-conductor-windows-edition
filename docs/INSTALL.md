@@ -1,6 +1,6 @@
 # Install Forge Conductor
 
-The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.28 release.
+The measurement block below records historical 1.3.19 qualification; it does not qualify the current 1.3.29 release.
 
 <!-- measured-qualification-1.3.19 -->
 
@@ -8,7 +8,7 @@ Both native WinHTTP timeout diagnostics consistently report the selected receive
 
 <!-- /measured-qualification-1.3.19 -->
 
-The current Forge Conductor source identity is 1.3.28 (Windows package 1.3.28.0), targeting Windows 11 x64. Current build, signed-install, catalog and native measurements are recorded in the 1.3.28 verification record; isolated provider checks retain their own scope. The published 1.3.19 distribution remains historical evidence above. A distribution contains:
+The current Forge Conductor source identity is 1.3.29 (Windows package 1.3.29.0), targeting Windows 11 x64. Use the existing upgrade path to preserve the stable package identity and per-user data. Versioned build, signing, payload, installation and publication results are recorded in [release verification](validation/RELEASE-1.3.29.md); older installed observations below retain their original versions. A distribution contains:
 
 - `ForgeConductor-<version>-x64.msix`;
 - `distribution.json` and payload hashes;
@@ -17,13 +17,13 @@ The current Forge Conductor source identity is 1.3.28 (Windows package 1.3.28.0)
 - `README.txt`;
 - optionally `ForgeConductor.appinstaller` when an update base URI was supplied.
 
-## Current 1.3.28 installation
+## Current 1.3.29 installation
 
-The source/package inputs identify 1.3.28 / 1.3.28.0 with 112 Primary/Fallback descriptors. Current signed packaging, installation and catalog measurements are recorded separately in the 1.3.28 verification record. The superseded 1.3.22.0 installation passed exact four-payload and complete prelaunch profile-preservation checks; its actual selected Primary status reported 112 tools. That single native status result does not qualify the full installed Primary/Fallback/CLU catalog comparison or any integrated image-provider workflow.
+The source/package inputs identify 1.3.29 / 1.3.29.0 with 125 Primary/Fallback descriptors. Read [release verification](validation/RELEASE-1.3.29.md) for actual signed-package, installation, catalog and preservation results. Configure the existing local ComfyUI installation through Settings after upgrade; [automation setup](COMFYUI-AUTOMATION.md) describes defaults and preparation limits. Historical package results do not establish acceptance of the new package.
 
-[Published 1.3.21](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.21) has separately verified seven-asset publication readback. Its installation and native qualification below remain historical evidence. Installation verification requires owner-profile preservation, exact four-image payload hashes and actual 112/112/5 catalogs before native provider acceptance. See [release notes](releases/1.3.28.md) and [current verification](validation/HOST-CAPABILITIES-1.3.28.md).
+[Published 1.3.21](https://github.com/flynn33/forge-conductor-windows-edition/releases/tag/v1.3.21) has separately verified seven-asset publication readback. Its installation and native qualification below remain historical evidence. The retained 1.3.28 installation verification required owner-profile preservation, exact four-image payload hashes and actual 112/112/5 catalogs before native provider acceptance. See [1.3.28 release notes](releases/1.3.28.md) and [recorded 1.3.28 verification](validation/HOST-CAPABILITIES-1.3.28.md).
 
-The optional ComfyUI provider is disabled by default. Plugin installation does not start a server, download a checkpoint or enable generation. Explicit owner configuration and actual image_provider_status availability are required; see [provider setup](IMAGE-PROVIDER.md).
+The optional legacy image provider is disabled by default. Plugin installation does not start a server, download a checkpoint or enable its six image tools. Explicit owner configuration and actual image_provider_status availability are required; see [legacy provider setup](IMAGE-PROVIDER.md). The general ComfyUI automation card has separate installation and automatic-setup settings described in [automation setup](COMFYUI-AUTOMATION.md).
 
 ## Verify and install
 
