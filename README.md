@@ -129,3 +129,12 @@ A local engineering package:
 1.3.28 and the unpublished candidates through 1.3.27 keep their original commits, trees, package identities, and test counts. Read them in the [changelog](CHANGELOG.md), [product status](docs/STATUS.md), [release notes](docs/releases/), and [validation records](docs/validation/). The [documentation index](docs/DOCUMENTATION-INDEX.md) lists each record.
 
 Alpha plans under `.forge-alpha/` and `docs/implementation/alpha-recovery/` describe the 0.9.x validation program.
+
+
+## License
+
+Copyright 2026 James Daley, DBA: Raven Forge Software
+
+This project is dual-licensed. Non-commercial, academic, and personal use is free. Commercial use requires a separate written license.
+
+See the [LICENSE](LICENSE) file for the full terms.
