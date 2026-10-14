@@ -135,6 +135,6 @@ Alpha plans under `.forge-alpha/` and `docs/implementation/alpha-recovery/` desc
 
 Copyright 2026 James Daley, DBA: Raven Forge Software
 
-This project is dual-licensed. Non-commercial, academic, and personal use is free. Commercial use requires a separate written license.
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
 
 See the [LICENSE](LICENSE) file for the full terms.

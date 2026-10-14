@@ -1,53 +1,21 @@
-# Dual License: Non-Commercial / Academic / Personal Use + Commercial License
+MIT License
 
-**Copyright (c) 2026 James Daley, DBA: Raven Forge Software**  
-All rights reserved.
+Copyright (c) 2026 James Daley, Raven Forge Software
 
-This software and associated documentation files (the “Software”) are dual-licensed as follows. You must comply with one of the two licenses below depending on your intended use.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
----
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-## 1. Non-Commercial / Academic / Personal License (Free)
-
-Permission is hereby granted, free of charge, to any person or entity obtaining a copy of the Software, to use, copy, modify, merge, and distribute the Software **solely** for the following purposes:
-
-- Academic research
-- Educational use
-- Personal or hobby projects
-- Non-commercial internal experimentation, testing, or proof-of-concept work that is not used in production systems
-
-**Conditions:**
-
-1. **Attribution.** You must retain the above copyright notice, this license text, and any existing notices in all copies or substantial portions of the Software. In academic publications, presentations, or other public works that use or are based on the Software, you must provide appropriate credit to the copyright holder (e.g., “This work used [Software Name] by [Your Name].”).
-
-2. **Non-commercial restriction.** This free license does **not** permit any commercial use. Commercial use includes (but is not limited to):
-   - Use in a commercial product, service, or SaaS offering
-   - Use in production systems of a for-profit organization
-   - Consulting, freelancing, or fee-for-service work that incorporates the Software
-   - Any use primarily intended for commercial advantage or monetary compensation
-
-3. **No additional restrictions.** You may not impose further restrictions that contradict this license.
-
-**This free license terminates automatically if you use the Software for any commercial purpose without obtaining a commercial license.**
-
----
-
-## 2. Commercial License
-
-Any commercial use of the Software requires a separate written commercial license from the copyright holder.
-
-To obtain a commercial license, contact:  
-**contact@ravenforgesoftware.com**  
-**https://ravenforgesoftware.com/contact/**
-
-Commercial licenses may include additional rights (e.g., production use, closed-source distribution, support, or warranty terms) and are granted only under a signed agreement.
-
----
-
-## Disclaimer of Warranty and Limitation of Liability
-
-THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
----
-
-**End of license.**
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
